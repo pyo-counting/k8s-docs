@@ -38,5 +38,9 @@ endpoint IP는 k8s svc의 cluster IP이면 안된다. 왜냐하면 kube-proxy는
 `.spec.type`이 ExternalName에 대해서 `.spec.selector`가 필요없으며 대신 `.spec.externalName`이 필요히다.
 
 ### Over Capacity Endpoints
-endpoint resource에 1,000개가 넘는 IP가 설정될 경우 쿠버네티스 v1.22이상에서 클러스터는 endpoint resource에 endpoints.kubernetes.io/over-capacity: truncated annotation을 추가한다. 이 annotation은 해당 endpoint object가 용량을 초과했으며 endpoint controller가 IP의 수를 1000으로 줄였음을 나타낸다.
+endpoint resource에 1,000개가 넘는 IP가 설정될 경우 쿠버네티스 v1.22이상에서 클러스터는 endpoint resource에 endpoints.kubernetes.io/over-capacity: truncated annotation을 추가한다. 이 annotation은 해당 endpoint object가 용량을 초과했으며 endpoint controller가 엔드포인트의 수를 1000으로 줄였음(truncate)을 나타낸다.
 
+### EndpointSlices
+endpointslices는 ep에 비해 더 확장성있는 대안을 제공한다. ep와 개념적으로 유사하지만 endpointslices는 여러 resource에 네트워크 엔드포인트를 분산시킬 수 있다. 기본적으로 endpointslices는 최대 100개의 엔드포인트를 가질 수 있으며 추가 엔드포인트를 저장하기 위해서는 추가 endpointslices가 생성된다.
+
+### Application protocol
