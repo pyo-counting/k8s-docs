@@ -9,7 +9,7 @@ deploy와 유사하게 동일한 container spec을 기반으로 생성된 po를 
 ## Limitations
 - The storage for a given Pod must either be provisioned by a PersistentVolume Provisioner based on the requested storage class, or pre-provisioned by an admin.
 - sts에 대한 삭제 또는 scale down 시 관련된 volume은 삭제되지 않는다. 이는 일반적으로 sts와 연관된 것을 자동으로 제거하는 것보다 더 중요한 데이터의 안전을 보장하기 위함이다.
-- sts는 현재 po의 네트워크에서 po를 식별할 수 있도록 headless svc가 필요하다. 사용자는 이 svc를 생성할 책임이 있다.
+- sts는 현재 네트워크에서 po를 식별할 수 있도록 governing headless svc가 필요하다. 사용자는 이 svc를 생성할 책임이 있다.
 - sts 삭제 시 po의 종료에 대해 어떠한 보증을 제공하지 않는다. sts에서는 파드가 순차적이고 정상적으로 종료(graceful termination)되도록 하기 위해 삭제 전 sts의 스케일을 0으로 축소할 수 있다.
 - 기본 pod management policy(OrderedReady)를 사용해 rolling update 시, broken 상태에 빠질 수 있으며 이를 해결하기 위해 수동 작업이 필요하다.
 
@@ -66,6 +66,9 @@ spec:
           storage: 1Gi
 ```
 
+- headless svc 대신 일반 ClusterIP 타입의 svc를 생성할 수도 있다.
+- headless svc를 생성하면 각 po의 도메인에 대한 DNS SRV 레코드가 등록된다. svc에 대한 DNS lookup 시, 각 po에 대한 도메인 및 IP SRV, A 레코드가 반환된다.
+
 ### Pod Selector
 `.spec.selector` 필드는 `.spec.template.metadata.labels`필드와 매치되어야 한다. 이는 sts 생성시 검증한다.
 
@@ -82,7 +85,7 @@ sts po는 1) 순서, 2) 안정적인 네트워크 식별자, 3) 안정적인 스
 N개의 레플리카가 있는 sts 내에서 각 po에 대해 0에서 N-1 까지의 정수가 순서대로 할당되며 해당 sts 내에서 고유 하다.
 
 ### Stable Network ID
-sts의 각 po는 sts의 이름과 po의 순번에서 hostname을 얻는다. hostname을 구성하는 패턴은 \$(statefulset name)-\$(ordinal) 이다. 위의 예시에서 생성된 3개 파드의 이름은 web-0,web-1,web-2 이다. sts에 있는 po의 도메인을 제어하기 위해 headless svc를 사용할 수 있다. 이 svc가 관리하는 도메인은 \$(service name).\$(namespace).svc.cluster.local 의 형식을 가지며, 여기서 "cluster.local"은 클러스터 도메인이다. 각 po는 생성되면 \$(podname).\$(governing service domain) 형식을 가지고 일치되는 DNS 서브 도메인을 가지며, 여기서 거버닝 서비스(governing service)는 sts의 `.spec.serviceName` 필드에 의해 정의된다.
+sts의 각 po는 sts의 이름과 po의 순번에서 hostname을 얻는다. hostname을 구성하는 패턴은 \$(statefulset name)-\$(ordinal) 이다. 위의 예시에서 생성된 3개 파드의 이름은 web-0,web-1,web-2 이다. sts에 있는 po의 도메인을 제어하기 위해 headless svc를 사용할 수 있다. 이 svc가 관리하는 도메인은 \$(service name).\$(namespace).svc.cluster.local 의 형식을 가지며, 여기서 "cluster.local"은 클러스터 도메인이다. 각 po는 생성되면 \$(podname).\$(governing service domain) 형식을 가지는 DNS 서브 도메인을 갖게된다. 여기서 거버닝 서비스(governing service)는 sts의 `.spec.serviceName` 필드에 의해 정의된다.
 
 클러스터에서 DNS가 구성된 방식에 따라, 새로 실행된 po의 DNS 이름을 즉시 찾지 못할 수 있다. 이 동작은 클러스터의 다른 클라이언트가 po가 생성되기 전에 po의 hostname에 대한 쿼리를 이미 보낸 경우에 발생할 수 있다. 네거티브 캐싱(DNS에서 일반적)은 이전에 실패한 조회 결과가 po가 실행된 후에도 적어도 몇 초 동안 기억되고 재사용됨을 의미한다.
 
