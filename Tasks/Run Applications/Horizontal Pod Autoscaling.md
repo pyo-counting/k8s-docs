@@ -2,7 +2,7 @@ k8s에서 hpa는 workload resource(deploy, sts, rs, rc)를 자동으로 업데�
 
 horizontal scaling은 부하 증가에 맞춰 po를 더 배포하는 것을 뜻한다. 이는 vertical scaling(k8s에서는 실행 중인 po에 더 많은 자원(메모리 또는 CPU 등)을 할당하는 것)과는 다르다.
 
-부하가 줄어들고 po의 수가 설정한 최소 값보다 많을 경우, hpa는 workload resourc에게 scale down을 지시한다.
+부하가 줄어들고 po의 수가 설정한 최소 값보다 많을 경우 hpa는 workload resourc에게 scale down을 지시한다.
 
 hpa는 scale 조절이 불가능한 object(예를 들어 ds)에는 적용할 수 없다.
 
@@ -13,11 +13,11 @@ hpa는 k8s API resource와 controller를 통해 구현됐다. hpa API resource�
 
 k8s는 hpa를 간헐적으로(intermittently) 실행되는 컨트롤 루프 형태로 구현했다(지속적인 프로세스가 아니다). 실행 주기는 kube-controller-manager의 --horizontal-pod-autoscaler-sync-period 파라미터에 의해 설정된다(기본 주기는 15초).
 
-각 주기마다, controller manager는 각 hpa 정의에 지정된 metric에 대해 리소스 사용률을 질의한다. controller manager는 `.spec.scaleTargetRef`에 정의된 타겟 resource를 찾고, 타겟 resource의 `.spec.selector` label을 보고 po를 선택하며, 리소스 metric API(po 단위 리소스 metric) 또는 custom metric API(그 외 모든 meric 용)로부터 metric을 수집한다.
+각 주기마다, controller manager는 각 hpa 정의에 지정된 metric에 대한 리소스 사용률을 질의한다. controller manager는 `.spec.scaleTargetRef`에 정의된 타겟 resource를 찾고, 타겟 resource의 `.spec.selector` label을 보고 po를 선택하며, 리소스 metric API(po 단위 리소스 metric) 또는 custom metric API(그 외 모든 meric 용)로부터 metric을 수집한다.
 
 - po 단위 리소스 metric(예를 들어 CPU)의 경우 controller는 hpa가 대상으로하는 각 po에 대한 리소스 metric API에서 metric을 가져온다. 목표 사용률 값이 설정되면 controller는 각 po의 container에 대한 해당 resource request의 백분율로 사용률 값을 계산한다. 목표 정수값이 설정된 경우 metric 값을 계산없이 직접 사용한다. 그리고 controller는 모든 대상 po에서 사용된 사용률의 평균 또는 정수 값(지정된 대상 유형에 따라 다름)을 가져와서 원하는 replica 값을 scale하는데 사용되는 비율을 계산한다.
 
-  po의 container 중 일부에 적절한 resource request가 설정되지 않은 경우, po의 CPU 사용률은 정의되지 않으며, 따라서 hpa는 해당 metric에 대해 아무런 조치도 취하지 않는다. autoscaling 알고리즘의 작동 방식에 대한 자세한 내용은 아래에서 살펴본다.
+  po의 일부 container에 적절한 resource request가 설정되지 않은 경우 po의 CPU 사용률은 정의되지 않는다. 따라서 hpa는 해당 metric에 대해 아무런 조치도 취하지 않는다. autoscaling 알고리즘의 작동 방식에 대한 자세한 내용은 아래에서 살펴본다.
 
 - po 단위 사용자 custom metric의 경우, controller는 사용률 값이 아닌 정수 값을 사용한다는 점을 제외하고는 po 단위 리소스 metric과 유사하게 동작한다.
 
@@ -25,35 +25,76 @@ k8s는 hpa를 간헐적으로(intermittently) 실행되는 컨트롤 루프 형�
 
 hpa를 사용하는 일반적인 방법은 aggregated API(metrics.k8s.io, custom.metrics.k8s.io, external.metrics.k8s.io)로부터 metric을 가져오도록 설정하는 것이다. metrics.k8s.io API는 보통 metric server라는 add-on에 의해 제공된다.
 
-hpa controller는 scaling을 지원하는 workload resource에 접근한다. 이러한 resource는 scale이라는 하위 resource를 가짖고 있으며, 이 하위 resource는 replica 수를 동적으로 설정하고 각각의 현재 상태를 확인할 수 있는 인터페이스다.
+hpa controller는 scaling을 지원하는 workload resource에 접근한다. 이러한 resource는 scale이라는 하위 resource를 가지고 있으며, 이 하위 resource는 replica 수를 동적으로 설정하고 각각의 현재 상태를 확인할 수 있는 인터페이스다.
 
 ### Algorighm details
-가장 기본적인 관점에서 hpa controller는 desired metric 값과 현재 metric 값 사이의 비율로 작동한다.
 
-desiredReplicas = ceil[currentReplicas * ( currentMetricValue / desiredMetricValue )]
+## API Object
+hpa는 k8s autoscaling API 그룹의 API resource다. 현재 stable 버전은 autoscaling/v2 API 버전이며, 메모리와 custom metric에 대한 scaling을 지원한다. autoscaling/v2에서 추가된 새로운 필드는 autoscaling/v1를 이용할 때에는 annotation 보존된다.
 
-예를 들어 현재 metric 값이 200m이고 desired 값이 100m인 경우 200.0 / 100.0 == 2.0이므로 replica 값은 두 배가 된다. 만약 현재 값이 50m 이면, 50.0 / 100.0 == 0.5 이므로 replica 값을 반으로 줄일 것이다. control plane은 비율이 1.0(전역적으로 구성 가능한 허용 오차 내, 기본 값 0.1)에 충분히 가깝다면 scaling을 건너 뛸 것이다.
+## Stability of workload scale
+hpa를 사용해 replica 크기를 관리할 때 측정하는 metric의 동적 특성 때문에 replica 수가 자주 바뀔 수 있다. 이는 종종 thrashing 또는 flapping이라고 불린다. 이는 사이버네틱스 분야의 hysteresis 개념과 비슷하다.
 
-targetAverageValue 또는 targetAverageUtilization가 설정되면, currentMetricValue는 hpa의 scale 대상인 모든 po에 주어진 metric의 평균을 취하여 계산된다.
+## Autoscaling during rolling update
+k8s는 deploy에 대한 rolling update를 지원한다. 이 때 deploy가 rs을 알아서 관리한다. deploy에 autoscaling을 설정하려면, 각 deploy에 대한 hpa를 생성한다. hpa는 deploy의 replicas 필드를 관리한다. deploy controller는 rs의 replicas 값을 적용하여 rollout 과정 중/이후에 적절한 숫자까지 늘어나도록 한다.
 
-허용치를 확인하고 최종 값을 결정하기 전에 control plane은 누락된 metric이 있는지, 그리고 몇 개의 po가 Ready인지도 고려한다. deletion timestamp가 설정된 모든 po(po에 deletion timestamp가 있으면 shutdown 또는 삭제 중임을 의미)는 무시되며, 모든 실패한 po도 무시된다.
+autoscale된 replica가 있는 sts의 rolling update를 수행하면 sts가 직접 po의 수를 관리한다(즉, rs와 같은 중간 resource가 없다).
 
-특정 po에 metric이 누락된 경우 나중을 위해 처리를 미뤄두는데 이와 같이 누락된 metric이 있는 모든 po는 최종 scale 크기를 조정하는데 사용된다.
+## Support for resource metrics
+모든 hpa 타켓 scale 대상에서 po의 리소스 사용량을 기준으로 scale할 수 있다. po의 명세를 정의할 때는 cpu 및 memory 와 같은 resource request을 지정해야 한다. 이는 리소스 사용률을 결정하는 데 사용되며 hpa controller에서 대상을 scaling하거나 축소하는 데 사용한다. 리소스 사용률 기반 스케일링을 사용하려면 다음과 같은 metric 소스를 지정해야 한다:
 
-CPU를 기준으로 scale 시 po가 아직 Ready되지 않았거나(초기화 중이거나 unhealthy 상태) 또는 po의 최신 metric 값이 준비되기 전이라면 마찬가지로 해당 po는 나중에 처리된다.
+``` yaml
+type: Resource
+resource:
+  name: cpu
+  target:
+    type: Utilization
+    averageUtilization: 60
+```
 
-기술적 제약으로 인해, hpa controller는 특정 CPU metric을 나중에 사용할지 말지 결정할 때 po가 준비되는 시작 시간을 정확하게 알 수 없다. 대신, po가 아직 준비되지 않았고 시작 이후 짧은 시간 내에 po가 준비되지 않은 상태로 전환된다면 해당 po를 "아직 준비되지 않음(not yet ready)"으로 간주한다. 이 값은 --horizontal-pod-autoscaler-initial-readiness-delay 플래그로 설정되며, 기본값은 30초 이다. 일단 po가 준비되고 시작된 후 구성 가능한 시간 이내이면, 준비를 위한 어떠한 전환이라도 이를 시작 시간으로 간주한다. 이 값은 --horizontal-pod-autoscaler-cpu-initialization-period 플래그로 설정되며 기본값은 5분이다.
+이 metric을 사용하면 hap controller는 scaling 대상에서 po의 평균 사용률을 60%로 유지한다. 사용률은 po의 요청 리소스에 대한 현재 리소스 사용량 간의 비율이다.
 
-currentMetricValue / desiredMetricValue 기본 스케일 비율은 나중에 사용하기로 되어 있거나 위에서 폐기되지 않은 남아있는 po를 사용하여 계산된다.
+**Note**: 모든 container의 리소스 사용량이 합산되므로 총 po 사용량이 개별 container 리소스 사용량을 정확하게 나타내지 못할 수 있다. 이로 인해 단일 container가 높은 사용량일 때 전체 po 사용량은 여전히 허용 가능한 한도 내에 있기 때문에 hpa가 scaling 되지 않는 상황이 발생할 수 있다.
 
-누락된 metric이 있는 경우, control plane은 po가 scale down의 경우 원하는 값의 100%를 소비하고 scale up의 경우 0%를 소비한다고 가정하여 평균을 보다 보수적으로 재계산한다. 이것은 잠재적인 scale의 크기를 약화시킨다.
+### Container resource metrics
 
-또한, 아직-준비되지-않은 po가 있고, 누락된 metric이나 아직-준비되지-않은 po가 고려되지 않고 workload가 scale up 된 경우, controller는 아직-준비되지-않은 po가 원하는 metric의 0%를 소비한다고 보수적으로 가정하고 스케일 확장의 크기를 약화시킨다.
+## Scaling on custom metrics
 
-아직-준비되지-않은 po나 누락된 metric을 고려한 후에, controller가 사용률을 다시 계산한다. 새로 계산한 사용률이 스케일 방향을 바꾸거나, 허용 오차 내에 있으면, controller가 스케일링을 건너뛴다. 그렇지 않으면, 새로 계산한 사용률를 이용하여 po 수 변경 결정을 내린다.
+## Scaling on multiple metrics
 
-평균 사용량에 대한 원래 값은 새로운 사용 비율이 사용되는 경우에도 아직-준비되지-않은 po 또는 누락된 metric에 대한 고려없이 HorizontalPodAutoscaler 상태를 통해 다시 보고된다.
+## Support for metrics APIs
 
-hpa에 여러 metric이 지정된 경우, 이 계산은 각 metric에 대해 수행된 다음 원하는 레플리카 수 중 가장 큰 값이 선택된다. 이러한 metric 중 어떠한 것도 원하는 레플리카 수로 변환할 수 없는 경우(예 : metric API에서 metric을 가져오는 중 오류 발생) 스케일을 건너뛴다. 이는 하나 이상의 metric이 현재 값보다 높은 desiredReplicas 을 제공하는 경우 HPA가 여전히 확장할 수 있음을 의미한다.
+## Configurable scaling behavior
+v2 버전의 hpa API를 사용한다면 behavior 필드를 사용해 scale up 동작과 scale down 동작을 별도로 설정할 수 있다. 각각은 behavior 필드 아래의 scaleUp / scaleDown를 설정하여 지정할 수 있다.
 
-마지막으로, hpa가 목표를 스케일하기 직전에 스케일 권장 사항이 기록된다. controller는 구성 가능한 창(window) 내에서 가장 높은 권장 사항을 선택하도록 해당 창 내의 모든 권장 사항을 고려한다. 이 값은 --horizontal-pod-autoscaler-downscale-stabilization 플래그를 사용하여 설정할 수 있고, 기본값은 5분이다. 즉, 스케일 다운이 점진적으로 발생하여 급격히 변동하는 metric 값의 영향을 완만하게 한다.
+stabilization window를 사용해 scaling 타겟의 replica 수 flapping을 방지할 수 있다. scaling 정책을 이용하여 scaling 시 replica 수 변화 속도를 조절할 수도 있다.
+
+### Scaling policies
+
+### Stabilization window
+
+### Default Behavior
+
+### Example: change downscale stabilization window
+
+### Example: limit scale down rate
+
+### Example: disable scale down
+
+## Support for HorizontalPodAutoscaler in kubectl
+
+## Implicit maintenance-mode deactivation
+hpa resource를 변경하지 않고 비활성화할 수 있다. 타겟 workload resource의 replica를 0으로 설정하고 hpa의 최소 replica가 0보다 크면 hpa는 타겟의 replica를 다시 조정하거나, hpa의 최소 replica 수를 조정할 때까지 hpa는 타겟 resource에 대한 auto scaling을 중지한다.
+
+### Migrating Deployments and StatefulSets to horizontal autoscaling
+hpa가 활성화 됐을때, deploy와 sts의 .spec.replicas 값을 삭제하는 것을 권장한다. 왜냐하면 kbectl apply -f <FILE_NAME> 명령어를 사용해 workload resource를 적용할 때 k8s가 FILE_NAME의 .spec.replicas 값을 사용해 po를 scaling 하기 때문이다. 이는 의도하지 않은 것이며 hpa가 활성화 됐을 때 문제를 야기할 수도 있다.
+
+.spec.replica를 삭제하면 이 필드의 기본값인 1이 사용됨을 인지해야 한다. 값을 업데이트하면 po 1개를 제외하고 나머지 po가 종료된다. 이후 deploy 애플리케이션은 정상적으로 동작하며 rolling update 설정도 의도한 대로 동작한다. 아래 2가지 방법을 사용해 이러한 동작을 피할 수 있다.
+
+- Client Side Apply (this is the default)
+  1. kubectl apply edit-last-applied deployment/<deployment_name>
+  2. 편집기에서 .spec.replicas 필드를 삭제한다. 저장 및 편집기를 종료하면 kbectl이 이 업데이트 사항을 적용한다. 이 단계에서 po 숫자가 변경되지 않는다.
+  3. manifest에서 .spec.replica를 삭제할 수 있다. 소스 코드 관리 도구를 사용할 경우 변경 사항을 추적할 수 있도록 변경 사항을 커밋하고 추가 필요 단계를 수행한다.
+  4. kubectl apply -f deployment.yaml를 실행할 수 있다.
+- Server Side Apply
+  - When using the Server-Side Apply you can follow the transferring ownership guidelines, which cover this exact use case.
