@@ -1,5 +1,3 @@
-## Init Containers
-
 ## Understanding init containers
 init container는 app container가 실행되기 전에 먼저 실행된다. init container는 일반 container와 동일하지만 아래 예외가 있다:
 

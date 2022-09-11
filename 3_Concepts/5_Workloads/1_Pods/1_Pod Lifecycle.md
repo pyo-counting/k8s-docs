@@ -1,19 +1,18 @@
-## Pod Lifecycle
 po는 정의된 라이프 사이클을 따른다. pending phase를 시작으로 1개 이상의 주요 container가 OK 상태가 되면 running phase로 바뀌고 po 내 container의 실패로 인한 종료 여부에 따라 succeeded 또는 failed phase로 최종 바뀐다.
 
 po가 실행 중에 kubelet은 일부 실패 상황에 따라 container를 재시작한다. k8s는 po 내 각 container의 state를 추척하고 po가 다시 healthy 상태가 될 수 있도록 어떤 조치를 해야할지 결정한다.
 
-k8s API에 po는 specification과 실제 status를 갖는다. po의 status는 conditions 집합으로 구성된다. condition data에 사용자가 custom readiness information를 추가할 수도 있다.
+k8s API에 po는 spec과 실제 status를 갖는다. po의 status는 conditions 집합으로 구성된다. condition data에 사용자가 custom readiness information를 추가할 수도 있다.
 
 각 po는 한 번만 스케쥴링된다. po가 no에 스케쥴되면 해당 no에서 stop 또는 terminated까지 실행된다.
 
-### Pod lifetime
+## Pod lifetime
 개별 애플리케이션 container와 마찬가지로 po 역시 임시 객체로 간주된다. po가 생성되면 고유 ID(UID)가 할당되고, no에 할당되어 종료 또는 삭제될 때까지 유지된다. 만약 no가 죽는다면, po는 timeout 시간이 지난 후 삭제에 대한 작업이 스케쥴링된다.
 
 volume은 po와 동일한 라이프타임을 갖는다.
 
-### Pod phase
-po의 status 필드는 phase 필드를 갖는 PodStatus 오브젝트다.
+## Pod phase
+po의 status 필드는 phase 필드를 갖는 PodStatus object다.
 
 po의 phase는 라이프사이클 중 어떤 상태에 있는지에 대한 간단한 요약이다. phase는 container 또는 po의 관측 정보에 대한 포괄적인 상태를 표현하도록 의도되지는 않았다.
 
@@ -33,7 +32,7 @@ phase에 가능한 값은 다음과 같다.
 
 no가 죽거나 cluster에서 연결이 종료되면, k8s는 손실된 no의 모든 po phase를 Failed로 설정하는 정책을 적용한다.
 
-### Container states
+## Container states
 po의 phase 뿐만 아니라 k8s는 po 내부의 각 container state도 추적한다. container lifecycle hook을 사용하면 container lifecycle 중 특정 지점에서 실행할 event를 트리거할 수 있다.
 
 container는 세 가지 state를 갖는다.
@@ -42,12 +41,12 @@ container는 세 가지 state를 갖는다.
 - **Running**: Running state는 container가 문제 없이 동작 중이다. postStart hook이 설정된 경우 완료된 상태다.
 - **Terminated**: Terminated state의 container는 실행을 완료했거나 어떤 이유로 실패한 것이다. kubectl describe 명령어를 사용해 종료 이유, exit code, 시작/종료 시간을 확인할 수 있다. container에 preStop hook이 설정된 경우 container가 Termindate state에 돌입하기 전에 실행된다.
 
-### Container restart policy
+## Container restart policy
 po의 spec에는 restartPolicy 필드가 있다. Always, OnFailure, Never 값을 가질 수 있으며 기본값은 Always다.
 
 restartPolicy는 po 내 모든 container에 적용된다. container가 종료된 후 exponential back-off 지연(10s, 20s, 40s, ...최대 5분)을 갖고 재시작된다. container가 실행된 후 10분 간 문제가 없으면 kubelet은 container에 대한 restart backoff timer를 초기화한다.
 
-### Pod conditions
+###Pod conditions
 po는 PodStatus 오브젝트를 가지며 po의 통과 여부를 나타내는 PodConditions 배열을 가진다.
 
 - PodScheduled: po가 no에 스케줄되었다.
@@ -64,12 +63,12 @@ po는 PodStatus 오브젝트를 가지며 po의 통과 여부를 나타내는 Po
 |reason|condition 마지막 변경에 대한 machine-readable 이유|
 |message|condition 마지막 변경에 대한 human-readable 이유|
 
-#### Pod readiness
+### Pod readiness
 애플리케이션을 위한 Pod readiness를 PodStatus에 추가할 수 있다. 이를 사용하기 위해 kubelet이 po readiness를 평가하기 위한 추가 condition들을 po의 spec 내 readinessGates 필드에 추가 할 수 있다.
 
 Readiness gates are determined by the current state of status.condition fields for the Pod. If Kubernetes cannot find such a condition in the status.conditions field of a Pod, the status of the condition is defaulted to "False".
 
-#### Status for Pod readiness
+### Status for Pod readiness
 The kubectl patch command does not support patching object status. To set these status.conditions for the pod, applications and operators should use the PATCH action. You can use a Kubernetes client library to write code that sets custom Pod conditions for Pod readiness.
 
 For a Pod that uses custom conditions, that Pod is evaluated to be ready only when both the following statements apply:
@@ -79,10 +78,12 @@ For a Pod that uses custom conditions, that Pod is evaluated to be ready only wh
 
 When a Pod's containers are Ready but at least one custom condition is missing or False, the kubelet sets the Pod's condition to ContainersReady.
 
-### Container probes
+### Pod network readiness
+
+## Container probes
 probe는 kubelet이 container에 대해 주기적으로 진단을 수행한다. 이를 위해 kubelet은 container 내에서 코드를 실행하거나 container를 대상으로 네트워크 요청을 전송한다:
 
-#### Check machanisms
+### Check machanisms
 4가지 메커니즘을 통해 probe를 정의할 수 있다:
 
 - `exec`: 
@@ -90,14 +91,14 @@ probe는 kubelet이 container에 대해 주기적으로 진단을 수행한다. 
 - `httpGet`:
 - `tcpSocket`:
 
-#### Probe outcome
+### Probe outcome
 3가지 probe 결과가 있다:
 
 - `Success`:
 - `Failure`:
 - `Unknown`:
 
-#### Types of probe
+### Types of probe
 실행 중인 container에 대해 kubelet은 아래 유형의 probe를 수행할 수 있다:
 
 - `livenessProbe`: container가 구동 중인지 확인. liveness probe가 실패하면 kubelet은 container를 kill하고 restart policy에 따라 재시작한다. liveness probe가 없다면 기본 state는 Success다.
@@ -105,9 +106,19 @@ probe는 kubelet이 container에 대해 주기적으로 진단을 수행한다. 
 - `startupProbe`:
 
 #### When should you use a liveness probe?
+만약 container 내 프로세스가 어떠한 이슈에 직면하거나 unhealthy 상태가 되는 등 프로세스 자체의 문제로 중단될 수 있더라도 liveness probe가 반드시 필요한 것은 아니다; kubelet이 po의 restartPolicy에 따라서 올바른 대처를 자동적으로 수행할 것이다.
 
-### Termindateion of Pods
-일반적으로 container runtime은 각 container의 메인 프로세스에 TERM signal를 전송한다. 대부분의 container runtime은 container image에 정의된 STOPSIGNAL에 설정된 signal을 TERM signal 대신 사용한다. grace period가 만료되면, KILL signal이 남아있는 모든 프로세스에 전송되고 po는 API 서버에서 삭제된다. 프로세스가 종료될 때까지 기다리는 동안 kubelet 또는 container runtime 관리 서비스가 다시 시작되면 클러스터는 전체 grace period을 포함하여 처음부터 다시 시도한다.
+probe가 실패한 후 container가 종료되거나 재시작되길 원한다면 liveness probe를 설정하고, restartPolicy를 Always 또는 OnFailure로 지정한다
+
+#### When should you use a readiness probe?
+
+#### When should you use a startup probe?
+startup probe는 서비스를 시작하는 데 오랜 시간이 걸리는 container가 있는 po에 유용하다. 긴 liveness 간격을 설정하는 대신 container가 시작될 때 probe를 위한 별도의 값을 설정해 liveness probe보다 긴 시간을 허용할 수 있다.
+
+container가 보통 initialDelaySeconds + failureThreshold × periodSeconds 이후에 기동된다면, startup probe가 liveness probe와 같은 엔드포인트를 확인하도록 지정해야 한다. periodSeconds의 기본값은 10s 이다. 이 때 container가 liveness probe의 기본값 변경 없이 기동되도록 하려면, failureThreshold 를 충분히 높게 설정해주어야 한다. 그래야 데드락(deadlocks)을 방지하는데 도움이 된다.
+
+## Termindateion of Pods
+일반적으로 container runtime은 각 container의 메인 프로세스에 TERM signal를 전송한다. 대부분의 container runtime은 container image에 정의된 STOPSIGNAL에 설정된 signal을 TERM signal 대신 사용한다. grace period가 만료되면, KILL signal이 남아있는 모든 프로세스에 전송되고 po는 API server에서 삭제된다. 프로세스가 종료될 때까지 기다리는 동안 kubelet 또는 container runtime 관리 서비스가 다시 시작되면 클러스터는 전체 grace period을 포함하여 처음부터 다시 시도한다.
 
 아래는 플로우 예시다:
 
@@ -125,7 +136,7 @@ probe는 kubelet이 container에 대해 주기적으로 진단을 수행한다. 
 5. kubelet은 grace period를 0으로 설정해 API server에서 po를 force deletion한다.
 6. API server는 po의 API object를 삭제한다.
 
-#### Forced Pod termination
+### Forced Pod termination
 기본 삭제에 대한 grace period는 30초다. kubectl delete 명령어의 --grace-period flag를 사용해 변경할 수 있다.
 
 grace period를 0으로 설정하면 API server에서 po가 즉시 삭제된다. 만약 no에 po가 실행 중이라면 kubelet은 즉시 종료 프로세스를 시작한다.
@@ -134,7 +145,7 @@ grace period를 0으로 설정하면 API server에서 po가 즉시 삭제된다.
 
 force deletion이 수행되면, API server는 no에서 po가 종료되었다는 kubelet의 확인을 기다리지 않는다. API server에서 즉시 po를 제거하므로 동일한 이름으로 새로운 po를 생성할 수 있다. 즉시 종료되도록 설정된 po는 강제 종료되기 전에 짧은 grace period가 제공된다.
 
-#### Garbage collection of failed Pods
-실패한 po의 경우 API 오브젝트는 명시적으로 po를 삭제할 때까지 API server에 존재한다.
+### Garbage collection of failed Pods
+실패한 po의 경우 API object는 명시적으로 po를 삭제할 때까지 API server에 존재한다.
 
 control plane은 po의 수가 설정된 임계값(kube-controller-manager 내 terminated-pod-gc-threshold 값)을 초과할 때 종료된 po(Succeded 또는 Failed phase 포함)을 정리한다.

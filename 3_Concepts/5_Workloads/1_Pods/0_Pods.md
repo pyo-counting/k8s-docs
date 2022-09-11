@@ -77,7 +77,7 @@ static po는 API server의 관찰 없이 특정 노드의 kubelet daemon에 의�
 
 static po는 항상 특정 node의 kubelet에 한정된다. static po의 주된 용도는 자체 호스팅 control plane을 실행하는 것이다: 즉, kubelet을 사용해 개별 control plane 구성 요소를 감독한다.
 
-kubelet은 각 static po에 대해 k8s API server에 mirror po를 자동으로 생성한다. 이는 no에 실행되는 po가 API 서버에서 볼 수 있음을 의미하지만 API 서버를 통해 제어는 하지 못한다.
+kubelet은 각 static po에 대해 k8s API server에 mirror po(kubelet에 의해 관리되는 static po를 추적하는 object)를 자동으로 생성한다. 이는 no에 실행되는 po가 API server에서 볼 수 있음을 의미하지만 API server를 통해 제어는 하지 못한다.
 
 **Note**: static po의 .spec에서는 다른 API object를 참조할 수 없다(예를 들어 sa, cm, secret 등).
 
