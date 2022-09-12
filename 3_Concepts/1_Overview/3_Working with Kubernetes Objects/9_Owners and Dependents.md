@@ -1,11 +1,11 @@
-k8s에서 일부 object를 다른 object를 소유한다. 예를 들어 rs는 po를 소유할 수 있다. 이렇게 종속 object들은 소유자 object에 의존한다.
+k8s에서 일부 object는 다른 object를 소유한다. 예를 들어 rs는 po를 소유할 수 있다. 이렇게 종속 object들은 소유자 object에 의존한다.
 
-Ownership is different from the labels and selectors mechanism that some resources also use. For example, consider a Service that creates EndpointSlice objects. The Service uses labels to allow the control plane to determine which EndpointSlice objects are used for that Service. In addition to the labels, each EndpointSlice that is managed on behalf of a Service has an owner reference. Owner references help different parts of Kubernetes avoid interfering with objects they don’t control.
+소유에 대한 개념은 일부 resource가 사용하는 label과 selector에 대한 개념과는 다르다. 예를 들어 endpointSlices를 생성하는 svc가 있다. control place은 label을 사용해 svc에서 사용되는 endpointSlices 구분할 수 있다. label 뿐만 아니라 endpointSlices에는 owner reference가 있다. owner reference는 k8s에서 제어하지 않는 object에 대해 방해하는 것을 방지하는 데 도움이 된다.
 
 ## Owner references in object specifications
 종속 object는 소유자 object를 참조할 수 있도록 `.metadata.ownerReferences`필드가 있다. 유효한 owner reference일 경우 해당 필드는 종속 object와 동일한 ns 내의 object 이름과 UID로 구성된다. k8s는 rs, ds, deploy, jobs, cj, rc와 같이 다른 object에 종속된 object에 이 필드 값을 자동으로 설정한다. 이 필드의 값을 수정해 이러한 관계를 수동으로 설정할 수도 있다. 하지만 일반적으로 k8s가 자동으로 관리하도록 허용할 수 있다.
 
-종속 object는 `.metadata.ownerReferences.blockOwnerDeletion` 필드에 boolean 값을 사용해 소유자 object를 삭제하지 못하도록 gc를 차단할 수 있다. k8s controller(예를 들어 deploy controller는 `.metadata.ownerReference` 필드 설정 시 이 필드를 자동으로 true로 설정한다. 물론 사용자가 직접 설정할 수도 있다.
+종속 object는 `.metadata.ownerReferences.blockOwnerDeletion` 필드에 boolean 값을 사용해 소유자 object를 삭제하지 못하도록 gc를 차단할 수 있다. k8s controller(예를 들어 deploy)는 `.metadata.ownerReference` 필드 설정 시 이 필드를 자동으로 true로 설정한다. 물론 사용자가 직접 설정할 수도 있다.
 
 k8s admission controller는 소유자의 삭제 권한에 따라 종속 resource에 대해 이 필드를 변경하기 위한 사용자 접근을 제어한다. 이를 통해 권한이 없는 사용자로부터 소유자 object 삭제 지연을 방지한다.
 

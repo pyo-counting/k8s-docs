@@ -1,6 +1,6 @@
-finalizer는 삭제 표기된 resource를 완전히 삭제하기 전에 특정 조건이 충족될 때까지 대기하도록 k8s에 지시하는 namespaced key다. finalizer는 controller로 하여금 삭제된 object가 소유한 resource를 정리하도록 한다.
+finalizer는 삭제 마킹된 resource를 완전히 삭제하기 전에 특정 조건이 충족될 때까지 대기하도록 k8s에 지시하는 namespaced key다. finalizer는 controller로 하여금 삭제된 object가 소유한 resource를 정리하도록 한다.
 
-finalizer가 지정된 object를 삭제하도록 k8s에 지시하면 k8s API는 `.metadata.deletionTimestamp`를 추가해 해당 object를 삭제 대상으로 표시하고 HTTP 202 status code를 반환한다. control plane 또는 다른 구성 요소가 finalizer가 정의한 작업을 수행하는 동안 대상 object는 terminating 상태를 유지한다. 작업이 완료되면 controller는 대상 object에서 finalizer를 삭제한다. `.metadata.finalizers`가 빈 값이면 k8s는 삭제가 완료된 것으로 간주하고 해당 object를 삭제한다.
+finalizer가 존재하는 object를 삭제하도록 k8s에 지시하면 k8s API는 `.metadata.deletionTimestamp`를 추가해 해당 object를 삭제 대상으로 마킹하고 HTTP 202 status code를 반환한다. control plane 또는 다른 구성 요소가 finalizer가 정의한 작업을 수행하는 동안 대상 object는 terminating 상태를 유지한다. 작업이 완료되면 controller는 대상 object에서 finalizer를 삭제한다. `.metadata.finalizers`가 빈 값이면 k8s는 삭제가 완료된 것으로 간주하고 해당 object를 삭제한다.
 
 finalizer를 사용해 resource에 대한 gc를 제어할 수 있다. 예를 들어 controller가 대상 resource를 삭제하기 전에 관련 resource 또는 인프라를 정리하도록 finalizer를 정의할 수 있다.
 
@@ -17,7 +17,7 @@ manifest 파일을 사용해 resource를 생성할 떄 `.metadata.finalizers` �
 
 finalizer를 관리하는 controller는 object 삭제가 요청됐음을 나타내는 `.metadata.deletionTimestamp` 필드 설정에 대한 업데이트를 확인한다. 그런 다은 controller는 해당 resource에 대해 finalizer의 요구 사항을 충족하려고한다. finalizer 조건이 만족될 때마다 controller는 resource의 finalizer 필드에서 해당 키를 삭제한다. finalizer 필드가 빈 값이 되면 deletionTimestamp가 설정된 object가 자동으로 삭제된다. finalizer를 사용해 관리되지 않는 resource의 삭제를 방지할 수 있다.
 
-finalizer에 대한 일반적인 사용 예는 kubernetes.io/pv-protection이 있으며 이는 pv 객체의 우발적인 삭제를 방지하기 위함이다. pv 객체가 po에서 사용 중인 경우 k8s는 해당 finalizer를 추가한다. 해당 pv를 삭제하려고 하면 terminating 상태가 되지만 finalizer가 존재하기 때문에 controller에서 해당 object를 삭제할 수 없다. po가 pv 사용을 중지하면 k8s는 pv-protection finalizer를 삭제하고 controller는 volume을 삭제한다.
+finalizer에 대한 일반적인 사용 예는 kubernetes.io/pv-protection이 있으며 이는 pv 객체의 우발적인 삭제를 방지하기 위함이다. pv 객체가 po에서 사용 중인 경우 k8s는 pv에 finalizer를 추가한다. 해당 pv를 삭제하려고 하면 terminating 상태가 되지만 finalizer가 존재하기 때문에 controller에서 해당 object를 삭제할 수 없다. po가 pv 사용을 중지하면 k8s는 pv-protection finalizer를 삭제하고 controller는 volume을 삭제한다.
 
 ## Owner references, labels, and finalizers
 owner reference는 label와 마찬가지로 k8s 내 resource object 간 관계를 설명하지만 다른 목적으로 사용된다. controller가 po와 같은 object를 관리할 때 lael을 사용해 관련 object 그룹의 변경 사항을 추적한다. 예를 들어 job이 po를 생성할 때 job controller는 해당 po에 label을 적용하고 동일한 label이 있는 클러스터의 모든 po에 대해 변경 사항을 추적한다.
