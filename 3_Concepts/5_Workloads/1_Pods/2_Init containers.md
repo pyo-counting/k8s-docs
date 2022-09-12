@@ -2,16 +2,16 @@
 init container는 app container가 실행되기 전에 먼저 실행된다. init container는 일반 container와 동일하지만 아래 예외가 있다:
 
 - init container는 필요한 동작을 수행하고 정상 종료된다.
-- 다음 init container가 실행되기 전에 성공 종료된다.
+- 다음 init container가 실행되기 전에 성공 종료되어야 한다.
 
 init container가 실패하면 kubelet은 성공할 때까지 재시작한다. 하지만 restartPolicy가 Never일 때 init container가 실패하면 k8s는 po를 실패로 간주한다.
 
-.spec.containers에 container를 작성하는 것과 같이 .spec. initContainers에 init container를 작성한다. 대부분의 동일한 필드를 갖는다.
+`.spec.containers`에 container를 작성하는 것과 같이 `.spec.initContainers`에 init container를 작성한다. 대부분의 동일한 필드를 갖는다.
 
-init container의 status는 .status.initContainerStatuses 필드로 확인가능하다. 일반 container는 .status.containerStatuses
+init container의 status는 `.status.initContainerStatuses` 필드로 확인가능하다. 일반 container는 `.status.containerStatuses`
 
 ### Differences from regular containers
-init container는 일반 app container와 같은 모든 필드를 사용할 수 있지만, resource request와 limit에 대해서는 일반 container와 다르게 다뤄진다.
+init container는 일반 app container와 동일하게 모든 필드를 사용할 수 있지만, resource request와 limit에 대해서는 일반 container와 다르게 다뤄진다.
 
 또한 lifecycle, livenessProbe, readinessProbe, startupProbe을 지원하지 않는다. 왜냐하면 po가 ready 상태가 되기 전에 실행이 완료되어야하기 때문이다.
 
@@ -28,10 +28,12 @@ init container는 app container와 다른 image를 사용하기 때문에 이점
 
 ### Examples
 
-## Detailed behavior
-po의 시작 동안, kubelet은 networking, storage가 준비될 때까지 init container의 시작을 지연한다.
+#### Init containers in use
 
-init container는 po의 .spec에 명시된 순서대로 시작 되며 이전 init container가 성공적으로 종료되어야 다음이 실행된다. init container가 실패로 종료되면 restartPolicy를 따른다. 하지만 po의 restartPolicy가 Always라면 init container는 OnFailure로 간주된다.
+## Detailed behavior
+po의 시작 동안 kubelet은 networking, storage가 준비될 때까지 init container의 시작을 지연한다.
+
+init container는 po의 .spec에 명시된 순서대로 시작되며 이전 init container가 성공적으로 종료되어야 다음이 실행된다. init container가 실패로 종료되면 restartPolicy를 따른다. 하지만 po의 restartPolicy가 Always라면 init container는 OnFailure로 간주된다.
 
 init container가 성공할 때까지 po는 Ready 상태가 될 수 없다. init container의 port는 svc에 사용될 수 없다. 초기화 중인 po는 Pending status이며 Initialized condition은 false다.
 
@@ -43,7 +45,7 @@ init container는 재시작될 수도 있기 때문에 init container의 동작�
 
 init container는 app container의 모든 필드를 사용할 수 있다. 하지만 init container는 container의 목표가 특정 동작을 수행 및 종료된다는 특성을 가지고 있기 때문에 k8s는 `readinessProbe`를 제한한다.
 
-init container가 무한히 실패하는 상황에 빠지지 않도록 po에 `activeDeadlineSeconds`를 사용해야 한다. active deadline은 init container를 포함한다. 하지만 job으로 배포할 경우에만 사용하는 것을 권장한다. 왜냐하면 이 필드는 init container의 종료 후에도 영향을 미치기 때문이다. 즉 정상 동작하는 po가 이 설정 값의 영향으로 종료될 수도 있다.
+init container가 무한히 실패하는 상황에 빠지지 않도록 po에 `.spec.activeDeadlineSeconds`를 사용해야 한다. active deadline은 init container를 포함한다. 하지만 job으로 배포할 경우에만 사용하는 것을 권장한다. 왜냐하면 이 필드는 init container의 종료 후에도 영향을 미치기 때문이다. 즉 정상 동작하는 po가 이 설정 값의 영향으로 종료될 수도 있다.
 
 init container, app container는 po 내에서 유일한 이름을 가져야한다.
 
@@ -67,4 +69,4 @@ po는 아래와 같은 사유로 재시작될 수 있다.
 - po infrastructure container가 재시작. 이는 일반적이지 않으며, 보통 no에 대해 root 접근 권한을 가진 누군가에 의해 수행됐을 것이다.
 - po의 모든 container가 종료됐으며 restartpolicy가 Always. init container의 완료에 대한 기록이 gc로 인해 삭제
 
-init container의 image가 변경되거나, init container 완료 기록이 gc로 인해 삭제되더라도 po는 재시작되지 않는다. 이는 k8s v1.20이후 적용된다.
+init container의 image가 변경되거나, init container 실행 완료 기록이 gc로 인해 삭제되더라도 po는 재시작되지 않는다. 이는 k8s v1.20이후 적용된다.

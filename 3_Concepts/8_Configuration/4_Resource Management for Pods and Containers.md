@@ -8,7 +8,7 @@ po가 실행 중인 no에 사용 가능한 리소스가 충분하면 container�
 **Note**: 리소스에 대한 `request`를 지정하지 않고 `limit`만 지정하는 경우, 리소스에 대한 `request` 기본 값을 설정하는 admission이 없는 경우 k8s는 `limit` 값을 `request` 값으로 사용한다.
 
 ## Resource types
-리눅스의 경우 huge page 리소스를 명시할 수 있다. huge page는 kernel이 기본 page 크기 보다 훨씬 큰 메모리 블록을 할당하는 ㄹ리눅스 관련 기능이다.
+리눅스의 경우 huge page 리소스를 명시할 수 있다. huge page는 kernel이 기본 page 크기 보다 훨씬 큰 메모리 블록을 할당하는 리눅스 관련 기능이다.
 
 예를 들어, 기본 page 크기가 4KiB인 시스템에서, `hugepages-2Mi: 80Mi` 제한을 설정할 수 있다. container가 40개를 초과하는 2MiB huge page(총 80BiM)를 할당하려고 하면 해당 할당은 실패한다.
 
@@ -32,7 +32,7 @@ k8s에 CPU에 대한 값 1은 물리 호스트 또는 가상 머신인지에 따
 
 소수점 형태로 값을 사용할 수 있다. 0.1은 100m와 같은 의미다.
 
-CPU 리소스는 항상 리소스의 절대량으로 표시된다. 즉 코어의 개수와 상관없이 500m는 항상 같은 양의 CPU를 나타내난ㄷ.
+CPU 리소스는 항상 리소스의 절대량으로 표시된다. 즉 코어의 개수와 상관없이 500m는 항상 같은 양의 CPU를 나타낸다.
 
 **Note**: k8s에서 CPU 리소스를 1m보다 더 정밀한 단위로 표기할 수 없다.
 
@@ -60,7 +60,9 @@ container의 메모리 request을 초과하고 해당 no의 메모리가 부족�
 container가 비교적 오랫동안 CPU limit을 초과하는 것이 허용될 수도, 허용되지 않을 수도 있다. 하지만 container runtime은 이를 이유로 po 또는 container를 종료시키지 않는다.
 
 ### Monitoring compute & memory resource usage
-po의 `.status`에서 po의 리소스 사용량을 나타낸다.
+kubelet은 po의 `.status`에서 po의 리소스 사용량을 노출한다.
+
+추가적으로 클러스터에 모니터링을 위한 툴이 활성화되면 Metrics API 또는 모니터링 툴을 이용해 조회할 수 있다.
 
 ## Local ephemeral storage
 

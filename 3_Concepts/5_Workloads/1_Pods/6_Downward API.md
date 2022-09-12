@@ -1,4 +1,3 @@
-## Downward API
 k8s와 결합되지 않으면서 container가 자신에 대한 정보를 갖는 것을 유용할 수 있다. downward API를 사용하면 k8s client 또는 API server를 사용하지 않고 클러스터 또는 자기 자신에 대한 정보를 이용할 수 있다.
 
 container 내에 po, container 필드를 노출하는 2가지 방법이 있다.
@@ -11,7 +10,7 @@ container 내에 po, container 필드를 노출하는 2가지 방법이 있다.
 ## Available fields
 downward API에 사용 가능한 필드를 설명한다.
 
-po 레벨이 필드는 `fieldRef`, container 레벨 필드는 `resourceFieldRef`로 명시한다.
+po 레벨 필드는 `fieldRef`를 사용해 전달할 수 있다. API 수준에서 po의 spec은 항상 한 개 이상의 container를 정의한다. container 레벨 필드는 `resourceFieldRef`를 사용해 전달할 수 있다.
 
 ### Information available via `fieldRef`
 po 레벨 필드 대부분은 환경 변수 또는 downwardAPI volume으로 container에 제공할 수 있다.

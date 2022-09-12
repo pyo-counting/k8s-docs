@@ -1,4 +1,6 @@
-## Disruptions
+고가용성을 제공하기 위한 애플리케이션을 생성하기 위해 po에서 발생할 수 있는 disruption 종류를 이해해야 한다.
+
+뿐만 아니라 클러스터 업그레이드 및 autoscale과 같은 자동 클러스터 작업을 원하는 클러스터 관리자를 위해서도 필요하다.
 
 ## Voluntary and involuntary disruptions
 po는 누군가(사람 또는 controller)가 삭제하지 않는한 사라지지 않는다. 물론 피할 수 없는 하드웨어 또는 시스템 소프트웨어 오류가 있을 수 있다.
@@ -28,9 +30,9 @@ out-of-resources 이외에는 대부분 사용자에게 익숙할 것이다. 이
 
 위 작업은 클러스터 관리자가 직접 수행하거나 자동화를 통해 수행하며, 클러스터 호스팅 공급자에 의해서도 수행된다.
 
-클러스터에 자발적인 중단을 일으킬 수 있는 어떤 원인이 있는지 클러스터 관리자에게 문의하거나 클라우드 공급자에게 문의하고, 배포 문서를 참조해서 확인해야 한다. 만약 자발적인 중단을 일으킬 수 있는 원인이 없다면 Pod Disruption Budget의 생성을 생략할 수 있다.
+클러스터에 자발적인 중단을 일으킬 수 있는 어떤 원인이 있는지 클러스터 관리자에게 문의하거나 클라우드 공급자에게 문의하고, 배포 문서를 참조해서 확인해야 한다. 만약 자발적인 중단을 일으킬 수 있는 원인이 없다면 pdb의 생성을 생략할 수 있다.
 
-**caution**: 모든 자발적 중단이 Pod Disruption Budget에 연관되는 것은 아니다. 예를 들어 deploy, po에 대한 삭제는 Pod Disruption Budgets를 무시한다.
+**caution**: 모든 자발적 중단이 pdb에 연관되는 것은 아니다. 예를 들어 deploy, po에 대한 삭제는 pdb를 무시한다.
 
 ## Dealing with disruptions
 비자발적인 중단으로 인한 영향을 줄이기 위한 몇 가지 방법은 다음과 같다:
@@ -44,33 +46,33 @@ out-of-resources 이외에는 대부분 사용자에게 익숙할 것이다. 이
 ## Pod disruption budgets
 k8s는 자발적 중단이 자주 발생하는 경우에도 고가용성 애플리케이션을 실행하는 데 도움이 되는 기능을 제공한다.
 
-애플리케이션 소유자는 각 애플리케이션에 대해 PodDisruptionBudget(PDB)을 만들 수 있다. PDB는 자발적 중단으로 일시에 중지되는 복제된 애플리케이션 파드의 수를 제한한다. 예를 들어, quorum-based 애플리케이션이 실행 중인 레플리카의 수가 필요 quorum 이하가 되지 않도록 한다. 웹 프런트 엔드는 부하를 처리하는 레플리카의 수가 일정 비율 이하로 떨어지지 않도록 보장할 수 있다.
+애플리케이션 소유자는 각 애플리케이션에 대해 pdb를 만들 수 있다. pdb는 자발적 중단으로 일시에 중지되는 복제된 애플리케이션 파드의 수를 제한한다. 예를 들어, quorum-based 애플리케이션이 실행 중인 레플리카의 수가 필요 quorum 이하가 되지 않도록 한다. 웹 프론트엔드는 부하를 처리하는 레플리카의 수가 일정 비율 이하로 떨어지지 않도록 보장할 수 있다.
 
-클러스터 관리자와 호스팅 공급자는 직접적으로 po나 deploy를 제거하는 대신 Eviction API로 불리는 PodDisruptionBudget을 준수하는 툴을 이용해야 한다.
+클러스터 관리자와 호스팅 공급자는 직접적으로 po나 deploy를 제거하는 대신 Eviction API로 불리는 pdb을 준수하는 툴을 이용해야 한다.
 
-예를 들어, kubectl drain 하위 명령을 사용하면 no를 서비스 중단으로 표시할 수 있다. kubectl drain 을 실행하면 해당 no의 모든 po를 축출(evict)하려고 한다. kubectl이 사용자를 대신하여 수행하는 축출 요청은 일시적으로 거부될 수 있으며, 도구는 대상 no의 모든 po가 종료되거나 설정 가능한 타임아웃이 도래할 때까지 주기적으로 모든 실패된 요청을 다시 시도한다.
+예를 들어, kubectl drain 하위 명령을 사용하면 no를 서비스 중단으로 표시할 수 있다. kubectl drain을 실행하면 해당 no의 모든 po를 축출(evict)하려고 한다. kubectl이 사용자를 대신하여 수행하는 축출 요청은 일시적으로 거부될 수 있으며, 도구는 대상 no의 모든 po가 종료되거나 설정 가능한 타임아웃이 도래할 때까지 주기적으로 모든 실패된 요청을 다시 시도한다.
 
-PDB는 애플리케이션이 필요로 하는 레플리카의 수에 상대적으로 용인할 수 있는 레플리카의 수를 지정한다. 예를 들어 .spec.replicas: 5 의 값을 갖는 deploy는 어느 시점에든 5개의 파드를 가져야 한다. 만약 해당 deploy의 PDB가 특정 시점에 po를 4개 허용한다면, Eviction API는 한 번에 1개(2개의 po가 아닌)의 po의 자발적인 중단을 허용한다.
+pdb는 애플리케이션이 필요로하는 레플리카의 수에 상대적으로 용인할 수 있는 레플리카의 수를 지정한다. 예를 들어 .spec.replicas: 5 의 값을 갖는 deploy는 어느 시점에든 5개의 파드를 가져야 한다. 만약 해당 deploy의 pdb가 특정 시점에 po를 4개 허용한다면, Eviction API는 한 번에 1개(2개의 po가 아닌)의 po의 자발적인 중단을 허용한다.
 
 po 그룹은 label selector를 사용해서 지정한 애플리케이션으로 구성되며 애플리케이션 controller(deploy, sts 등)를 사용한 것과 같다.
 
-po의 "의도"하는 수량은 해당 po를 관리하는 workload resource의 .spec.replicas를 기반으로 계산한다. control plane은 po의 .metadata.ownerReferences 를 검사하여 소유하는 workload resource를 발견한다.
+po의 "의도"하는 수는 해당 po를 관리하는 workload resource의 .spec.replicas를 기반으로 계산한다. control plane은 po의 .metadata.ownerReferences 를 검사하여 소유하는 workload resource를 발견한다.
 
-비자발적 중단은 PDB로는 막을 수 없지만 budget은 차감된다.
+비자발적 중단은 pdb로는 막을 수 없지만 budget은 차감된다.
 
-애플리케이션의 rolling upgrade로 po가 삭제되거나 사용할 수 없는 경우 disruption budget에 영향을 준다. 그러나 workload resource(deploy, sts과 같은)는 rolling upgrade 시 PDB의 제한을 받지 않는다. 대신, 애플리케이션 업데이트 중 실패 처리는 특정 workload resource에 대한 spec에 구성된다.
+애플리케이션의 rolling upgrade로 po가 삭제되거나 사용할 수 없는 경우 disruption budget에 영향을 준다. 그러나 workload resource(deploy, sts과 같은)는 rolling upgrade 시 pdb의 제한을 받지 않는다. 대신, 애플리케이션 업데이트 중 실패 처리는 특정 workload resource에 대한 spec에 구성된다.
 
 Eviction API를 사용하여 po를 축출하면, PodSpec의 terminationGracePeriodSeconds 설정을 준수하여 grafecully terminate된다.
 
 ## PodDisruptionBudget example
-node-1 ~ node-3이 있다고 가정한다. 그리고 pod-a, pod-b, pod-c라고 불리는 3개의 replica가 있고 PDB와 관련 없는 pod-x po가 있다. 아래는 초기 상태다.
+node-1 ~ node-3이 있다고 가정한다. 그리고 pod-a, pod-b, pod-c라고 불리는 3개의 replica가 있고 pdb와 관련 없는 pod-x po가 있다. 아래는 초기 상태다.
 
 node-1|node-2|node-3
 ------|------|------
 pod-a *available*|pod-b *available*|pod-c *available*|
 pod-x *available*||
 
-3개의 po는 deploy에 의해 관리되고 항상 3개의 po중 최소 2개의 po를 유지할 수 있도록 PDB를 설정했다.
+3개의 po는 deploy에 의해 관리되고 항상 3개의 po중 최소 2개의 po를 유지할 수 있도록 pdb를 설정했다.
 
 이 떄 클러스터 관리자는 커널 버전 버그 해결을 위해 kubectl drain 명령어를 사용해 node-1을 drain한다. 해당 명령어는 pod-a, pod-x를 축축하려고 시도한다. 이는 성공한다. 두 po 모두 동시에 terminating 상태가 된다.
 
@@ -95,7 +97,7 @@ node-1 *drained*|node-2|node-3
 ||pod-b *available*|pod-c *available*|
 ||pod-d *starting*|pod-y
 
-위 상황에서 클러스터 관리자가 node-2 또는 node-3를 drain하려고 할 때 실패할 것이다. 왜냐하면 PDB는 적어도 2개의 replica가 필요하기 때문이다. pod-d가 정상 실행 상태가 됐을 때 클러스터 관리자가 node-2를 drain한다. drain 명령어는 어떤 순서를 기준으로 pod-b부터 축출하려고 시도한다. pod-b에 대한 evict는 성공하지만 pod-d에 대한 축축을 실패한다. 왜냐하면 최소 2개의 po를 만족하지 않기 때문이다.
+위 상황에서 클러스터 관리자가 node-2 또는 node-3를 drain하려고 할 때 실패할 것이다. 왜냐하면 pdb는 적어도 2개의 replica가 필요하기 때문이다. pod-d가 정상 실행 상태가 됐을 때 클러스터 관리자가 node-2를 drain한다. drain 명령어는 어떤 순서를 기준으로 pod-b부터 축출하려고 시도한다. pod-b에 대한 evict는 성공하지만 pod-d에 대한 축축을 실패한다. 왜냐하면 최소 2개의 po를 만족하지 않기 때문이다.
 
 deploy는 pod-b에 대한 대체 pod-e를 생성한다. 하지만 pod-e에 대한 스케쥴링 할 no가 없으며 아래 상태에서 명령어의 실행이 종료된다:
 
@@ -106,15 +108,17 @@ node-1 *drained*|node-2|node-3|*no node*
 
 이 상황에서 클러스터 관리자는 정상 진행을 위해 no를 추가해야 한다.
 
+## Pod disruption conditions
+
 ## Separating Cluster Owner and Application Owner Roles
 보통 클러스터 매니저와 애플리케이션 소유자는 서로에 대한 지식이 부족한 별도의 역할로 생각하는 것이 유용하다. 이와 같은 책임의 분리는 다음의 시나리오에서 타당할 수 있다:
 
 - k8s 클러스터를 공유하는 애플리케이션 팀이 많고, 자연스럽게 역할이 나누어진 경우
 - third-party tool 또는 서비스를 이용해서 클러스터 관리를 자동화 하는 경우
 
-Pod Disruption Budget은 역할 분리에 따라 역할에 맞는 인터페이스를 제공한다.
+pdb은 역할 분리에 따라 역할에 맞는 인터페이스를 제공한다.
 
-만약 조직에 역할 분리에 따른 책임의 분리가 없다면 Pod Disruption Budget을 사용할 필요가 없다.
+만약 조직에 역할 분리에 따른 책임의 분리가 없다면 pdb을 사용할 필요가 없다.
 
 ## How to perform Disruptive Actions on your Cluster
 만약 클러스터 관리자라면, 그리고 클러스터 전체 no에 no 또는 시스템 소프트웨어 업그레이드와 같은 중단이 발생할 수 있는 작업을 수행하는 경우 다음과 같은 옵션을 선택한다:
@@ -122,7 +126,7 @@ Pod Disruption Budget은 역할 분리에 따라 역할에 맞는 인터페이�
 - 업그레이드 하는 동안 다운타임을 허용한다.
 - 다른 레플리카 클러스터로 장애조치를 한다.
     - 다운타임은 없지만, no 복제본과 전환 작업을 조정하기 위한 인력 비용이 많이 발생할 수 있다.
-- PDB를 이용해서 애플리케이션의 중단에 영향을 받지않도록 한다.
+- pdb를 이용해서 애플리케이션의 중단에 영향을 받지않도록 한다.
     - 다운타임 없음
     - 최소한의 리소스 중복
     - 클러스터 관리의 자동화 확대 적용
