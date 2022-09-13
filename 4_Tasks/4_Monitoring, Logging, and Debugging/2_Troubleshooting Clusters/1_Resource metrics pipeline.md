@@ -26,7 +26,7 @@ metrics-server는 kubelet으로부터 리소스 metric을 수집하고 이를 gp
 
 metrics-server는 k8s API를 사용해 클러스터의 no, po를 추적한다. metrics-server는 각 no에 HTTP를 통해 질의하여 metric을 수집한다. metrics-server는 또한 po 메타데이터의 내부적 뷰를 작성하고, po health에 대한 캐시를 유지한다. 이렇게 캐시된 파드 health 정보는 metrics-server가 제공하는 extension API를 통해 이용할 수 있다.
 
-예를 들어 HPA 쿼에 대한 경우, metrics-server는 deploy의 어떤 po가 label selector 조건을 만족하는지 판별해야 한다.
+예를 들어 HPA 쿼리의 경우, metrics-server는 deploy의 어떤 po가 label selector 조건을 만족하는지 판별해야 한다.
 
 metrics-server는 각 no로부터 metric을 수집하기 위해 kubelet API를 호출한다. 사용 중인 metrics-server 버전에 따라 다음의 엔드포인트를 사용한다.
 
