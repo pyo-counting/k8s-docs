@@ -12,7 +12,7 @@ kubectl top 명령어을 이용하여 리소스 metrics를 조회할 수도 있�
 - kubelet: container 리소스 관리를 위한 no agent. 리소스 metric은 kubelet API 엔드포인트 /metrics/resource, /stats 를 통해 접근 가능하다.
 - Summary API: /stats 엔드포인트를 통해 사용할 수 있는 no 별 요약된 정보를 탐색, 수집할 수 있도록 kubelet이 제공하는 API
 - metrics-server: 각 kubelet으로부터 수집한 리소스 metric을 수집, 집계하는 클러스터 addon 구성 요소. API server는 hpa, vpa, kubectl top 명령어가 사용할 수 있도록 metrics API를 제공한다. metrics-server는 metrics API에 대한 reference implementation 중 하나이다.
-- Metrics API: workload autoscaling에 사용되는 CPU, 메모리 정보 접근을 지원하는 k8s API. 이를 클러스터에서 사용하려면 metrics API를 제공하는 API 확장(extension) 서버가 필요하다.
+- Metrics API: workload autoscaling에 사용되는 CPU, 메모리 정보 접근을 지원하는 k8s API. 이를 클러스터에서 사용하려면 metrics API를 제공하는 API extension server가 필요하다.
 
 **Note**: cAdvisor는 cgroups으로부터 metric을 가져오는 것을 지원하며 리눅스의 일반적인 container runtime은 이를 지원한다. 만약 다른 리소스 격리 메커니즘(예를 들어 가상화)을 사용하는 container runtime을 사용한다면 kubelet이 metric을 사용할 수 있기 위해서는 해당 container runtime이 CRI container metrics을 지원해야 한다.
 

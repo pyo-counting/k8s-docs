@@ -90,7 +90,7 @@ cm을 조회할 수 있는 권한을 가지기 위해 extension apiserver는 적
 ### Extension Apiserver Authorizes the Request
 extension apiserver는 header를 통해 추출한 사용자이름에 대해 프록시된 요청을 실행할 권한이 있는지 확인할 수 있다. 이는 k8s apiserver에 표준 SubjectAccessReview 요청을 전송해 수행한다.
 
-extension apiserver가 k8s apiserver에 SubjectAccessReview 요청을 젠송할 수 있는 권한을 스스로에게 부여하기 위해 올바른 권한이 필요하다. k8s는 적절한 권한이 있는 기본 system:auth-delegator ClusterRole이 있다. extension apiserver의 sa에 부여할 수 있다.
+extension apiserver가 k8s apiserver에 SubjectAccessReview 요청을 전송할 수 있는 권한을 스스로에게 부여하기 위해 올바른 권한이 필요하다. k8s는 적절한 권한이 있는 기본 system:auth-delegator ClusterRole이 있다. 이는 extension apiserver의 sa에 부여할 수 있다.
 
 ### Extension Apiserver Executes
 SubjectAccessReview가 정상 요청되면 extension apiserver는 프록시된 요청을 처리한다.

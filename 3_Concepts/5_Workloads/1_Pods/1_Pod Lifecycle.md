@@ -2,7 +2,7 @@ po는 정의된 라이프 사이클을 따른다. pending phase를 시작으로 
 
 po가 실행 중에 kubelet은 일부 실패 상황에 따라 container를 재시작한다. k8s는 po 내 각 container의 state(`.staus.containerStatuses`)를 추척하고 po가 다시 healthy 상태가 될 수 있도록 어떤 조치를 해야할지 결정한다.
 
-k8s API에 po는 `.spec`과 실제 `.status`를 갖는다. po의 status는 `.status.conditions` 집합으로 구성된다. condition data에 사용자가 custom readiness information를 추가할 수도 있다.
+k8s API에 po는 `.spec`과 실제 `.status`를 갖는다. po의 status는 `.status.conditions`을 포함한다. condition data에 사용자가 custom readiness information를 추가할 수도 있다.
 
 각 po는 한 번만 스케쥴링된다. po가 no에 스케쥴되면 해당 no에서 stop 또는 terminated까지 실행된다.
 

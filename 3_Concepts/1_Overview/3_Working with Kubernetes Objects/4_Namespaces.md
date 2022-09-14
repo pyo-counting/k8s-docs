@@ -28,9 +28,9 @@ svc를 생성할 때 svc는 관련 DNS entry를 생성한다. entry의 포맷은
 To mitigate this, limit privileges for creating namespaces to trusted users. If required, you could additionally configure third-party security controls, such as admission webhooks, to block creating any namespace with the name of public TLDs.
 
 ## Not All Objects are in a Namespace
-대부분의 k8s object는 특정 ns에 속한다. 하지만 ns 자체는 어떤 ns에도 속하지 않는다. 그리고 no, psv와 같은 low level  resource는 어떤 ns에도 속하지 않는다.
+대부분의 k8s object는 특정 ns에 속한다. 하지만 ns 자체는 어떤 ns에도 속하지 않는다. 그리고 no, pv와 같은 low level  resource는 어떤 ns에도 속하지 않는다.
 
 ns 존재 유무는 kubectl api-resources 명령어로 조회 가능하다.
 
 ## Automatic labelling
-k8s control plane은 NamespaceDefaultLabelName feature gate가 활성화 된 경우 모든 no에 변경 불가한 label kubernetes.io/metadata.name label을 추가한다.
+k8s control plane은 NamespaceDefaultLabelName feature gate가 활성화 된 경우 모든 no에 변경 불가한 kubernetes.io/metadata.name label을 추가한다.

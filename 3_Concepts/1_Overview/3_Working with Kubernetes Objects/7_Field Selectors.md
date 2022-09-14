@@ -1,4 +1,4 @@
-k8s의 resource 필드 값에 대한 field selecotr를 사용해 resource를 필터링 할 수 있다. kubectl get 명렁어 기준 —field-selector flag를 사용하면 된다.
+k8s의 resource 필드 값에 대한 field selecotr를 사용해 resource를 필터링 할 수 있다. kubectl get 명렁어 기준 --field-selector flag를 사용하면 된다.
 
 ``` bash
 kubectl get pods --field-selector status.phase=Running

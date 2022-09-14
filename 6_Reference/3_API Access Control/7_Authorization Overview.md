@@ -3,7 +3,7 @@ k8s에서는 사용자의 요청이 인가(authorization, 접근 권한 부여)�
 ## Determine Whether a Request is Allowed or Denied
 k8s는 API 서버를 이용하여 API 요청을 인가한다. 모든 정책과 비교하여 모든 요청 속성을 평가하고 요청을 허용하거나 거부한다. 요청이 계속 진행되기 위해 API 요청의 모든 부분이 일부 정책에 의해 반드시 허용되어야 한다. 이는 기본적으로 승인이 거부된다는 것을 의미한다.
 
-(k8s는 API 서버를 사용하지만, 특정 object의 특정 필드에 의존하는 접근 제어 및 정책은 admission controll 모듈에 의해 처리된다.)
+(k8s는 API 서버를 사용하지만, 특정 object의 특정 필드에 의존하는 접근 제어 및 정책은 admission controller에 의해 처리된다.)
 
 여러 개의 인가 모듈이 구성되면 각 모듈이 순서대로 호출된다. 인가 모듈이 요청을 승인하거나 거부할 경우, 그 결정은 즉시 반환되며 다른 인가 모듈은 호출되지 않는다. 모든 모듈에서 요청에 대해 인가되지 않으면 요청은 거부된다. 요청 거부는 HTTP status code 403을 반환한다.
 
@@ -44,9 +44,41 @@ k8s는 종종 특별한 요청 동사를 사용해 부가적인 권한 인가를
     - impersonate verb on users, groups, and serviceaccounts in the core API group, and the userextras in the authentication.k8s.io API group.
 
 ## Authorization Modes
-### Checking API Access
-kubectl은 auth can-i 하위 명령어를 제공해 API authorization layer에 쿼리할 수 있다. 이 명령어는 인가 모듈의 종류와 상관없이 현재 사용자가 지정된 작업을 수행할 수 있는지 여부를 알아내기 위해 SelfSubjectAccessReview API를 사용한다.
+k8s API server는 아래 인가 모드 중 하나를 사용해 요청을 인가한다:
 
+- Node:
+- ABAC:
+- RBAC:
+- Webhook
+### Checking API Access
+kubectl 명령어는 auth can-i 하위 명령어를 제공해 API authorization layer에 쿼리할 수 있다. 이 명령어는 인가 모듈의 종류와 상관없이 현재 사용자가 지정된 작업을 수행할 수 있는지 여부를 알아내기 위해 SelfSubjectAccessReview API를 사용한다.
+
+``` bash
+kubectl auth can-i create deployments --namespace dev
+```
+
+관리자는 다른 사용자에 대해서도 해당 명령어를 사용할 수 있다.
+
+``` bash
+kubectl auth can-i list secrets --namespace dev --as dave
+```
+
+authorization.k8s.io API 그룹은 외부 서비스에 API server 인가를 노출하며 SelfSubjectAccessReview는 이 그룹에 포함된다. 해당 그룹에 포함되는 다른 resource는 다음과 같다:
+
+- SubjectAccessReview:
+- LocalSubjectAccessReview:
+- SelfSubjectRulesReview:
+
+``` bash
+kubectl api-resource -o wide
+NAME                              SHORTNAMES   APIGROUP                       NAMESPACED   KIND                             VERBS
+(...생략...)
+localsubjectaccessreviews                      authorization.k8s.io           true         LocalSubjectAccessReview         [create]
+selfsubjectaccessreviews                       authorization.k8s.io           false        SelfSubjectAccessReview          [create]
+selfsubjectrulesreviews                        authorization.k8s.io           false        SelfSubjectRulesReview           [create]
+subjectaccessreviews                           authorization.k8s.io           false        SubjectAccessReview              [create]
+(...생략...)
+```
 
 ## Using Flags for Your Authorization Module
 

@@ -1,4 +1,4 @@
-k8s 클러스터는 컨테이너화된 애플리케이션을 실행하는 node라고 불리는 worker machind의 집합이다. 모든 클러스터는 최소 한 개의 worker node를 가진다.
+k8s 클러스터는 컨테이너화된 애플리케이션을 실행하는 node라고 불리는 worker machine의 집합이다. 모든 클러스터는 최소 한 개의 worker node를 가진다.
 
 worker node는 애플리케이션의 구성요소인 po를 호스트한다. control plane은 worker node와 클러스터 내 po를 관리한다. 운영 환경에서는 일반적으로 control plane이 여러 컴퓨터에서 실행되고, 클러스터는 일반적으로 여러 no를 실행하므로 fault-tolerance과 high availability를 제공한다.
 
@@ -61,7 +61,7 @@ container runtime은 container 실행을 담당하는 소프트웨어이다.
 k8s는 containerd, CRI-O와 같은 container runtime, 모든 Kubernetes CRI (컨테이너 런타임 인터페이스) 구현체를 지원한다.
 
 ## Addons
-addon은 k8s resource(ds, deploy 등)를 이용하여 클러스터 기능을 구현한다. 이들은 클러스터 단위의 기능을 제공하기 때문에 addon에 대한 ns resource는 kube-system ns에 속한다.
+addon은 k8s resource(ds, deploy 등)를 이용하여 클러스터 기능을 구현한다. 이들은 클러스터 단위의 기능을 제공하기 때문에 addon에 대한 resource는 kube-system ns에 속한다.
 
 사용 가능한 전체 확장 addon 리스트는 [Addons](https://kubernetes.io/docs/concepts/cluster-administration/addons/)을 참조한다.
 
