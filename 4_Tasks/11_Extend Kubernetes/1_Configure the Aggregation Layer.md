@@ -85,7 +85,7 @@ extension apiserver는 k8s apiserver에서 프록시된 요청을 수신하면 �
 
 위는 extension apiserver 구현에 대한 책임이다. Many do it by default, leveraging the k8s.io/apiserver/ package. Others may provide options to override it using command-line options.
 
-cm을 조회할 수 있는 권한을 가지기 위해 extension apiserver는 적절한 역할이 필요하다. kube-system ns에 extension-apiserver-authentication-reader role이 있다.
+cm을 조회할 수 있는 권한을 가지기 위해 extension apiserver는 적절한 역할이 필요하다. 이를 위해 kube-system ns에 extension-apiserver-authentication-reader role이 있다.
 
 ### Extension Apiserver Authorizes the Request
 extension apiserver는 header를 통해 추출한 사용자이름에 대해 프록시된 요청을 실행할 권한이 있는지 확인할 수 있다. 이는 k8s apiserver에 표준 SubjectAccessReview 요청을 전송해 수행한다.
