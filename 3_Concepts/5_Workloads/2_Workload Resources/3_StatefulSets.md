@@ -100,7 +100,7 @@ po를 생성한 후 즉시 po를 검색해야 하는 경우, 몇 가지 옵션�
 
 | 클러스터 도메인 | svc(ns/name) | sts(ns\name) | sts domain | po DNS | po hostname |
 |----------------|--------------|--------------|-----------|---------|------------|
-| cluster.local | default/nginx | default | web | nginx.default.svc.cluster.local | web-{0~N-1}.nginx.default.svc.cluster.local | web-{0~N-1} |
+| cluster.local | default/nginx | default/web | nginx.default.svc.cluster.local | web-{0..N-1}.nginx.default.svc.cluster.local | web-{0~N-1} |
 | cluster.local | foo/nginx | foo/web | nginx.foo.svc.cluster.local | web-{0..N-1}.nginx.foo.svc.cluster.local | web-{0..N-1} |
 | kube.local | foo/nginx | foo/web | nginx.foo.svc.kube.local | web-{0..N-1}.nginx.foo.svc.kube.local | web-{0..N-1} |
 
@@ -160,5 +160,5 @@ k8s control plane은 이전 업데이트된 po가 Running, Ready 상태까지 �
 
 이 상태에서는 po template을 올바른 설정으로 되돌리는 것으로 충분하지 않다. [known iusse](https://github.com/kubernetes/kubernetes/issues/67250)와 같이 sts는 손상된 파드가 Ready(절대 되지 않음)될 때까지 기다리며 정상 동작하는 설정으로 되돌리는 것을 시도를 하기 전까지 기다린다.
 
-template 되돌린 이후에는 sts이 이미 잘못된 구성으로 실행하려고 시도한 모든 po를 삭제해야 한다. 그러면 sts은 되돌린 template을 사용해서 po를 다시 생성하기 시작한다.
+template 되돌린 이후에는 추가적으로 sts이 잘못된 설정을 통해 생성 및 실행하려고 시도한 모든 po를 삭제해야 한다. 그러면 sts은 되돌린 template을 사용해서 po를 다시 생성하기 시작한다.
 ## PersistentVolumeClaim retention

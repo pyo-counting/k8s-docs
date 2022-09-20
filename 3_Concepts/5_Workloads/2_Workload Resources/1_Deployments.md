@@ -54,3 +54,8 @@ deploy는 업데이트 되는 동안 일정한 수의 po만 중단되는 것을 
 
 또한 deploy는 최대 생성되는 po의 수를 제한한다. 기본적으로 최대 125% 이하의 po가 동작할 수 있도록 제한한다.
 
+### Progress Deadline Seconds
+.spec.progressDeadlineSeconds 옵션 필드는 deploy 의 condition 중 type: Progressing, status: "False". and reason: ProgressDeadlineExceeded으로 설정하기 전에 rollout을 기다리는 시간을 설정한다. 적어도 이 필드는 .spec.minReadySeconds보다 커야한다.
+
+### Min Ready Seconds
+.spec.minReadySeconds 옵션 필드는 새로 생성된 po가 avaliable로 간주되기 전까지 기다리는 시간을 지정한다. 기본 값은 0이다(po가 ready가 되면 즉시 available로 간주된다). po의 condition 중 ready는 po가 요청을 처리할 수 있는 상태를 의미하며, 이 경우 load balancing을 위해 ep 목록에 추가된다(readiness probe가 존재할 경우 probe가 성공해야 ready condition이 trur가 된다).
