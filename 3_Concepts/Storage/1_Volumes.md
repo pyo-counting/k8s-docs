@@ -1,9 +1,9 @@
 ## Background
-k8s는 다양한 유형의 volume 타이블 지원한다. po는 여러 volume 타입을 동시에 사용할 수 있다. ephemeral volume 타입은 po와 같은 lifetime을 갖지만 persistent volume은 po의 lifetime과 관계없다. po가 삭제되면 ephemeral volume도 삭제되지만 persistent volume은 삭제되지 않는다.
+k8s는 다양한 유형의 volume 타입 지원한다. po는 여러 volume 타입을 동시에 사용할 수 있다. ephemeral volume 타입은 po와 같은 lifetime을 갖지만 persistent volume은 po의 lifetime과 관계없다. po가 삭제되면 ephemeral volume도 삭제되지만 persistent volume은 삭제되지 않는다.
 
 기본적으로 volume은 디렉터리로 po 내 container에서 접근할 수 있다.
 
-po를 위해 제공 할 volume은 .spec.volumes에 정의하며 container에 volume을 mount하기위해 .spec.containers[*].volumeMounts를 설정한다. 
+po를 위해 제공할 volume은 .spec.volumes에 정의하며 container에 volume을 mount하기위해 .spec.containers[*].volumeMounts를 설정한다. 
 
 volume은 다른 volume 내에 마운트될 수 없다. 또한 volume은 다른 volume 내 content에 대한 hard link를 포함할 수 없다.
 
@@ -76,17 +76,109 @@ local volume을 사용하는 경우 pv nodeAffinity를 설정해야 한다. k8s 
 
 pv의 volumeMode을 "Block" (기본값은 "Filesystem")으로 설정하면 local volume을 raw block 장치로 노출할 수 있다.
 
-local volume을 사용할 때는 volumeBindingMod 가 WaitForFirstConsumer로 설정된 StorageClass를 생성하는 것을 권장한다. 자세한 내용은 local [StorageClas](https://kubernetes.io/docs/concepts/storage/storage-classes/#local) 예제를 참고한다. volume 바인딩을 지연시키는 것은 PersistentVolumeClaim 바인딩 결정이 no 리소스 요구사항, node selector, pod affinity, pod anti-affinity와 같이 po가 가질 수 있는 다른 no 제약 조건으로 평가되도록 만든다.
+local volume을 사용할 때는 volumeBindingMode가 WaitForFirstConsumer로 설정된 StorageClass를 생성하는 것을 권장한다. 자세한 내용은 local [StorageClas](https://kubernetes.io/docs/concepts/storage/storage-classes/#local) 예제를 참고한다. volume 바인딩을 지연시키는 것은 PersistentVolumeClaim 바인딩 결정이 no 리소스 요구사항, node selector, pod affinity, pod anti-affinity와 같이 po가 가질 수 있는 다른 no 제약 조건을 통해 평가되도록 만든다.
 
 local volume 라이프사이클의 향상된 관리를 위해 외부 정적 provisioner를 별도로 실행할 수 있다. 이 provisioner는 아직 동적 프로비저닝을 지원하지 않는다. 외부 로컬 provisioner를 실행하는 방법에 대한 예시는 [local volume provisioner user guide](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) 페이지를 참고한다.
 
 **Note**: 외부 정적 provisioner를 사용해 volume 라이프사이클을 관리하지 않는 경우 local pv을 수동으로 정리하고 삭제하는 것이 필요하다.
 
 ### persistentVolumeClaim
-
+pvc volume은 po에 pv를 마운트하기 위해 사용된다. pvc를 사용해 사용자는 특정 cloud 환경에 대한 상세 사항을 알 필요 없이 스토리지를 "요청"할 수 있다.
 ### projected
 projected volume은 여러 기존 volume을 동일한 디렉터리에 매핑한다.
 
 ### secret
+secret volume은 po에 패스워드와 같이 민감한 정보를 전달하는 데 사용된다. k8s API에 secret을 생성하고 po에 파일로 노출시킬 수 있다. secret volume은 tmpfs(RAM 지원 파일시스템)를 사용한다.
 
-### 
+**NOte**: volume으로 사용하기 전에 secret을 먼저 생성해야 한다.
+
+**Note**: -secret을 subPath volume으로 사용할 때 cm에 대한 업데이트가 반영되지 않는다.
+
+## Using subPath
+volumeMounts.subPath을 사용해 volume 내 특정 경로만 container에 마운트 할 수 있다.
+
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-lamp-site
+spec:
+    containers:
+    - name: mysql
+      image: mysql
+      env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: "rootpasswd"
+      volumeMounts:
+      - mountPath: /var/lib/mysql
+        name: site-data
+        subPath: mysql
+    - name: php
+      image: php:7.0-apache
+      volumeMounts:
+      - mountPath: /var/www/html
+        name: site-data
+        subPath: html
+    volumes:
+    - name: site-data
+      persistentVolumeClaim:
+        claimName: my-lamp-site-data
+```
+
+### Using subPath with expanded environment variables
+subPathExpr 필드를 사용해 downward API 환경 변수로부터 subPath 디렉토리 이름을 설정한다. subPath와 subPathExpr은 같이 사용할 수 없다.
+
+아래 예시에서 po는 subPathExpr을 사용하여 hostPath volume /var/log/pods 디렉토리 내 pod1 디렉토리를 생성한다. hostPath volume은 downward API에서 po 이름을 가져온다. 호스트 디렉토리 /var/log/pods/pod1은 컨테이너의 /logs에 마운트된다.
+
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+spec:
+  containers:
+  - name: container1
+    env:
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.name
+    image: busybox:1.28
+    command: [ "sh", "-c", "while [ true ]; do echo 'Hello'; sleep 10; done | tee -a /logs/hello.txt" ]
+    volumeMounts:
+    - name: workdir1
+      mountPath: /logs
+      # The variable expansion uses round brackets (not curly brackets).
+      subPathExpr: $(POD_NAME)
+  restartPolicy: Never
+  volumes:
+  - name: workdir1
+    hostPath:
+      path: /var/log/pods
+```
+
+## Resources 
+emptyDir volume의 저장 매체는 kubelet 루트 디렉토리(일반적으로 /var/lib/kubelet)의 파일시스템 매체에 의해 결정된다. emptyDir 또는 hostPath volume이 소비할 수 있는 크기에 대한 제한이 없으며 container 또는 po간 격리도 없다.
+
+## Out-of-tree volume plugins
+
+## Mount propagation
+mount propagation은 동일 po내 container 사이, 또는 동일 no에 다른 po간 volume을 공유할 수 있도록 한다.
+
+mount propagation은 container.volumeMounts의 mountPropagation 필드를 통해 제어된다.
+
+- None: 
+- HostToContainer:
+- Bidirectional:
+
+### Configuration
+일부 배포(CoreOS, RedHat/Centos, Ubuntu)에서 mount propagation가 제대로 동작하기 위해 아래와 같이 docker 내 mount share를 올바르게 설정해야 한다.
+
+docker systemd service 파일에 아래 내용을 설정한다.
+
+```
+MountFlags=shared
+```
+
+또는 MountFlags=slave가 존재하는 경우 삭제한다. 그리도 docker 데몬을 재시작한다.
