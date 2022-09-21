@@ -59,7 +59,7 @@ deploy는 업데이트 되는 동안 일정한 수의 po만 중단되는 것을 
 ### Rollover (aka multiple updates in-flight)
 deploy controller는 새로운 deploy을 발견하고, rs이 desired po를 생성하고 실행하는 것을 관찰한다. deploy의 .spec.template이 변경되면 새로운 rs가 생성되고 모든 기존 rs는 scale down된다.
 
-만약 기존 rollout이 진행되는 중에 deploy를 업데이트하는 경우 deploy가 업데이트 마다 새 rs를 생성하고, scale up하기 시작한다. 그리고 scale up 작업 중이던 이전 rs를 rollover 한다 -- 이전 rs 목록에 추가하고 scale down 진행한다.
+만약 기존 rollout이 진행되는 중에 deploy를 업데이트하는 경우 deploy가 업데이트 마다 새 rs를 생성하고, scale up하기 시작한다. 그리고 scale up 작업 중이던 이전 rs를 rollover 한다 -- 히스토리 목록에 rs를 추가하고 scale down 진행한다.
 
 예를 들어 nginx:1.14.2 image를 갖는 deploy reploca를 5로 설정 및 생성한다. nginx:1.14.2 replica가 3개 생성됐을 때 deploy를 업데이트해서 nginx:1.16.1 replica를 5개 생성성하도록 업데이트 한다고 가정한다. 이 경우 deploy는 즉시 생성된 3개의 nginx:1.14.2 po 3개를 종료하기 시작하고 nginx:1.16.1 po를 생성하기 시작한다. 즉 nginx:1.14.2 replioca가 5개가 생성되는 것을 기다리지 않는다.
 
@@ -159,7 +159,7 @@ kubectl rollout resume deployment/nginx-deployment
 **Note**: 중지된 deploy를 다시 시작하기 전에 rollback을 할 수 없다.
 
 ## Deployment status
-deploy는 라이플사이클 동안 여러 state를 갖는다.
+deploy는 라이플사이클 동안 여러 상태를 갖는다.
 
 ### Progressing Deployment
 k8s는 아래 동작을 수행할 떄 deploy를 progressing으로 표시한다:
@@ -192,7 +192,7 @@ rollout이 "complete"이 될 때, deploy controller는 deploy의 .status.conditi
 
 이 Progressing condition은 새로운 rollout이 시작되기 전까지 "True" 상태값을 유지한다. replica의 가용성이 변경되는 경우에도(이 경우 Available condition에 영향을 미침) condition은 유지된다.
 
-kubectl rollout status 를 사용해서 deploy가 완료되었는지 확인할 수 있다. 만약 rollout이 성공적으로 완료되면 kubectl rollout status 는 종료 코드로 0이 반환된다.
+kubectl rollout status를 사용해서 deploy가 완료되었는지 확인할 수 있다. 만약 rollout이 성공적으로 완료되면 kubectl rollout status 는 종료 코드로 0이 반환된다.
 
 ### Failed Deployment
 deploy는 새 rs 생성 및 배포 시 문제가 발생해 멈출 수 있다. 이는 아래와 같은 여러가지 요인으로 인해 발생한다:
@@ -204,9 +204,9 @@ deploy는 새 rs 생성 및 배포 시 문제가 발생해 멈출 수 있다. �
 - limit range
 - 애플리케이션 런타임의 잘못된 구성
 
-이러한 condition을 찾을 수 있는 한 가지 방법은 deploy spec에서 데드라인 파라미터를 지정하는 것이다(.spec.progressDeadlineSeconds). .spec.progressDeadlineSeconds는 deploy의 배포가 정지되었음을 deploy의 status에 나타내기까지 deploy controller가 대기하는 시간을 나타낸다.
+이러한 condition을 디버깅할 수 있는 한 가지 방법은 deploy spec에서 데드라인 파라미터를 지정하는 것이다(.spec.progressDeadlineSeconds). .spec.progressDeadlineSeconds는 deploy의 배포가 정지됐음을 deploy의 status에 나타내기까지 deploy controller가 대기하는 시간을 나타낸다.
 
-다음 kubectl 명령어로 progressDeadlineSeconds를 설정해서 controller가 10분 후 deploy rollout에 대한 진행 상태의 부족에 대한 리포트를 수행하게 한다.
+다음 kubectl 명령어로 progressDeadlineSeconds를 설정해서 controller가 10분 후 deploy rollout에 대한 진행 상태가 완료돼지 않았음에 대한 리포트를 수행하게 한다.
 
 ``` bash
 kubectl patch deployment/nginx-deployment -p '{"spec":{"progressDeadlineSeconds":600}}'
@@ -218,7 +218,7 @@ kubectl patch deployment/nginx-deployment -p '{"spec":{"progressDeadlineSeconds"
 - status: "False"
 - reason: ProgressDeadlineExceeded
 
-이 condition 일찍 실패할 수도 있으며 이러한 경우 ReplicaSetCreateError를 이유로 상태값을 "False"로 설정한다. deploy의 rollout이 완료되면 데드라인은 더 이상 고려되지 않는다.
+이 condition은 데드라인 보다 더 일찍 실패할 수도 있으며 이러한 경우 reason: ReplicaSetCreateError, status: "False"로 설정한다. deploy의 rollout이 완료되면 데드라인은 더 이상 고려되지 않는다.
 
 status condition에 대한 자세한 내용은 [Kubernetes API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties)을 참고한다.
 
@@ -296,7 +296,7 @@ Conditions:
   Progressing   True    NewReplicaSetAvailable
 ```
 
-type: Available with status: "True" means that your Deployment has minimum availability. Minimum availability is dictated by the parameters specified in the deployment strategy. type: Progressing with status: "True" means that your Deployment is either in the middle of a rollout and it is progressing or that it has successfully completed its progress and the minimum required new replicas are available (see the Reason of the condition for the particulars - in our case reason: NewReplicaSetAvailable means that the Deployment is complete).
+type: Available, status: "True"는 deploy가 최소 가용성을 갖고 있음을 의미한다. 초소 가숑성은 deploy의 .spec.strategy 내 파라미터를 통해 설정 가능하다. type: Progressing, status: "True"은 deploy가 rollout 진행 중, rollout 완료, 최소 가용성 갖고 있음을 의미한다.
 
 ### Operating on a failed deployment
 All actions that apply to a complete Deployment also apply to a failed Deployment. You can scale it up/down, roll back to a previous revision, or even pause it if you need to apply multiple tweaks in the Deployment Pod template.
@@ -358,10 +358,10 @@ rolling update를 제어하기 위해 maxUnavailable, maxSurge 필드를 사용�
 30%로 설정한 경우, rolling update가 시작되면 po의 개수가 130%가 넘지않도록 새로운 rs를 즉시 scale up한다. 이전 po가 삭제되면 새로운 rs는 추가적으로 scale up을 수행함으로써 업데이트 동안 최대 130% po가 실행된다.
 
 ### Progress Deadline Seconds
-
+.spec.progressDeadlineSeconds 옵션 필드는 deploy 의 condition 중 type: Progressing, status: "False". and reason: ProgressDeadlineExceeded으로 설정하기 전에 rollout을 기다리는 시간을 설정한다. 적어도 이 필드는 .spec.minReadySeconds보다 커야한다.
 
 ### Min Ready Seconds
-.spec.minReadySeconds는 새롭게 생성된 po의 container가 crash 없이 Ready 되어야 하는 최소 시간(초)을 설정하는 옵션 필드다. 기본 값은 0이다(po가 Ready되면 즉시 사용 가능한 것으로 간주). po의 Ready 상태와 관련해 [Container probes](https://v1-23.docs.kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes) 페이지를 참고한다.
+.spec.minReadySeconds 옵션 필드는 새로 생성된 po가 avaliable로 간주되기 전까지 기다리는 시간을 지정한다. 기본 값은 0이다(po가 ready가 되면 즉시 available로 간주된다). po의 condition 중 ready는 po가 요청을 처리할 수 있는 상태를 의미하며, 이 경우 load balancing을 위해 ep 목록에 추가된다(readiness probe가 존재할 경우 probe가 성공해야 ready condition이 trur가 된다).
 
 ### Revision History Limit
 deploy의 revision 히스토리는 rs에 저장된다.

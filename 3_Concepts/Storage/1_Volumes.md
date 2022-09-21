@@ -3,12 +3,14 @@ k8s는 다양한 유형의 volume 타이블 지원한다. po는 여러 volume �
 
 기본적으로 volume은 디렉터리로 po 내 container에서 접근할 수 있다.
 
+po를 위해 제공 할 volume은 .spec.volumes에 정의하며 container에 volume을 mount하기위해 .spec.containers[*].volumeMounts를 설정한다. 
+
 volume은 다른 volume 내에 마운트될 수 없다. 또한 volume은 다른 volume 내 content에 대한 hard link를 포함할 수 없다.
 
 ## Types of Volumes
 
 ### configMap
-cm은 설정 데이터를 po내 주입(inject)하는 방법을 제공한다. cm에 저장된 데이터는 configMap 타입의 voolume에서 참조되고 po내 실행되는 container에서 접근할 수 있다.
+cm은 설정 데이터를 po내 주입(inject)하는 방법을 제공한다. cm에 저장된 데이터는 configMap 타입의 volume에서 참조되고 po내 실행되는 container에서 접근할 수 있다.
 
 **Note**:
 - volume 사용 이전에 cm을 먼저 생성해야 한다.
@@ -38,6 +40,47 @@ AdmissionPolicy를 사용해 특정 디렉토리의 hostPath 접근을 제한하
 local volume은 디스크와 같은 로컬 스토리지 장치를 나타낸다.
 
 local volume은 정적으로 생성된 pv로만 사용할 수 있다. 동적 provision은 지원하지 않는다.
+
+hostPath volume과 비교했을 때 local volume은 수동으로 no에 po를 스케줄링할 필요가 없다. pv는 no의 affinity를 확인해 volume의 no 제약 조건을 확인한다.
+
+그러나 local volume은 여전히 no의 가용성을 따르며 모든 애플리케이션에 적합하지는 않다. 만약 no가 비정상 상태가 되면 local volume도 접근할 수 없게 되고, po를 실행할 수 없게 된다. local volume을 사용하는 애플리케이션은 기본 디스크의 내구 특성에 따라 이러한 감소되는 가용성과 데이터 손실 가능성도 허용할 수 있어야 한다.
+
+아래는 local volume, nodeAffinity를 사용하는 pv의 예시다:
+
+``` yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: example-pv
+spec:
+  capacity:
+    storage: 100Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: local-storage
+  local:
+    path: /mnt/disks/ssd1
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - example-node
+```
+
+local volume을 사용하는 경우 pv nodeAffinity를 설정해야 한다. k8s scheduler는 pv nodeAffinity를 사용하여 po를 올바른 no로 스케줄한다.
+
+pv의 volumeMode을 "Block" (기본값은 "Filesystem")으로 설정하면 local volume을 raw block 장치로 노출할 수 있다.
+
+local volume을 사용할 때는 volumeBindingMod 가 WaitForFirstConsumer로 설정된 StorageClass를 생성하는 것을 권장한다. 자세한 내용은 local [StorageClas](https://kubernetes.io/docs/concepts/storage/storage-classes/#local) 예제를 참고한다. volume 바인딩을 지연시키는 것은 PersistentVolumeClaim 바인딩 결정이 no 리소스 요구사항, node selector, pod affinity, pod anti-affinity와 같이 po가 가질 수 있는 다른 no 제약 조건으로 평가되도록 만든다.
+
+local volume 라이프사이클의 향상된 관리를 위해 외부 정적 provisioner를 별도로 실행할 수 있다. 이 provisioner는 아직 동적 프로비저닝을 지원하지 않는다. 외부 로컬 provisioner를 실행하는 방법에 대한 예시는 [local volume provisioner user guide](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) 페이지를 참고한다.
+
+**Note**: 외부 정적 provisioner를 사용해 volume 라이프사이클을 관리하지 않는 경우 local pv을 수동으로 정리하고 삭제하는 것이 필요하다.
 
 ### persistentVolumeClaim
 

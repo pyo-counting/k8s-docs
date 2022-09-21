@@ -87,7 +87,7 @@ po의 spec에는 restartPolicy 필드가 있다. Always, OnFailure, Never 값을
 
 restartPolicy는 po 내 모든 container에 적용된다. container가 종료된 후 exponential back-off 지연(10s, 20s, 40s, ...최대 5분)을 갖고 재시작된다. container가 실행된 후 10분 간 문제가 없으면 kubelet은 container에 대한 restart backoff timer를 초기화한다.
 
-###Pod conditions
+### Pod conditions
 po는 PodStatus 오브젝트를 가지며 po의 통과 여부를 나타내는 PodConditions 배열을 가진다.
 
 - PodScheduled: po가 no에 스케줄되었다.
