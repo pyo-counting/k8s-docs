@@ -36,4 +36,25 @@ sc를 기반으로 동적 스토리지 프로비저닝을 사용하려면 클러
 
 ## Persistent Volumes
 
+### Class
+pv에는 storageClassName 필드를 설정할 수 있다. 특정 클래스의 pv는 해당 클래스를 요청하는 pvc에만 바인딩될 수 있다. storageClassName이 없는 pv는 클래스가 없으며 특정 클래스를 요청하지 않는 pvc에만 바인딩될 수 있다.
+
+과거에는 storageClassName 필드 volume.beta.kubernetes.io/storage-class annotation이 됐다. 이 annotation은 여전히 ​​동작하지만 향후 k9s 릴리즈에서 완전히 deprecated 될 예정이다.
+
+### Node Affinity
+**Note**: 대부분의 volume 유형에서 이 필드를 설정할 필요가 없다. AWS EBS, GCE PD, Azure Disk volume block 유형에 대해 자동으로 할당된다. 하지만 local volume의 경우 명시적으로 설정해야 한다.
+
+pv는 no affinity를 지정하여 volume에 접근할 수 있는 no를 제한하는 제약 조건을 정의할 수 있다. pv를 사용하는 po는 no affinity에 의해 선택된 no에만 스케줄링된다. no affinity를 지정하려면 pv의 .spec에서 nodeAffinity 필드를 설정합니다.
 ## PersistentVolumeClaims
+
+### Class
+pvc에는 storageClassName 필드를 설정할 수 있다. 요청된 클래스의 pv(pvc와 동일한 storageClassName을 가진 pv)만 pvc에 바인드될 수 있다.
+
+pvc는 반드시 클래스를 가질 필요는 없다. storageClassName이 ""로 설정된 pvc는 항상 클래스가 없는 pvc를 요청하는 것으로 해석되므로 클래스가 없는 pv에만 바인딩될 수 있다(annotation이 없거나 ""로 설정). storageClassName이 없는 pvc는 이와 동일하지 않으며 DefaultStorageClass admission 플러그인 활성화 여부에 따라 클러스터에서 다르게 처리된다.
+
+## Claims As Volumes
+
+### PersistentVolumes typed hostPath
+hostPath PersistentVolume은 no의 파일 또는 디렉토리를 사용해 네트워크 연결 스토리지를 모방한다. 관련해 [an example of hostpath typed volume](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolume) 페이지를 참고한다.
+
+hostPath pv에는 바인딩 할 no의 정보를 저장하지 않는다. 즉, 특정 no hostPath pv내 데이터에 접근하기 위해 po에서 이를 설정해야 한다. 이와 반대로 lo

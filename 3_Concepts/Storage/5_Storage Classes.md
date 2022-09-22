@@ -64,6 +64,36 @@ WaitForFirstConsumer 모드는 pvc을 사용하는 po가 생성될 때까지 pv�
 - 위 목록
 - Local
 
+#### FEATURE STATE
+CSI volumes are also supported with dynamic provisioning and pre-created PVs, but you'll need to look at the documentation for a specific CSI driver to see its supported topology keys and examples.
+
+**Note**: WaitForFirstConsumer를 사용하도록 선택하는 경우 pd spec에서 nodeName을 사용하여 no affinity를 설정하지 않도록 권장한다. 이 경우 nodeName이 사용되면 scheduler가 무시되고 pvc는 보류 상태로 유지된다.
+
+대신 아래와 같이 nodeselector에 hostname을 사용한다.
+
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-pv-pod
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: kube-01
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+        claimName: task-pv-claim
+  containers:
+    - name: task-pv-container
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: task-pv-storage
+```
+
 ### Allowed Topologies
 
 ## Parameters
@@ -81,4 +111,4 @@ volumeBindingMode: WaitForFirstConsumer
 
 local volume은 현재 동적 프로비저닝을 지원하지 않지만 po 스케줄링까지 volume 바인딩을 지연시키기 위해서 sc가 여전히 생성되어야 한다. 이것은 volumeBindingMode: WaitForFirstConsumer을 통해 설정한다.
 
-볼륨 바인딩을 지연시키면 스케줄러가 pvc에 적절한 pv을 선택할 때 po의 모든 스케줄링 제약 조건을 고려할 수 있다.
+볼륨 바인딩을 지연시키면 scheduler가 pvc에 적절한 pv을 선택할 때 po의 모든 스케줄링 제약 조건을 고려할 수 있다.

@@ -7,7 +7,7 @@ k8s는 다양한 목적을 위해 여러 ephemeral volume을 지원한다:
 - emptyDir: po가 시작될 때 빈 상태로 시작되며 로컬 kubelet base 디렉토리(보통 루트 디스크) 또는 메모리로 제공된다.
 - configMap, downwardAPI, secret: k8s의 각 resource의 데이터를 po에 주입한다.
 - CSI ephemeral volume: 위의 volume 들과 비슷하지만. 특수한 CSI 드라이버에 의해 제공된다.
-- generic ephemeral volume: pv도 지원하는 모든 스토리지 드라이버에 의해 제공될 수 있다.
+- generic ephemeral volume: pv를 지원하느 모든 스토리지 드라이버가 제공할 수 있다.
 
 emptyDir, configMap, downwardAPI, secret은 [local ephemeral storage](https://v1-23.docs.kubernetes.io/docs/concepts/configuration/manage-resources-containers/#local-ephemeral-storage)로 제공된다. 이들은 각 no의 kubelet에 의해 관리된다.
 
