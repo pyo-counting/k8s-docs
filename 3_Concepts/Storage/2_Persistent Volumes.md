@@ -52,6 +52,10 @@ pvc에는 storageClassName 필드를 설정할 수 있다. 요청된 클래스�
 
 pvc는 반드시 클래스를 가질 필요는 없다. storageClassName이 ""로 설정된 pvc는 항상 클래스가 없는 pvc를 요청하는 것으로 해석되므로 클래스가 없는 pv에만 바인딩될 수 있다(annotation이 없거나 ""로 설정). storageClassName이 없는 pvc는 이와 동일하지 않으며 DefaultStorageClass admission 플러그인 활성화 여부에 따라 클러스터에서 다르게 처리된다.
 
+- admission 플러그인이 활성화 됐다면 관리자는 기본 sc를 설정한다. storageClassName 필드가 없는 모든 pvc는 기본 pv에 바인딩 될 수 있다. 기본 sc는 storageclass.kubernetes.io/is-default-class annotation을 true로 생성하면 된다. 관리자가 기본 sc를 설정하지 않는다면 admission 플러그인이 비활성화된 것처럼 동작한다. 1개 이상의 기본 sc가 있다면 admission 플러그인은 모든 pvc에 대한 생성을 금지한다.
+
+- admission 플러그인이 비활성화 됐다면 기본 sc의 개념이 없는 것이다. storageClassName이 ""로 설정된 pvc는 storageClassName이 ""로 설정된 pv에만 바인딩 될 수 있다. 그러나 기본 sc를 사용할 수 있게 되면 storageClassName이 누락된 pvc를 업데이트할 수 있다. pvc가 업데이트되면 더이상 storageClassName이 ""인 pv로 바인딩 되지 않는다.
+
 ## Claims As Volumes
 
 ### PersistentVolumes typed hostPath
