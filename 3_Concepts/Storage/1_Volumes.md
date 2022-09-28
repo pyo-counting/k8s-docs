@@ -76,7 +76,7 @@ local volume을 사용하는 경우 pv nodeAffinity를 설정해야 한다. k8s 
 
 pv의 volumeMode을 "Block" (기본값은 "Filesystem")으로 설정하면 local volume을 raw block 장치로 노출할 수 있다.
 
-local volume을 사용할 때는 volumeBindingMode가 WaitForFirstConsumer로 설정된 StorageClass를 생성하는 것을 권장한다. 자세한 내용은 local [StorageClas](https://kubernetes.io/docs/concepts/storage/storage-classes/#local) 예제를 참고한다. volume 바인딩을 지연시키는 것은 PersistentVolumeClaim 바인딩 결정이 no 리소스 요구사항, node selector, pod affinity, pod anti-affinity와 같이 po가 가질 수 있는 다른 no 제약 조건을 통해 평가되도록 만든다.
+local volume을 사용할 때는 volumeBindingMode가 WaitForFirstConsumer로 설정된 StorageClass를 생성하는 것을 권장한다. 자세한 내용은 local [StorageClas](https://kubernetes.io/docs/concepts/storage/storage-classes/#local) 예제를 참고한다. volume 바인딩을 지연시키는 것은 no 리소스 요구사항, node selector, pod affinity, pod anti-affinity와 같이 po가 가질 수 있는 no 제약 조건이 pvc 바인딩 결정에 영향을 줄 수 있음을 의미한다.
 
 local volume 라이프사이클의 향상된 관리를 위해 외부 정적 provisioner를 별도로 실행할 수 있다. 이 provisioner는 아직 동적 프로비저닝을 지원하지 않는다. 외부 로컬 provisioner를 실행하는 방법에 대한 예시는 [local volume provisioner user guide](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) 페이지를 참고한다.
 
@@ -84,6 +84,7 @@ local volume 라이프사이클의 향상된 관리를 위해 외부 정적 prov
 
 ### persistentVolumeClaim
 pvc volume은 po에 pv를 마운트하기 위해 사용된다. pvc를 사용해 사용자는 특정 cloud 환경에 대한 상세 사항을 알 필요 없이 스토리지를 "요청"할 수 있다.
+
 ### projected
 projected volume은 여러 기존 volume을 동일한 디렉터리에 매핑한다.
 
