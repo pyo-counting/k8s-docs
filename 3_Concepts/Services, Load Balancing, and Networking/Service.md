@@ -25,15 +25,17 @@ po 정의 시 port에 이름을 정의할 수 있으며 이 이름은 svc의 `ta
 svc의 기본 프로토콜은 TCP다.
 
 ### Services without selectors
-svc는 일반적으로 selector를 사용해 k8s 내 po에 대한 접근을 추상화하지만 selector 대신 직접 endpoint를 구성함으로 써 다른 종류의 백엔드도 추상화할 수 있으며 심지어 클러스터 외부에서 실행되는 것들도 포함할 수 있다.
+svc는 일반적으로 .spec.selector 필드를 사용해 k8s 내 po에 대한 접근을 추상화하지만 selector 대신 직접 ep object를 구성함으로써 다른 종류의 백엔드도 추상화할 수 있으며 심지어 클러스터 외부에서 실행되는 것들도 포함할 수 있다.
 
-svc 내 `spec.selecotr`를 명시하지 않으면 관련된 endpoint는 자동으로 생성되지 않는다. 그렇기 때문에 사용자는 직접 endpoint object를 생성해야 한다.
+k8s 클러스터의 api server의 경우 호스트 네트워크를 사용하는 po로 구성된다. 그리고 해당 po는 selector가 없는 svc로 구성된다.
 
-endpoint의 이름은 svc와 동일해야 한다.
+svc 내 `spec.selecotr`를 명시하지 않으면 관련된 ep object는 자동으로 생성되지 않는다. 그렇기 때문에 사용자는 직접 ep object를 생성해야 한다.
 
-**Note**: endpoint object의 IP는 loopback(127.0.0.0/8), link-local(169.254.0.0/16)이면 안된다.
+ep의 이름은 svc와 동일해야 한다.
 
-endpoint IP는 k8s svc의 cluster IP이면 안된다. 왜냐하면 kube-proxy는 virtual IP를 destination으로 지원하지 않기 떄문이다.
+**Note**: ep object의 IP는 loopback(127.0.0.0/8), link-local(169.254.0.0/16)이면 안된다.
+
+ep IP는 k8s svc의 cluster IP이면 안된다. 왜냐하면 kube-proxy는 virtual IP를 destination으로 지원하지 않기 떄문이다.
 
 `.spec.type`이 ExternalName에 대해서 `.spec.selector`가 필요없으며 대신 `.spec.externalName`이 필요히다.
 

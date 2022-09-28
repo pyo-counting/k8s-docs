@@ -15,6 +15,10 @@ k8s 구성요소는 prometheus format을 사용해 metric을 노출한다.
 
 참고로 kubelet도 /metrics/cadvisor, /metrics/resource, /metrics/probes 엔드포인트에서 metric을 노출한다. 이러한 metric은 동일한 라이프사이클을 가지지 않는다.
 
+- /metrics/cadvisor: cAdvisor가 스크랩하는 metrics 데이터
+- /metrics/resource:
+- /metrics/probes:
+
 클러스터가 RBAC을 사용하는 경우 metric을 조회하기 위해 /metrics에 접근을 허용하는 클러스터롤(ClusterRole)을 가지는 사용자, 그룹 또는 sa를 통한 권한이 필요하다. 예를 들면, 다음과 같다:
 
 ``` yaml
