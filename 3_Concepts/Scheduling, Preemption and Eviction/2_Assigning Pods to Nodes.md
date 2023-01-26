@@ -15,7 +15,7 @@ k8s가 특정 po를 어느 no에 스케줄링할지 아래 설정을 통해 결�
 ### Node isolation/restriction
 no에 label을 추가해 po를 특정 no 또는 no 그룹에 스케줄링되도록 할 수 있다. 이 기능을 사용해 특정 po가 특정 격리/보안/규제 속성을 만족하는 no에서만 실행되도록 할 수 있다.
 
-no 격리를 위해 label을 사용할 때 kubelet이 변경할 수 없는 label 키를 설정해야 한다. 이를 통해 손상된 no가 해당 label을 자체적으로 수정해 scheduler가 해당 no에 workload를 스케줄링하는 것읇 방지할 수 있다.
+no 격리를 위해 label을 사용할 때 kubelet이 변경할 수 없는 label 키를 설정해야 한다. 이를 통해 손상(compromised)된 no가 해당 label을 자체적으로 수정해 scheduler가 해당 no에 workload를 스케줄링하는 것읇 방지할 수 있다.
 
 NodeRestriction admission plugin은 kubelet이 node-restriction.kubernetes.io/ 접두사를 갖는 label을 설정하거나 변경하지 못하도록 한다.
 
@@ -40,7 +40,7 @@ affinity 기능은 다음의 두 가지 종류로 구성된다:
 - pod 간 affinity/anti-affinity는 다른 po의 label을 이용하여 해당 po를 제한할 수 있다.
 
 ### Node affinity
-node affinity는 개념적으로 nodeSelector 와 비슷하며 no의 label을 기반으로 po가 스케줄링될 수 있는 po를 제한할 수 있다. node affinity에는 다음 두 종류가 있다:
+node affinity는 개념적으로 nodeSelector 와 비슷하며 no의 label을 기반으로 po가 스케줄링될 수 있는 no를 제한할 수 있다. node affinity에는 다음 두 종류가 있다:
 
 - `requiredDuringSchedulingIgnoredDuringExecution`: 규칙이 만족되지 않으면 scheduler가 po를 스케줄링할 수 없다. 이 기능은 nodeSelector와 유사하지만, 좀 더 표현적인 문법을 제공한다.
 - `preferredDuringSchedulingIgnoredDuringExecution`: scheduler는 조건을 만족하는 no를 찾으려고 노력한다. 매칭되는 no가 없더라도 scheduler는 여전히 po를 스케줄링한다.
@@ -79,6 +79,10 @@ spec:
   - name: with-node-affinity
     image: registry.k8s.io/pause:2.0
 ```
+
+위 예시는 아래 규칙이 적용된다:
+- no는 반드시 opology.kubernetes.io/zone key의 값이 antarctica-east1 또는 antarctica-west1인 label이 존재해야 한다.
+- The node preferably has a label with the key another-node-label-key and the value another-node-label-value.
 
 operator 필드에는 In, NotIn, Exists, DoesNotExist, Gt, Lt를 사용할 수 있다.
 
@@ -137,7 +141,7 @@ requiredDuringSchedulingIgnoredDuringExecution 규칙을 만족하는 no가 2개
 **Note**: 위 예시에서 k8s가 정상적으로 po를 스케줄링하기 위해, no는 topology.kubernetes.io/zone label이 있어야 한다.
 
 ### Node affinity per scheduling profile
-여러 scheduling profile을 구성할 때 node affinity가 있는 profile을 연결할 수 있는데, 이는 profile이 특정 no 집합에만 적용되는 경우 유용하다. 아래와 같이 scheduler 설정에 있는 NodeAffinity 플러그인의 args 필드에 addedAffinity를 추가한다.
+여러 scheduling profile을 구성할 때 profile에 대해 node affinity를 설정할 수 있는데, 이는 profile이 특정 no 집합에만 적용되는 경우 유용하다. 아래와 같이 scheduler 설정에 있는 NodeAffinity 플러그인의 args 필드에 addedAffinity를 추가한다.
 
 ``` yaml
 apiVersion: kubescheduler.config.k8s.io/v1beta3
@@ -225,7 +229,7 @@ spec:
 
 affinity 규칙은 security=S1 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에만 po를 스케줄링하도록 scheduler에 지시한다. 더 정확히 말하면, 만약 security=S1 po label이 있는 po를 실행하고 있는 no가 zone=V에 하나 이상 존재한다면, scheduler는 po를 topology.kubernetes.io/zone=V label이 있는 no에 배치해야 한다.
 
-anti-affinity 규칙은 security=S2 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에는 가급적 파드를 스케줄링하지 않도록 scheduler에 지시한다. 더 정확히 말하면, 만약 security=S2 po label이 있는 po가 실행되고 있는 zone=R에 다른 no도 존재한다면, scheduler는 security=S1 label이 있는 no에는 가급적 해당 po를 스케줄링하지 않야아 한다.
+anti-affinity 규칙은 security=S2 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에는 가급적 파드를 스케줄링하지 않도록 scheduler에 지시한다. 더 정확히 말하면, 만약 security=S2 po label이 있는 po가 실행되고 있는 zone=R에 다른 no도 존재한다면, scheduler는 security=S2 label이 있는 no에는 가급적 해당 po를 스케줄링하지 않야아 한다.
 
 po affinity, anti-affinity에 대한 자세한 내용은 [design proposal](https://github.com/kubernetes/design-proposals-archive/blob/main/scheduling/podaffinity.md)을 참조한다. 
 
