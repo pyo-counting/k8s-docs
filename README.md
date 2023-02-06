@@ -2,6 +2,7 @@
 Kubernetes 학습
 
 ## 요약
+- k8s의 구성 요소중 container 실행을 담당하는 kublet은 container로 실행할 수 없다.
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
   - namespace:
     - mnt(마운트)
