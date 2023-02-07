@@ -1,6 +1,6 @@
-k8s 클러스터는 컨테이너화된 애플리케이션을 실행하는 node라고 불리는 worker machine의 집합이다. 모든 클러스터는 최소 한 개의 worker node를 가진다.
+k8s 클러스터는 컨테이너화된 애플리케이션을 실행하는 no라고 불리는 worker machine의 집합이다. 모든 클러스터는 최소 한 개의 worker node를 가진다.
 
-worker node는 애플리케이션의 구성요소인 po를 호스트한다. control plane은 worker node와 클러스터 내 po를 관리한다. 운영 환경에서는 일반적으로 control plane이 여러 컴퓨터에서 실행되고, 클러스터는 일반적으로 여러 no를 실행하므로 fault-tolerance과 high availability를 제공한다.
+worker node는 애플리케이션의 구성요소인 po를 호스팅한다. control plane은 worker node와 클러스터 내 po를 관리한다. 운영 환경에서는 일반적으로 control plane이 여러 컴퓨터에서 실행되고, 클러스터는 일반적으로 여러 no를 실행하므로 fault-tolerance과 high availability를 제공한다.
 
 ![Kubernetes cluster](https://d33wubrfki0l68.cloudfront.net/2475489eaf20163ec0f54ddc1d92aa8d4c87c96b/e7c81/images/docs/components-of-kubernetes.svg)
 
@@ -39,9 +39,18 @@ no가 배정되지 않은 새로 생성된 po를 감지(watch)하고 실행할 n
 - service account & token controller: 새로운 ns에 대한 기본 계정과 API access token을 생성한다.
 
 ### cloud-controller-manager
+클라우드별 제어 로직을 포함하는 k8s control plane 구성요소. cloud-controller-manager를 사용하면 클러스터를 클라우드 provider의 API에 연결하고 and separates out the components that interact with that cloud platform from components that only interact with your cluster. cloud-controller-manager는 클라우드 provider와 관련된 controller만 실행한다. 클라우드 환경이 아니라면 해당 구성요소는 필요 없다.
+
+kube-controller-manager와 마찬가지로 cloud-controller-manager는 논리적으로 독립적인 여러 제어 루프를 단일 바이너리로 결합한 것이다. 수평 확장도 가능하다.
+
+아래 controller는 클라우드 provider 족속성을 가질 수 있다:
+
+- Node controller: 응답이 멈춘 이후 클라우드에서 no가 삭제됐는지 여부를 확인
+- Route controller: 클라우드 인프라 내 라우트 설정
+- Service controller: 클라우드 provider load balancer 생성 / 업데이트 / 삭제
 
 ## Node Components
-node 구성요소는 모든 노드에서 실행되어 동작 중인 po를 관리하고 k8s runtime 환경을 제공한다.
+no 구성요소는 모든 no에서 실행되어 동작 중인 po를 관리하고 k8s runtime 환경을 제공한다.
 
 ### kubelet
 클러스터의 각 no에서 실행되는 에이전트. kubelet은 po에서 container 동작하도록 관리한다.
