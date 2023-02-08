@@ -18,10 +18,28 @@ resource 내에서 해당 name은 1개의 object만 가질 수 있다. 물론 �
 ### RFC 1035 Label Names
 
 ### Path Segment Names
+일부 k8s 리소스 타입의 경우 이름이 URL path로 사용되기 위해 인코딩이 필요할 수도 있다.
+
+모든 object는 k8s 클러스터의 전체 실행 기간 동안 고유한 UID를 갖는다. 이는 현재 시점 뿐만 아니라 과거 또는 현재에서 유사한 object의 생성을 서로 구분하기 위함이다. 즉 이름이 ".", "..", "/", "%"를 포함하면 안될 수도 있다.
+
+아래는 예시다.
+
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-demo
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+```
+**Note:** 일부 리소스 타입의 경우 추가적인 제약사항이 있을 수 있다.
+
 
 ## UIDs
 k8s 시스템은 object를 고유하게 구분할 수 있는 문자열을 제공한다.
 
-모든 object는 k8s 클러스터의 전체 실행 기간 동안 고유한 UID를 갖는다. 이는 현재 시점 뿐만 아니라 과거 또는 현재에서 유사한 object의 생성을 서로 구분하기 위함이다.
-
-k8s uid는 universally unique identifiers(UUID)다.
+k8s uid는 universally unique identifiers(UUID라고 부르기도 함)다.
