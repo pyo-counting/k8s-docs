@@ -33,4 +33,4 @@ svc를 생성할 때 svc는 관련 DNS entry를 생성한다. entry의 포맷은
 ns 존재 유무는 kubectl api-resources 명령어로 조회 가능하다.
 
 ## Automatic labelling
-k8s control plane은 NamespaceDefaultLabelName feature gate가 활성화 된 경우 모든 no에 변경 불가한 kubernetes.io/metadata.name label을 추가한다.
+k8s control plane은 NamespaceDefaultLabelName feature gate가 활성화 된 경우 모든 ns에 변경 불가한 kubernetes.io/metadata.name label을 추가한다. 해당 label의 값은 ns의 이름이다.
