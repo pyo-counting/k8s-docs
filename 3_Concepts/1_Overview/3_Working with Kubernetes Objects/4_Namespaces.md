@@ -23,9 +23,9 @@ k8s는 기본적으로 4개의 ns를 갖는다:
 ## Namespaces and DNS
 svc를 생성할 때 svc는 관련 DNS entry를 생성한다. entry의 포맷은 \<service-name\>.\<namespace-name\>.svc.cluster.local이며 만약 container가 \<service-name\>만 사용하면 로컬 ns의 service로 해석한다. 이는 개발, 스테이징, 운영 환경에서 동일한 설정을 사용할 수 있기 때문에 유용하다. 만약 다른 ns에 접근하고자 할 경우에는 FQDN을 사용하면 된다.
 
-**Warning**: By creating namespaces with the same name as public top-level domains, Services in these namespaces can have short DNS names that overlap with public DNS records. Workloads from any namespace performing a DNS lookup without a trailing dot will be redirected to those services, taking precedence over public DNS.
+**Warning**: ns의 이름을 public 최상위 도메인과 동일한 이름으로 생성하면 해당 ns의 svc는 public DNS 레코드를 덮어쓰는 짧은 이름의 DNS 이름을 가질 수 있다. "."으로 끝나지 않을 경우 DNS 룩업을 수행할 것이고 이는 public DNS보더 우선 순위가 높기 때문에 내부 svc ip정보를 응답한다.
 
-To mitigate this, limit privileges for creating namespaces to trusted users. If required, you could additionally configure third-party security controls, such as admission webhooks, to block creating any namespace with the name of public TLDs.
+이러한 실수를 방지하기 위해 제한된 사용자만 ns를 만들 수 있도록 제한해야 한다. If required, you could additionally configure third-party security controls, such as admission webhooks, to block creating any namespace with the name of public TLDs.
 
 ## Not All Objects are in a Namespace
 대부분의 k8s object는 특정 ns에 속한다. 하지만 ns 자체는 어떤 ns에도 속하지 않는다. 그리고 no, pv와 같은 low level  resource는 어떤 ns에도 속하지 않는다.
