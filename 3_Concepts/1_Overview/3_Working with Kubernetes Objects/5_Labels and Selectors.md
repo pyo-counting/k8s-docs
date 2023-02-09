@@ -50,10 +50,10 @@ LIST, WATCH 작업 시 쿼리 파라미터를 사용해 반환되는 object를 �
 svc, rc와 같은 k8s object는 po와 같은 resource 집합을 선택하기 위해 label selector를 사용한다.
 
 #### Service and ReplicationController
-svc, rc의 타켓 po 집합은 labele selector를 이용해 정의된다.
+svc, rc의 타켓 po 집합은 equality-based labele selector를 이용해 정의된다.
 
 #### Resources that support set-based requirements
-job, deploy, rs, ds와 같은 resource들은 set-based 또한 지원한다.
+job, deploy, rs, ds와 같은 resource들은 equality-based 뿐만 아니라 set-based도 지원한다.
 
 #### Selecting sets of nodes
 label selector는 po를 스케쥴링 할 no 집합을 제한하는 경우에도 사용할 수 있다.
