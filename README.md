@@ -26,6 +26,10 @@ Kubernetes 학습
 - k8s에서 추가하는 annotation, label을 식별하기 위해 kubernetes.io/, k8s.io/ label을 예약했다. k8가 자동으로 붙이는 label
   - ns
     - kubernetes.io/metadata.name: NamespaceDefaultLabelName feature gate가 활성화됐을 경우 추가되며 ns의 이름을 갖는다.
+
+## 명령어
+- 
+
 ## 체크리스트
 - po내 ports[*].hostPort에 사용된 port는 호스트 netstat 조회 시 보이지 않음. 하지만 type=ClusterIP svc로 expose 시 netstat에 조회됨
 - svc externalIPs 설정 시, no의 IP로 svc 접근 가능
