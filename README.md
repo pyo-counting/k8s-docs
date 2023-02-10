@@ -23,7 +23,7 @@ Kubernetes 학습
 - annotation은 key-value으로 label과 유사하지만 식별 정보로 사용되지 않는다. 즉 label과 같이 selector 기능은 없다. annotation은 주로 해당 리소스에 대한 정보를 나타내는데 사용된다.
 - k8s namespace는 리소스 이름의 범위를 제공한다. 뿐만 아니라 리소스를 격리하는 것외에도 특정 사용자가 지정된 리소스에 접근할 수 있도록 허용하고, 개별 사용자가 사용할 수 있는 컴퓨팅 리소스를 제한하는 데에도 사용된다. 하지만 리소간 격리는 제공하지 않는다. 즉 서로 다른 namepsace에 존재하는 리소스더라도 통신할 수 있다. 네트워크 격리는 k8s와 함께 배포되는 네트워킹 솔루션에 따라 다르다.
 - 대부분의 리소스 이름은 RFC 1035 (domain name)에 지정된 규칙을 준수해야 한다. 즉, 글자, 숫자, 대시, 점을 포함할 수 있다. 하지만 몇몇 리소스는 점을 포함할 수 없다.
-- k8s에서 추가하는 label을 식별하기 위해 kubernetes.io/, k8s.io/ label을 예약했다. k8가 자동으로 붙이는 label
+- k8s에서 추가하는 annotation, label을 식별하기 위해 kubernetes.io/, k8s.io/ label을 예약했다. k8가 자동으로 붙이는 label
   - ns
     - kubernetes.io/metadata.name: NamespaceDefaultLabelName feature gate가 활성화됐을 경우 추가되며 ns의 이름을 갖는다.
 ## 체크리스트
