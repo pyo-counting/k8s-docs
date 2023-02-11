@@ -30,8 +30,7 @@ metadata:
 
 k8s admission controller는 소유자의 삭제 권한에 따라 종속 resource에 대해 이 필드를 변경하기 위한 사용자 접근을 제어한다. 이를 통해 권한이 없는 사용자로부터 소유자 object 삭제 지연을 방지한다.
 
-**Note**:
-Cross-namespace owner references are disallowed by design. Namespaced dependents can specify cluster-scoped or namespaced owners. A namespaced owner must exist in the same namespace as the dependent. If it does not, the owner reference is treated as absent, and the dependent is subject to deletion once all owners are verified absent.
+**Note**: Cross-namespace owner references are disallowed by design. Namespaced dependents can specify cluster-scoped or namespaced owners. A namespaced owner must exist in the same namespace as the dependent. If it does not, the owner reference is treated as absent, and the dependent is subject to deletion once all owners are verified absent.
 
 Cluster-scoped dependents can only specify cluster-scoped owners. In v1.20+, if a cluster-scoped dependent specifies a namespaced kind as an owner, it is treated as having an unresolvable owner reference, and is not able to be garbage collected.
 

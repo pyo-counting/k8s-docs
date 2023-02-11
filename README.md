@@ -26,8 +26,10 @@ Kubernetes 학습
 - k8s에서 추가하는 annotation, label을 식별하기 위해 kubernetes.io/, k8s.io/ label을 예약했다. k8가 자동으로 붙이는 label
   - ns
     - kubernetes.io/metadata.name: NamespaceDefaultLabelName feature gate가 활성화됐을 경우 추가되며 ns의 이름을 갖는다.
+- owner reference는 k8s resource 간의 종속 관계를 나타낸다. k8s는 object 삭제 시 label이 아닌 owner reference를 사용해 종속 관계에 대한 cascading deletion을 수행한다. 
 
 ## 명령어
+- kubectl get [RESOURCE] --field-selector
 - 
 
 ## 체크리스트

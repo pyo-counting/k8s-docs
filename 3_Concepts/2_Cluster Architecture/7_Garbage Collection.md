@@ -12,9 +12,12 @@ gc는 k8s 클러스터가 resource를 정리하기 위해 사용하는 다양한
 - Node Lease objects
 
 ## Owners and dependents
+k8s의 많은 object들은 owner referenece를 통해 서로 연결된다. control plane은 owner reference 정보를 통해 object들의 소유 관계를 확인한다. Kubernetes uses owner references to give the control plane, and other API clients, the opportunity to clean up related resources before deleting an object. 대부분의 경우 k8s가 자동으로 owner reference를 관리한다.
+
+owner reference는 일부 리소스에서 사용하는 label selector 메커니즘과 다르다. 예를 들어 EndpointSlice를 생성하는 svc의 경우, svc는 label을 사용해 control plane이 해당 svc에서 사용하는 EndpointSlice object를 결정할 수 있도록 도와준다. 추가적으로 EndpointSlice에는 owner reference 정보도 존재한다. Owner references help different parts of Kubernetes avoid interfering with objects they don’t control.
 
 ## Cascading deletion
-k8s는 object를 삭제할 때 더 이상 owner reference가 없는지 확인한다. 예를 들어 rs을 삭제할 때 남겨진 po가 없는지 확인하고 삭제한다. object를 삭제할 때 k8s가 object의 종속 object를 자동으로 삭제할 지 여부를 제어할 수 있다. 이 과정을 cascading 삭제라고 한다. cascading 삭제에는 다음과 같은 두 가지 종류가 있다:
+k8s는 object를 삭제할 때 더 이상 owner reference가 없는지 확인한다. 예를 들어 rs을 삭제할 때 남겨진 po가 없는지 확인하고 삭제한다. k8s가 object를 삭제할 때 cascading 삭제라고 하는 프로세스에서 종속 object를 자동으로 삭제할지 여부를 제어할 수 있다. cascading 삭제에는 다음과 같은 두 가지 종류가 있다:
 
 - Foreground cascading deletion
 - Background cascading deletion
@@ -26,8 +29,8 @@ foreground cascading deletion에서는 삭제하려는 소유자 object가 먼�
 
 - k8s API server가 `.metadata.finalizers` 필드를 foregroundDeletion로 설정한다.
 - k8s API server가 object의 `.metadata.deletionTimestamp` 필드를 object가 삭제 마킹된 시간으로 설정한다.
-- object는 삭제 과정이 완료되기 전까지 k8s API를 통해 조회할 수 있다
-.
+- object는 삭제 과정이 완료되기 전까지 k8s API를 통해 조회할 수 있다.
+
 소유자 object가 삭제 중 상태가 된 이후, controller는 종속 object를 삭제한다. 모든 종속 object가 삭제되면 controller가 소유자 object를 삭제한다. 이 시점에서 object는 더 이상 k8s API를 통해 조회할 수 없다.
 
 foreground cascading deletion 중에 소유자 object의 삭제를 막는 종속 object는 `ownerReference.blockOwnerDeletion` 필드 값이 true인 object다. 더 자세한 내용은 [Use foreground cascading deletion](https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/#use-foreground-cascading-deletion)를 참고한다.

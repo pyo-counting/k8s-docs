@@ -4,9 +4,17 @@ finalizer가 존재하는 object를 삭제하도록 k8s에 지시하면 k8s API�
 
 finalizer를 사용해 resource에 대한 gc를 제어할 수 있다. 예를 들어 controller가 대상 resource를 삭제하기 전에 관련 resource 또는 인프라를 정리하도록 finalizer를 정의할 수 있다.
 
-finalizer를 사용해 대상 resoucre를 삭제하기 전에 특정 정리 작업을 수행하도록 controller에게 알려 resource의 gc를 제어할 수 있다.
+finalizer를 사용해 대상 resoucre를 삭제하기 전에 특정 정리 작업을 수행하도록 controller에게 알림으로써 resource의 gc를 제어할 수 있다.
 
-finalizer는 일반적으로 실행항 코드를 지정하지 않는다. 대신 일반적으로 annotation과 유사한 특정 resource에 대한 key 목록이다. k8s는 일부 finalizer를 자동으로 지정하지만 사용자가 직접 설정할 수도 있다.
+finalizer는 일반적으로 실행항 코드를 지정하지 않는다. 대신 일반적으로 annotation과 유사한 특정 resource에 대한 key 목록이다. k8s는 일부 finalizer를 자동으로 지정하지만 사용자가 직접 설정할 수도 있다. 아래는 finalizer를 갖는 pv의 메니페스트 파일 일부 내용이다:
+
+``` yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  finalizers:
+    - kubernetes.io/pv-protection
+```
 
 ## How finalizers work
 manifest 파일을 사용해 resource를 생성할 떄 `.metadata.finalizers` 필드에 finalizer를 명시할 수 있다. 해당 resource를 삭제하려고 할 때 API server는 finalizer 필드 값을 확인하고 다음을 수행한다:
