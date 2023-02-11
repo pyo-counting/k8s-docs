@@ -26,7 +26,7 @@ metadata:
     uid: f391f6db-bb9b-4c09-ae74-6a1f77f3d5cf
 ```
 
-종속 object는 `.metadata.ownerReferences.blockOwnerDeletion` 필드에 boolean 값을 사용해 소유자 object를 삭제하지 못하도록 gc를 차단할 수 있다. k8s controller(예를 들어 deploy)는 `.metadata.ownerReference` 필드 설정 시 이 필드를 자동으로 true로 설정한다. 물론 사용자가 직접 설정할 수도 있다.
+종속 object는 `.metadata.ownerReferences.blockOwnerDeletion` 필드에 boolean 값을 사용해 종속 object에 대한 gc에서 소유자 ohject를 삭제하지 못하도록 할 수 있다. k8s controller(예를 들어 deploy)는 `.metadata.ownerReference` 필드 설정 시 이 필드를 자동으로 true로 설정한다. 물론 사용자가 직접 설정할 수도 있다.
 
 k8s admission controller는 소유자의 삭제 권한에 따라 종속 resource에 대해 이 필드를 변경하기 위한 사용자 접근을 제어한다. 이를 통해 권한이 없는 사용자로부터 소유자 object 삭제 지연을 방지한다.
 
