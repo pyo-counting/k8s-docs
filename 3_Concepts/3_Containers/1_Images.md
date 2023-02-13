@@ -6,6 +6,8 @@ registry hostname을 명시하지 않으면 k8s는 Docker public registry(hub.do
 
 image 이름 뒤에 tag를 추가할 수 있으며, tag를 통해 동일한 image 중 버전을 구분한다.
 
+image tag는 대/소문자, 숫자, "\_", ".", "-" 문자로 구성될 수 있다. "\_", "-", "."와 같은 문자는 tag 내에서 구분자로 사용된다는 규칙이 있다. tag를 명시하지 않으면 k8s는 `latest` tag로 가정한다.
+
 ## Updating images
 deploy, sts, po와 같이 po template를 포함하는 object를 처음 생성할 때 기본적으로 명시하지 않은 경우 `imagePullPolicy`값은 IfNotPresent로 설정된다.
 
@@ -33,8 +35,14 @@ API server에 새로운 po를 제출할 때 아래와 같은 특정 조건을 �
 `imagePullPolicy`는 object가 처음 생성될 때 설정되며 tag가 없데이트 되더라도 변경되지 않는다.
 
 #### Required image pull
+항상 image를 pull하도록 강제하게 하도록 하기 위해:
 
-####ImagePullBackOff
+- imagePullPolicy를 Always로 설정한다.
+- imagePullPolicy를 생략하고 :latest tag를 사용한다.
+- imagePullPolicy, tag를 생략한다.
+- AlwaysPullImages admission controller를 사용한다.
+
+#### ImagePullBackOff
 kubelet이 container runtime을 사용해 po의 container 생성을 시작할 때, `ImagePullBackOff`로 인해 container가 Waiting 상태에 있을 수 있다.
 
 ImagePullBackOff 상태는 k8s가 container image를 pull할 수 없어 실행할 수 없음을 의미한다. BackOff라는 단어는 k8s가 back off 딜레이를 증가시키면서 image pulling을 계속 시도할 것임을 나타낸다.
