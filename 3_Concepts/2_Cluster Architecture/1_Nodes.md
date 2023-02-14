@@ -70,3 +70,63 @@ kubectl cordon $NODENAME
 **Note**: ds의 일부인 po는 스케줄링 불가한 no에서도 실행될 수 있다. ds는 일반적으로 workload 애플리케이션이 제거되더라도 no에서 실행되어야 하는 no lacal 서비스다.
 
 ## Node status
+no의 status는 아래 정보를 포함한다:
+
+- Addresses
+- Conditions
+- Capacity and Allocatable
+- Info
+
+no의 status 및 기타 정보를 조회하기 위해 kubectl 명령어를 사용할 수 있다:
+
+``` bash
+kubectl describe node <insert-node-name-here>
+```
+
+출력의 각 상세 정보는 아래에서 설명한다.
+
+### Addresses
+이 필드는 cloud provider 또는 bare metal 설정에 따라 다르다.
+
+- HostName: no의 kernel에서 제공하는 hostname. kubelet의 --hostname-override 파라미터를 사용해 덮어쓸 수 있다.
+- ExternalIP: 클러스터 외부에서 라우팅 가능한 no의 IP 주소
+- InternalIP: 클러스터 내부에서 라우팅할 수 있는 no의 IP 주소
+
+### Conditions
+conditions 필드는 running no의 상태를 설명한다. conditions는 다음과 같다:
+|Node Condition    |Description|
+|------------------|-----------|
+|Ready             |no가 po를 실행할 수 있는 상태인 경우 True, po를 실행할 수 없는 unhealthy 상태인 경우 False, node controller가 node-monitor-grace-period(기본 값 40s) 설정 값 동안 no의 상태를 알 수 없는 경우 Unknown|
+|DiskPressure      |disk 크기에 대한 pressure가 있는 경우(disk 용량이 부족할 경우), 반대의 경우 False|
+|MemoryPressure    |no 메모리에 대한 pressure가 있는 경우(no의 메모리가 부족할 경우), 반대의 경우 False|
+|PIDPressure       |프로세스에 대한 pressure이 있는 경우(no에 너무 많은 프로세스가 있는 경우) True, 반대의 경우 False|
+|NetworkUnavailable|no의 네트워크가 옳바르게 설정되지 않은 경우 True, 반대의 경우 False|
+
+**Note**: kubelet 명령어를 사용해 cordoned no의 상세 저보를 조회하는 경우, Condition 필드에 SchedulingDisable를 포함한다. SchedulingDisable은 k8s API 서버내 Condition이 아니다. 대신 cordoned no는 spec에 Unschedulable로 표시된다.
+
+k8s API에서 no의 condition은 no 리소스의 .status에 표시된다. 예를 들어 아래 JSON 구조는 정상적인 no를 나타낸다:
+
+``` json
+"conditions": [
+  {
+    "type": "Ready",
+    "status": "True",
+    "reason": "KubeletReady",
+    "message": "kubelet is posting ready status",
+    "lastHeartbeatTime": "2019-06-05T18:38:35Z",
+    "lastTransitionTime": "2019-06-05T11:41:27Z"
+  }
+]
+```
+
+
+
+### Capacity and Allocatable
+no의 이용 가능한 리소스 정보를 제공한다: CPU, memory, no에 스케줄링 가능한 최대 po 개수
+
+capacity 블락 내 필드는 no가 가진 총 resource의 크기를 나타낸다. available block은 일반 po에서 사용할 수 있는 no의 리소스 크기를 나타낸다.
+
+You may read more about capacity and allocatable resources while learning how to reserve compute resources on a Node.
+
+### Info
+커널 버전, k8s 버전(kubelet, kube-proxy 버전), container runtime 상세 사항, no가 사용하는 OS와 같은 일반적인 정보를 제공한다. kubelet은 no로부터 이러한 정보를 수집하며 k8s API로 제공한다.

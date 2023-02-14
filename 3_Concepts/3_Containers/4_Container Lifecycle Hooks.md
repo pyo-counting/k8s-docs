@@ -1,3 +1,5 @@
+kubelet 관리 container가 container 라이프사이클 훅 프레임워크를 사용해 관리 라이프사이클 동안 이벤트에 의해 트리거된 코드를 실행할 수 있는 방법에 대해 설명한다.
+
 ## Overview
 k8s는 container에 lifecycle hook을 제공한다. hook을 통해 container는 lifecycle의 event를 인지할 수 있으며 이에 대응하는 lifecycle hook이 실행될 때 handler를 통해 구현한 코드를 실행할 수 있다.
 
