@@ -83,7 +83,52 @@ no의 status 및 기타 정보를 조회하기 위해 kubectl 명령어를 사�
 kubectl describe node <insert-node-name-here>
 ```
 
-출력의 각 상세 정보는 아래에서 설명한다.
+출력의 각 상세 정보는 아래에서 설명한다. 아래는 kubectl get no -o yaml 명령어 출력 결과 중 status 부분이다:
+``` yaml
+  status:
+    addresses:
+    - address: 192.168.49.2
+      type: InternalIP
+    - address: minikube
+      type: Hostname
+    allocatable:
+      cpu: "12"
+      ephemeral-storage: 263174212Ki
+      hugepages-2Mi: "0"
+      memory: 13034336Ki
+      pods: "110"
+    capacity:
+      cpu: "12"
+      ephemeral-storage: 263174212Ki
+      hugepages-2Mi: "0"
+      memory: 13034336Ki
+      pods: "110"
+    conditions:
+    - lastHeartbeatTime: "2023-02-15T13:51:10Z"
+      lastTransitionTime: "2022-08-12T13:20:29Z"
+      message: kubelet has sufficient memory available
+      reason: KubeletHasSufficientMemory
+      status: "False"
+      type: MemoryPressure
+    - lastHeartbeatTime: "2023-02-15T13:51:10Z"
+      lastTransitionTime: "2022-08-12T13:20:29Z"
+      message: kubelet has no disk pressure
+      reason: KubeletHasNoDiskPressure
+      status: "False"
+      type: DiskPressure
+    - lastHeartbeatTime: "2023-02-15T13:51:10Z"
+      lastTransitionTime: "2022-08-12T13:20:29Z"
+      message: kubelet has sufficient PID available
+      reason: KubeletHasSufficientPID
+      status: "False"
+      type: PIDPressure
+    - lastHeartbeatTime: "2023-02-15T13:51:10Z"
+      lastTransitionTime: "2022-08-12T13:20:48Z"
+      message: kubelet is posting ready status
+      reason: KubeletReady
+      status: "True"
+      type: Ready
+```
 
 ### Addresses
 이 필드는 cloud provider 또는 bare metal 설정에 따라 다르다.
@@ -93,7 +138,7 @@ kubectl describe node <insert-node-name-here>
 - InternalIP: 클러스터 내부에서 라우팅할 수 있는 no의 IP 주소
 
 ### Conditions
-conditions 필드는 running no의 상태를 설명한다. conditions는 다음과 같다:
+conditions 필드는 running no의 상태를 설명한다. conditions type의 종류는 다음과 같다:
 |Node Condition    |Description|
 |------------------|-----------|
 |Ready             |no가 po를 실행할 수 있는 상태인 경우 True, po를 실행할 수 없는 unhealthy 상태인 경우 False, node controller가 node-monitor-grace-period(기본 값 40s) 설정 값 동안 no의 상태를 알 수 없는 경우 Unknown|
@@ -118,9 +163,6 @@ k8s API에서 no의 condition은 no 리소스의 .status에 표시된다. 예를
   }
 ]
 ```
-
-
-
 ### Capacity and Allocatable
 no의 이용 가능한 리소스 정보를 제공한다: CPU, memory, no에 스케줄링 가능한 최대 po 개수
 
@@ -130,3 +172,18 @@ You may read more about capacity and allocatable resources while learning how to
 
 ### Info
 커널 버전, k8s 버전(kubelet, kube-proxy 버전), container runtime 상세 사항, no가 사용하는 OS와 같은 일반적인 정보를 제공한다. kubelet은 no로부터 이러한 정보를 수집하며 k8s API로 제공한다.
+
+# Heartbeats
+k8s no가 전송하는 heartbeat를 통해 클러스터가 사용 가능한 no를 식별할 수 있도록 도와주고 failure가 감지되면 이에 대한 조치를 취한다.
+
+no는 2가지 heartbeat 방식을 사용한다:
+
+- no의 .status 필드를 업데이트한다.
+- kube-node-lease ns의 lease object. 각 no에 대해 lease object를 갖는다.
+
+no의 .status를 업데이트하는 것에 비해 lease resource는 더 간단하다. heartbeat를 위해 lease를 사용하는 것은 큰 클러스터의 경우 성능에 영향을 줄여준다.
+
+kubelet은 no의 .status를 생성 및 업데이트, lease object를 업데이트해야 하는 책임이 있다.
+
+- kubelet은 상태가 변경되거나 설정 간격에 대한 업데이트가 없는 경우 no의 .status를 업데이트 한다. .status 업데이트에 대한 기본 간격은 5분이다(이는 unreachable no에 대한 기본 타임아웃 시간인 40초보다 훨씬 길다).
+- kubelet은 lease object 생성하고 10초 마다 업데이트(기본 값) 한다. lease에 대한 업데이트는 no의 .status 업데이트와 독립적으로 수행된다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
