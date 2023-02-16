@@ -1,7 +1,7 @@
 # Kubernetes
 Kubernetes 학습
 
-## 요약
+## 요약ㄴ
 - k8s의 worker node 구성 요소중 container 실행을 담당하는 kublet은 container로 실행할 수 없다.
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
   - namespace:
@@ -16,9 +16,11 @@ Kubernetes 학습
 - 이론적으로 container는 모든 리눅스 시스템에서 실행될 수 있지만 호스트의 커널을 사용하기 때문에 커널 버전에 영향을 받는다. 뿐만 아니라 특정 하드웨어 아키텍쳐용(x86, ARM 등)으로 만들어진 image는 해당 아키텍쳐에서만 실행될 수 있다.
 - kubectl은 k8s control plane의 구성 요소는 API server와 요청/응답을 통해 통신한다.
 - docker 기준 k8s는 po내 모든 container가 동일한 linux namespace를 공유하도록 docker를 설정한다. 파일 시스템의 경우 image에 저장되어 있어 기본적으로 완전히 분리된다.
-  - 동일한 namespace: 네트워크, uts
+  - 동일한 namespace: network, uts, ipc
   - 다른 namespace: uid, pid, mnt
 - po 매니페스트 중 spec.containers[\*].ports[\*].containerport는 container가 노출하는 포트 정보를 명시하기만 할 뿐 다른 기능은 없다. 이를 생략한다고 해서 포트를 통해 po에 연결할 수 있는 여부에 영향을 미치지 않는다.
+- po는 k8s에서 배포할 수 있는 가장 작은 단위로, 이미 실행 중인 po 내에 container를 배포할 수 없다. 물론 po에 포함된 container가 po 내에서 재시작 될 수 있다.
+- static po는 다른 po들과 다르게 해당 no의 kubelet이 직접 관리한다. 그리고 static po에 대한 object를 API server에 게시한다(API server를 통해 object를 변경하는 것은 불가능). 즉 static po가 특정 kubelet에 종속되어 있지만 API server를 통해 조회가 가능하다.
 - container 로그는 하루 단위, 10MB 크기 기준으로 롤링(rolling)된다.
 - annotation은 key-value으로 label과 유사하지만 식별 정보로 사용되지 않는다. 즉 label과 같이 selector 기능은 없다. annotation은 주로 해당 리소스에 대한 정보를 나타내는데 사용된다.
 - k8s namespace는 리소스 이름의 범위를 제공한다. 뿐만 아니라 리소스를 격리하는 것외에도 특정 사용자가 지정된 리소스에 접근할 수 있도록 허용하고, 개별 사용자가 사용할 수 있는 컴퓨팅 리소스를 제한하는 데에도 사용된다. 하지만 리소간 격리는 제공하지 않는다. 즉 서로 다른 namepsace에 존재하는 리소스더라도 통신할 수 있다. 네트워크 격리는 k8s와 함께 배포되는 네트워킹 솔루션에 따라 다르다.

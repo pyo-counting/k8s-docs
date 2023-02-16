@@ -13,7 +13,7 @@ docker와 비교했을 때 po는 공유 namespace, 공유 filesystem volume를 �
 보통 po는 직접 생성하지 않고 workload resource를 사용한다.
 
 ### Workload resources for managing pods
-보통 po는 싱글톤이더라도 직접 생성 및 관리하지 않는다. 대신 deploy, job 또는 po의 상태를 추적해야할 경우 sts를 사용해 생성 및 관리한다.
+보통 po는 싱글톤이더라도 직접 생성 및 관리하지 않는다. 대신 deploy, job 또는 po가 상태를 추적해야할 경우 sts를 사용해 생성 및 관리한다.
 
 po는 일반적으로 두 가지 방식으로 사용된다:
 
@@ -32,10 +32,16 @@ k8s 환경에서는 싱글톤 po라도 직접 생성할 일은 거의 없다. �
 
 **Note**: po 내 container를 재시작하는 것과 po를 재시작하는 것과 혼동하면 안된다 po는 프로세스가 아니며 container를 구동하기 위한 환경이다. po는 삭제되기 전까지 지속된다.
 
-### Pod OS
+po의 이름은 DNS subdomanin name 규칙을 따라야 한다.
 
 ### Pods and controllers
 여러 po 생성 및 관리를 위해 workload resource를 사용할 수 있다. resource의 controller는 po의 replication, roll out, 실패 상황에서의 치유를 처리한다. 예를 들어 no가 실패되면 controller가 해당 no의 po 동작이 멈춤을 인지하고 대체 po를 생성한다. 그리고 scheduler는 정상 no에 대체 po를 스케쥴링한다.
+
+아래는 1개 이상의 po를 관리하는 workload resource 예시다:
+
+- deploy
+- sts
+- ds
 
 ### Pod templates
 workload resource들의 controller는 po template으로부터 po을 생성하고 관리한다.
@@ -70,7 +76,7 @@ container의 hostname은 po의 이름으로 설정된다.
 ## Privileged mode for containers
 리눅스 환경에서 container에 privileged 옵션을 사용해 privileged mode를 사용할 수 있다.
 
-container runtime에서 privileged container 개념을 지원해야 한다.
+**Note**:container runtime에서 privileged container 개념을 지원해야 한다.
 
 ## Static Pods
 static po는 API server의 관찰 없이 특정 노드의 kubelet daemon에 의해 관리된다. deploy와 같이 대부분의 po는 control plane에 의해 관리되는 반면 static po는 kubelet에 직접 관리한다.

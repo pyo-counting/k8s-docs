@@ -27,5 +27,43 @@ PostStart 또는 PreStop hook이 실패하면 container를 kill한다.
 사용자는 hook handler를 가능한 한 간단하게 만들어야 한다. 그러나 container를 종료하기 전에 상태를 저정할 때와 가티 긴 명령어 실행이 있을 수도 있다.
 
 ### Hook delivery guarantees
+hook에 대한 전달은 최소 1번이어야 한다. 즉, PostStart, PreStop과 같은 특정 이벤트에 대해 hook은 여러번 호출될 수도 있다. 이를 올바르게 처리하는 것은 hook 구현에 달려있다.
+
+일반적으로 한 번의 전달이 이루어진다. 예를 들어 HTTP hook handler가 다운되어 트래픽을 수신할 수 없는 경우 재전송 시도는 없다. 하지만 때때로 이중 전달이 발생할 수도 있다. 예를 들어 hook을 보내는 도중 kubelet이 재시작되면 해당 kubelet이 hook을 재전송할 수도 있다.
 
 ### Debugging Hook handlers
+hook handler의 로그는 po event에 노출되지 않는다. handler가 어떤 이유로 실패한다면 event를 브로드캐스트한다. PostStart의 경우 FailedPostStartHook event, PreStop의 경우 FailedPreStopHook event이다. 실패한 FailedPostStartHook event를 직접 생성하기 위해 아래 po에 대한 manifest 중 postStart.exec.command를 "badcommand"로 변경해 적용한다:
+
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-demo
+spec:
+  containers:
+  - name: lifecycle-demo-container
+    image: nginx
+    lifecycle:
+      postStart:
+        exec:
+          command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+      preStop:
+        exec:
+          command: ["/bin/sh","-c","nginx -s quit; while killall -0 nginx; do sleep 1; done"]
+```
+
+아래는 위 po manifest를 사용했을 때 출력되는 event 내용이다:
+```
+Events:
+  Type     Reason               Age              From               Message
+  ----     ------               ----             ----               -------
+  Normal   Scheduled            7s               default-scheduler  Successfully assigned default/lifecycle-demo to ip-XXX-XXX-XX-XX.us-east-2...
+  Normal   Pulled               6s               kubelet            Successfully pulled image "nginx" in 229.604315ms
+  Normal   Pulling              4s (x2 over 6s)  kubelet            Pulling image "nginx"
+  Normal   Created              4s (x2 over 5s)  kubelet            Created container lifecycle-demo-container
+  Normal   Started              4s (x2 over 5s)  kubelet            Started container lifecycle-demo-container
+  Warning  FailedPostStartHook  4s (x2 over 5s)  kubelet            Exec lifecycle hook ([badcommand]) for Container "lifecycle-demo-container" in Pod "lifecycle-demo_default(30229739-9651-4e5a-9a32-a8f1688862db)" failed - error: command 'badcommand' exited with 126: , message: "OCI runtime exec failed: exec failed: container_linux.go:380: starting container process caused: exec: \"badcommand\": executable file not found in $PATH: unknown\r\n"
+  Normal   Killing              4s (x2 over 5s)  kubelet            FailedPostStartHook
+  Normal   Pulled               4s               kubelet            Successfully pulled image "nginx" in 215.66395ms
+  Warning  BackOff              2s (x2 over 3s)  kubelet            Back-off restarting failed container
+```

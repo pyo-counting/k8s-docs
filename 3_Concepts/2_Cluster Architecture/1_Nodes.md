@@ -173,7 +173,7 @@ You may read more about capacity and allocatable resources while learning how to
 ### Info
 커널 버전, k8s 버전(kubelet, kube-proxy 버전), container runtime 상세 사항, no가 사용하는 OS와 같은 일반적인 정보를 제공한다. kubelet은 no로부터 이러한 정보를 수집하며 k8s API로 제공한다.
 
-# Heartbeats
+## Heartbeats
 k8s no가 전송하는 heartbeat를 통해 클러스터가 사용 가능한 no를 식별할 수 있도록 도와주고 failure가 감지되면 이에 대한 조치를 취한다.
 
 no는 2가지 heartbeat 방식을 사용한다:
@@ -187,3 +187,30 @@ kubelet은 no의 .status를 생성 및 업데이트, lease object를 업데이�
 
 - kubelet은 상태가 변경되거나 설정 간격에 대한 업데이트가 없는 경우 no의 .status를 업데이트 한다. .status 업데이트에 대한 기본 간격은 5분이다(이는 unreachable no에 대한 기본 타임아웃 시간인 40초보다 훨씬 길다).
 - kubelet은 lease object 생성하고 10초 마다 업데이트(기본 값) 한다. lease에 대한 업데이트는 no의 .status 업데이트와 독립적으로 수행된다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
+
+## Node controller
+node controller는 no의 다양한 측면을 관리하는 k8s control plane 구성요소다.
+
+node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
+
+1. no가 등록될 때 CIDR 블락을 할당(CIDR 할당이 활성화 된 경우)한다.
+
+2. 두 번째는 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud prider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
+
+3. no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다:
+    - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 unknown으로 변경한다.
+    - no가 unreachable 상태로 남아있는 경우, unreachable no의 po를 위해 API-initiated eviction API를 트리거한다. 기본적으로 node controller는 Unknown 상태가된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
+
+기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 --node-monitor-period flag를 사용해 설정할 수 있다.
+
+### Rate limits on eviction
+
+## Resource capacity tracking
+
+## Node topology
+
+## Graceful node shutdown
+
+## Non Graceful node shutdown
+
+### Pod Priority based graceful node shutdown
