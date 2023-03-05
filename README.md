@@ -1,7 +1,7 @@
 # Kubernetes
 Kubernetes 학습
 
-## 요약ㄴ
+## 요약
 - k8s의 worker node 구성 요소중 container 실행을 담당하는 kublet은 container로 실행할 수 없다.
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
   - namespace:
@@ -28,7 +28,7 @@ Kubernetes 학습
 - k8s에서 추가하는 annotation, label을 식별하기 위해 kubernetes.io/, k8s.io/ label을 예약했다. k8가 자동으로 붙이는 label
   - ns
     - kubernetes.io/metadata.name: NamespaceDefaultLabelName feature gate가 활성화됐을 경우 추가되며 ns의 이름을 갖는다.
-- owner reference는 k8s resource 간의 종속 관계를 나타낸다. k8s는 object 삭제 시 label이 아닌 owner reference를 사용해 종속 관계에 대한 cascading deletion을 수행한다. 
+- owner reference는 k8s resource 간의 종속 관계를 나타낸다. k8s는 object 삭제 시 label이 아닌 owner reference를 사용해 종속 관계에 대한 cascading deletion(background 또는 foreground)을 수행한다. 
 - container의 생명주기와 관련해 hook을 제공하며, handler를 구현함으로써 hook에 대한 이벤트를 처리할 수 있다.
   - PostStart: container와 비동기적으로 실행된다. 하지만 PreStart가 완료되지 않으면 container는 running state에 도달할 수 없다.
   - PreStop: container에 TERM 시그널이 전송되기 전에 실행된다. po의 terminationGracePeriodSeconds 설정보다 PreStop, TERM signal 전송 및 처리 시간이 더 오래걸이면 container는 비정상 종료 될 수도 있다.
