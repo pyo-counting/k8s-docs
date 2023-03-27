@@ -185,7 +185,7 @@ no의 .status를 업데이트하는 것에 비해 lease resource는 더 간단�
 
 kubelet은 no의 .status를 생성 및 업데이트, lease object를 업데이트해야 하는 책임이 있다.
 
-- kubelet은 상태가 변경되거나 설정 간격에 대한 업데이트가 없는 경우 no의 .status를 업데이트 한다. .status 업데이트에 대한 기본 간격은 5분이다(이는 unreachable no에 대한 기본 타임아웃 시간인 40초보다 훨씬 길다).
+- kubelet은 상태가 변경되거나 설정 간격 동안 업데이트가 없는 경우 no의 .status를 업데이트 한다. .status 업데이트에 대한 기본 간격은 5분이다(이는 unreachable no에 대한 기본 타임아웃 시간인 40초보다 훨씬 길다).
 - kubelet은 lease object 생성하고 10초 마다 업데이트(기본 값) 한다. lease에 대한 업데이트는 no의 .status 업데이트와 독립적으로 수행된다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
 ## Node controller
