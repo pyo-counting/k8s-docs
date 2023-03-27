@@ -36,6 +36,8 @@ Kubernetes 학습
 - container의 생명주기와 관련해 hook을 제공하며, handler를 구현함으로써 hook에 대한 이벤트를 처리할 수 있다.
   - PostStart: container와 비동기적으로 실행된다. 하지만 PreStart가 완료되지 않으면 container는 running state에 도달할 수 없다.
   - PreStop: container에 TERM 시그널이 전송되기 전에 실행된다. po의 terminationGracePeriodSeconds 설정보다 PreStop, TERM signal 전송 및 처리 시간이 더 오래걸이면 container는 비정상 종료 될 수도 있다.
+- k8s no resource는 해당 호스트의 image 목록도 저장한다. 이는 k describe no 명령어를 사용해 조회되지 않는 정보다.
+- 
 
 ## 명령어
 - kubectl get [RESOURCE] --field-selector

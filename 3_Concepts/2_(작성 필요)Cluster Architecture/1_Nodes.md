@@ -83,7 +83,9 @@ no의 status 및 기타 정보를 조회하기 위해 kubectl 명령어를 사�
 kubectl describe node <insert-node-name-here>
 ```
 
-출력의 각 상세 정보는 아래에서 설명한다. 아래는 kubectl get no -o yaml 명령어 출력 결과 중 status 부분이다:
+출력의 각 상세 정보는 아래에서 설명한다. 아래는 kubectl get no -o yaml 명령어 출력 결과 중 status 부분이다.
+
+아래는 minikube에서의 no .status 정보다:
 ``` yaml
   status:
     addresses:
@@ -128,6 +130,81 @@ kubectl describe node <insert-node-name-here>
       reason: KubeletReady
       status: "True"
       type: Ready
+```
+
+아래는 EKS에서의 no .status 정보다:
+``` yaml
+status:
+  addresses:
+  - address: 172.31.100.75
+    type: InternalIP
+  - address: ip-172-31-100-75.ap-northeast-2.compute.internal
+    type: Hostname
+  - address: ip-172-31-100-75.ap-northeast-2.compute.internal
+    type: InternalDNS
+  allocatable:
+    attachable-volumes-aws-ebs: "39"
+    cpu: 1930m
+    ephemeral-storage: "47233297124"
+    hugepages-1Gi: "0"
+    hugepages-2Mi: "0"
+    memory: 7313084Ki
+    pods: "17"
+  capacity:
+    attachable-volumes-aws-ebs: "39"
+    cpu: "2"
+    ephemeral-storage: 52416492Ki
+    hugepages-1Gi: "0"
+    hugepages-2Mi: "0"
+    memory: 8003260Ki
+    pods: "17"
+  conditions:
+  - lastHeartbeatTime: "2023-03-27T01:40:54Z"
+    lastTransitionTime: "2023-03-19T08:52:38Z"
+    message: kubelet has sufficient memory available
+    reason: KubeletHasSufficientMemory
+    status: "False"
+    type: MemoryPressure
+  - lastHeartbeatTime: "2023-03-27T01:40:54Z"
+    lastTransitionTime: "2023-03-19T08:52:38Z"
+    message: kubelet has no disk pressure
+    reason: KubeletHasNoDiskPressure
+    status: "False"
+    type: DiskPressure
+  - lastHeartbeatTime: "2023-03-27T01:40:54Z"
+    lastTransitionTime: "2023-03-19T08:52:38Z"
+    message: kubelet has sufficient PID available
+    reason: KubeletHasSufficientPID
+    status: "False"
+    type: PIDPressure
+  - lastHeartbeatTime: "2023-03-27T01:40:54Z"
+    lastTransitionTime: "2023-03-19T08:53:00Z"
+    message: kubelet is posting ready status
+    reason: KubeletReady
+    status: "True"
+    type: Ready
+  daemonEndpoints:
+    kubeletEndpoint:
+      Port: 10250
+  images:
+  - names:
+    - 602401143452.dkr.ecr-fips.us-east-1.amazonaws.com/eks/pause:3.5
+    - 602401143452.dkr.ecr-fips.us-east-2.amazonaws.com/eks/pause:3.5
+    - 602401143452.dkr.ecr-fips.us-west-1.amazonaws.com/eks/pause:3.5
+    - 602401143452.dkr.ecr-fips.us-west-2.amazonaws.com/eks/pause:3.5
+    - 602401143452.dkr.ecr.af-south-1.amazonaws.com/eks/pause:3.5
+    sizeBytes: 298689
+  nodeInfo:
+    architecture: amd64
+    bootID: 8d49e092-92ce-4b55-937e-63fd600ef01e
+    containerRuntimeVersion: containerd://1.6.6
+    kernelVersion: 5.4.228-131.415.amzn2.x86_64
+    kubeProxyVersion: v1.24.9-eks-49d8fe8
+    kubeletVersion: v1.24.9-eks-49d8fe8
+    machineID: ec2f0632a9ca796563d0b6933fe8afbc
+    operatingSystem: linux
+    osImage: Amazon Linux 2
+    systemUUID: ec2f0632-a9ca-7965-63d0-b6933fe8afbc
 ```
 
 ### Addresses
