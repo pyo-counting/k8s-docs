@@ -24,14 +24,14 @@ etcd에 대한 자세한 정보는, 공식 문서를 참고한다.
 ### kube-scheduler
 no가 배정되지 않은 새로 생성된 po를 감지(watch)하고 실행할 no를 선택하는 conrol plane 구성요소다.
 
-스케줄링 결정을 위해서 고려되는 요소에는 리소스에 대한 개별 또는 총 요구사항, 하드웨어.소프트웨어.정책 제약, affinity/anti-affinity, data locality, workload간 간섭, deadline 등을 포함한다.
+스케줄링 결정을 위해서 고려되는 요소에는 리소스에 대한 개별 또는 총 요구사항, 하드웨어/소프트웨어/정책 제약, affinity/anti-affinity, data locality, workload간 간섭, deadline 등을 포함한다.
 
 ### kube-controller-manager
 컨트롤러 프로세스를 실행하는 control plane 구성요소다.
 
 논리적으로 각 컨트롤러는 분리된 프로세스이지만 복잡성을 낮추기 위해 모두 단일 바이너리로 컴파일되고 단일 프로세스 내에서 실행된다.
 
-이들 컨트롤러는 다음을 포함한다:
+컨트롤러의 예시는 다음과 같다:
 
 - node controller: no가 다운되었을 때 통지와 대응에 관한 책임을 가진다.
 - job controller: job object를 감시하며 해당 작업을 수행하기 위한 po를 생성한다.
@@ -62,7 +62,7 @@ kube-proxy는 클러스터의 각 no에서 실행되는 네트워크 프록시�
 
 kube-proxy는 no의 네트워크 규칙을 유지 관리한다. 이 네트워크 규칙이 내부 네트워크 세션이나 클러스터 바깥에서 po로 네트워크 통신을 할 수 있도록 해준다.
 
-kube-proxy는 운영 체제에 가용한 패킷 필터링 계층이 있는 경우 이를 사용한다. 그렇지 않으면, kube-proxy는 트래픽 자체를 포워드(forward)한다.
+kube-proxy는 OS에 이용 가능한 패킷 필터링 계층이 있는 경우 이를 사용한다. 그렇지 않으면, kube-proxy는 트래픽 자체를 포워드(forward)한다.
 
 ### Container runtime
 container runtime은 container 실행을 담당하는 소프트웨어이다.
@@ -75,7 +75,7 @@ addon은 k8s resource(ds, deploy 등)를 이용하여 클러스터 기능을 구
 사용 가능한 전체 확장 addon 리스트는 [Addons](https://kubernetes.io/docs/concepts/cluster-administration/addons/)을 참조한다.
 
 ### DNS
-다른 addon들이 절대적으로 요구되지 않지만 대부분의 경우 k8s 클러스터는 DNS를 갖추어야만 한다.
+다른 addon들은 절대적으로 요구되지 않지만 대부분의 경우 k8s 클러스터는 DNS를 갖추어야만 한다.
 
 클러스터 DNS는 k8s svc를 위해 DNS 레코드를 제공해주는 DNS 서버다.
 
