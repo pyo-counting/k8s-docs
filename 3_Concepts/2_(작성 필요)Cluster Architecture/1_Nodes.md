@@ -20,7 +20,7 @@ no가 등록된 후 control plane은 새로운 no object가 유효한지 확인�
 }
 ```
 
-k8s는 내부적으로 no object를 생성한다. Kubernetes checks that a kubelet has registered to the API server that matches the metadata.name field of the Node. 만약 no가 정상이면(즉, 필요한 모드 서비스가 실행 중) po를 실행할 자격이 있다. 정상이 아니라면 정상이 되기 전까지 해당 no는 클러스터와 관련된 행동에서 제외된다.
+k8s는 내부적으로 no object를 생성한다. Kubernetes checks that a kubelet has registered to the API server that matches the metadata.name field of the Node. 만약 no가 정상이면(즉, 필요한 모든 서비스가 실행 중) po를 실행할 자격이 있다. 정상이 아니라면 정상이 되기 전까지 해당 no는 클러스터와 관련된 행동에서 제외된다.
 
 **Note**: k8s는 유효하지 않은 no의 object를 보존하면서 정상이 될때까지 게속 체크한다. health check를 멈추기 위해 no object를 직접 또는 controller가 삭제해야 한다.
 
@@ -224,7 +224,7 @@ conditions 필드는 running no의 상태를 설명한다. conditions type의 �
 |PIDPressure       |프로세스에 대한 pressure이 있는 경우(no에 너무 많은 프로세스가 있는 경우) True, 반대의 경우 False|
 |NetworkUnavailable|no의 네트워크가 옳바르게 설정되지 않은 경우 True, 반대의 경우 False|
 
-**Note**: kubelet 명령어를 사용해 cordoned no의 상세 저보를 조회하는 경우, Condition 필드에 SchedulingDisable를 포함한다. SchedulingDisable은 k8s API 서버내 Condition이 아니다. 대신 cordoned no는 spec에 Unschedulable로 표시된다.
+**Note**: kubelet 명령어를 사용해 cordoned no의 상세 정보를 조회하는 경우, Condition 필드에 SchedulingDisable를 포함한다. SchedulingDisable은 k8s API 서버내 Condition이 아니다. 대신 cordoned no는 spec에 Unschedulable로 표시된다.
 
 k8s API에서 no의 condition은 no 리소스의 .status에 표시된다. 예를 들어 아래 JSON 구조는 정상적인 no를 나타낸다:
 
@@ -248,7 +248,7 @@ capacity 블락 내 필드는 no가 가진 총 resource의 크기를 나타낸�
 You may read more about capacity and allocatable resources while learning how to reserve compute resources on a Node.
 
 ### Info
-커널 버전, k8s 버전(kubelet, kube-proxy 버전), container runtime 상세 사항, no가 사용하는 OS와 같은 일반적인 정보를 제공한다. kubelet은 no로부터 이러한 정보를 수집하며 k8s API로 제공한다.
+.status.nodeInfo 필드는 커널 버전, k8s 버전(kubelet, kube-proxy 버전), container runtime 상세 사항, no가 사용하는 OS와 같은 일반적인 정보를 제공한다. kubelet은 no로부터 이러한 정보를 수집하며 k8s API로 제공한다.
 
 ## Heartbeats
 k8s no가 전송하는 heartbeat를 통해 클러스터가 사용 가능한 no를 식별할 수 있도록 도와주고 failure가 감지되면 이에 대한 조치를 취한다.
@@ -265,15 +265,37 @@ kubelet은 no의 .status를 생성 및 업데이트, lease object를 업데이�
 - kubelet은 상태가 변경되거나 설정 간격 동안 업데이트가 없는 경우 no의 .status를 업데이트 한다. .status 업데이트에 대한 기본 간격은 5분이다(이는 unreachable no에 대한 기본 타임아웃 시간인 40초보다 훨씬 길다).
 - kubelet은 lease object 생성하고 10초 마다 업데이트(기본 값) 한다. lease에 대한 업데이트는 no의 .status 업데이트와 독립적으로 수행된다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
+아래는 kubectl get -n kube-node-lease lease/${LEASE_NAME} -o yaml 명령어 출력 결과다:
+
+``` yaml
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  creationTimestamp: "2023-03-19T08:52:42Z"
+  name: ip-172-31-100-75.ap-northeast-2.compute.internal
+  namespace: kube-node-lease
+  ownerReferences:
+  - apiVersion: v1
+    kind: Node
+    name: ip-172-31-100-75.ap-northeast-2.compute.internal
+    uid: aadf774b-902a-45bf-ba09-f24b4024bbcb
+  resourceVersion: "4442214"
+  uid: 3f254bdd-c2dc-44a4-9fd3-1461316b9055
+spec:
+  holderIdentity: ip-172-31-100-75.ap-northeast-2.compute.internal
+  leaseDurationSeconds: 40
+  renewTime: "2023-03-27T02:00:40.965759Z"
+```
+
+k8s lease 리소스는 no 리소스에 종속되었다.
+
 ## Node controller
 node controller는 no의 다양한 측면을 관리하는 k8s control plane 구성요소다.
 
 node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 
 1. no가 등록될 때 CIDR 블락을 할당(CIDR 할당이 활성화 된 경우)한다.
-
 2. 두 번째는 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud prider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
-
 3. no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다:
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 unknown으로 변경한다.
     - no가 unreachable 상태로 남아있는 경우, unreachable no의 po를 위해 API-initiated eviction API를 트리거한다. 기본적으로 node controller는 Unknown 상태가된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
@@ -283,11 +305,43 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 ### Rate limits on eviction
 
 ## Resource capacity tracking
+no object는 node의 리소스 용량에 대한 정보를 추적한다: 예를 들어 이용 가능한 메모리와 CPU 정보. self register no는 등록 시 용량에 대한 정보를 제공한다. 직접 no를 추가할 경우 용량 정보를 설정해야 한다.
+
+k8s scheduler는 no에 실행 중이s po에 대한 충분한 리소스가 있음을 보장한다. scheduler는 no에 존재하는 container의 resource request에 대한 총합이 no의 용량보다 크지 않음을 확인한다. request의 총합은 kubelet에 의해 관리되는 모든 container를 포함하며 container runtime을 통해 직접 실행된 container와 kubelet의 제어외의 프로세스는 제외한다.
+
+**Note**: non-po 프로세스에 대한 자원을 미리 예약하기 원할 경우 [reserve resources for system daemons](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#system-reserved) 페이지를 참고한다.
 
 ## Node topology
+TopologyManager feature gate를 활성화한 경우 kubelet은 리소스 할당 결정을 할 때 topology 힌트를 이용할 수 있다. 관련해 [Control Topology Management Policies on a Node](https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/) 페이지를 참고한다.
 
 ## Graceful node shutdown
+kubelet은 node system의 shutdown 감지를 시도하고 실행 중인 po를 종료한다. systemd inhibitor lock을 이용해 주어진 시간 동안 node의 종료를 지연시키기 때문에 systemd에 의존한다.
+
+kubelet은 node shutdown 동안 일반적인 [pod termination process](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination)를 보장한다.
+
+graceful node shutdown은 GracefulNodeShutdown feature gate(k8s 1.21부터 기본 활성화)에 의해 제어된다.
+
+기본적으로 shutdownGracePeriod, shutdownGracePeriodCriticalPods 옵션은 0 값으로 설정되어 gracefule node shutdown 기능을 활성화시키지 않는다. 이 기능을 활성화하기 위해 kubelet에 해당 옵션이 0이 아닌 값으로 변경되어야 한다.
+
+graceful shutdown 동안, kubelet은 2개의 phase를 통해 po를 종료한다:
+
+
+graceful node shutdown 기능은 2개의 KubeletConfiguration 옵션을 통해 설정된다:
+
+- shutdownGracePeriod: node가 shutdown을 지연할 총 시간을 나타낸다. 이는 regular, critical po에 대한 총 po 종료 시간을 나타낸다.
+- shtdownGracePeriodCriticalPods: critical pod의 종료에 사용될 시간을 타나낸다. 해당 옵션은 shutdownGracePeriod보다 작아야 한다.
+
+예를 들어, shutdownGracePeriod=30, shtdownGracePeriodCriticalPods=10일 경우, kubelet은 node shutdown을 30초 지연한다. shutdown 동안 20초 (30 - 10)는 normal po를 종료하는 시간으로 예약되며, 이 후 10초는 critical po를 종료하는 시간으로 예약된다.
+
+**Note**: graceful node shutdown 동안 축출된 po는 shutdown으로 마킹된다. kubectl get po 명령어를 사용해 축축된 po가 Terminated 상태임을 확인할 수 있다. 그리고 kubectl describe po 명령어를 사용해 아래 내용을 확인할 수 있다.
+
+```
+Reason:         Terminated
+Message:        Pod was terminated in response to imminent node shutdown.
+```
 
 ## Non Graceful node shutdown
 
 ### Pod Priority based graceful node shutdown
+
+## Swap memory management
