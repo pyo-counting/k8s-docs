@@ -6,7 +6,7 @@ aggregation layer를 구성하면 core k8s API의 일부가 아닌 추가 API를
 **Caution**: 다른 클라이언트 타입을 위한 CA를 재사용하는 것은 클러스터 기능에 부정적인 영향을 미칠 수도 있다.
 
 ## Authentication Flow
-crd와 다르게 aggregation API는 k8s 표준 apiserver에 추가적으로 extension apiserver라는 다른 서버를 포함한다. k8s apiserver는 extension apiserver와 통신할 수 있어야하며 반대도 마찬가지다. 이러한 통신에 대한 보안을 위해 k8s apiserver는 X509 인증서를 사용해 extension apiserver에 대해 인증한다.
+crd와 다르게 aggregation API는 k8s 표준 apiserver에 추가적으로 사용자의 extension apiserver를 포함한다. k8s apiserver는 extension apiserver와 통신할 수 있어야하며 반대도 마찬가지다. 이러한 통신에 대한 보안을 위해 k8s apiserver는 X509 인증서를 사용해 extension apiserver에 대해 인증한다.
 
 아래는 authentication, authorization 플로우에 대해 설명한다.
 
@@ -106,6 +106,8 @@ SubjectAccessReview가 정상 요청되면 extension apiserver는 프록시된 �
 - `--proxy-client-cert-file`: \<path to aggregator proxy cert\>
 - `--proxy-client-key-file`: \<path to aggregator proxy key\>
 
+> EKS 1.24 버전 API sever 로그 확인 시 기본적으로 위 flag가 설정된 것으로 확인된다. 
+
 ### CA Reusage and Conflicts
 
 ### Register APIService objects
@@ -128,7 +130,7 @@ spec:
 ```
 
 #### Contacting the extension apiserver
-k8s apiserver가 요청을 extension apiserver로 프록시하기 위해 접근 방법을 알아야 한다.
+k8s apiserver가 요청을 extension apiserver로 프록시하기 위해서는 접근 방법을 알아야 한다.
 
 `.spec.service` 필드는 extension apiserver에 대한 참조다. namespace, name은 필수 항목이다. 포트는 옵션이며 기본 값은 443이다.
 
