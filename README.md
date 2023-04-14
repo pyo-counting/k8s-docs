@@ -38,13 +38,12 @@ Kubernetes 학습
   - PostStart: container와 비동기적으로 실행된다. 하지만 PreStart가 완료되지 않으면 container는 running state에 도달할 수 없다.
   - PreStop: container에 TERM 시그널이 전송되기 전에 실행된다. po의 terminationGracePeriodSeconds 설정보다 PreStop, TERM signal 전송 및 처리 시간이 더 오래걸이면 container는 비정상 종료 될 수도 있다.
 - k8s no resource는 해당 호스트의 image 목록도 저장한다. 이는 k describe no 명령어를 사용해 조회되지 않는 정보다.
-- 
 
 ## 명령어
 - kubectl get [RESOURCE] --field-selector
-- 
 
 ## 체크리스트
 - po내 ports[*].hostPort에 사용된 port는 호스트 netstat 조회 시 보이지 않음. 하지만 type=ClusterIP svc로 expose 시 netstat에 조회됨
 - svc externalIPs 설정 시, no의 IP로 svc 접근 가능
 - local pv의 경우, pv 생성 시 디렉토리가 호스트 내 존재해야 함. 자동 생성되지 않음 확인
+- hpa의 cpu 사용률 계산 시 po를 선택하는 방법 알아보기
