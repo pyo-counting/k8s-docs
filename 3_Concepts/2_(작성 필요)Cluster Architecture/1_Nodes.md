@@ -243,7 +243,7 @@ k8s API에서 no의 condition은 no 리소스의 .status에 표시된다. 예를
 ### Capacity and Allocatable
 no의 이용 가능한 리소스 정보를 제공한다: CPU, memory, no에 스케줄링 가능한 최대 po 개수
 
-capacity 블락 내 필드는 no가 가진 총 resource의 크기를 나타낸다. available block은 일반 po에서 사용할 수 있는 no의 리소스 크기를 나타낸다.
+capacity 블락 내 필드는 no가 가진 총 resource의 크기를 나타낸다. allocatable block은 일반 po에서 사용할 수 있는 no의 리소스 크기를 나타낸다.
 
 You may read more about capacity and allocatable resources while learning how to reserve compute resources on a Node.
 
@@ -295,7 +295,7 @@ node controller는 no의 다양한 측면을 관리하는 k8s control plane 구�
 node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 
 1. no가 등록될 때 CIDR 블락을 할당(CIDR 할당이 활성화 된 경우)한다.
-2. 두 번째는 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud prider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
+2. 두 번째는 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
 3. no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다:
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 unknown으로 변경한다.
     - no가 unreachable 상태로 남아있는 경우, unreachable no의 po를 위해 API-initiated eviction API를 트리거한다. 기본적으로 node controller는 Unknown 상태가된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
@@ -303,11 +303,18 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 --node-monitor-period flag를 사용해 설정할 수 있다.
 
 ### Rate limits on eviction
+대부분의 경우 node controller는 초당 eviction 비율을 --node-eviction-rate(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.
+
+availability zone의 no가 unhealthy 상태가 되면 no eviction 동작이 변경된다. node controller는 동시에 availability zone에서 unhealthy 상태인 no의 비율(ready condition이 Unknown 또는 False)을 확인한다:
+
+- unhealthy no의 비율이 적어도 --unhealthy-zone-threshold(기본값 0.55)면 eviction rate가 감소한다.
+- 클러스터의 규모가 작은 경우(즉, --large-cluster-size-threshold(기본값 50) 이하), eviction이 중지된다.
+- 그렇지 않으면 eviction 비율이 --secondary-node-eviction-rate(기본값 0..01)로 줄어든다.
 
 ## Resource capacity tracking
 no object는 node의 리소스 용량에 대한 정보를 추적한다: 예를 들어 이용 가능한 메모리와 CPU 정보. self register no는 등록 시 용량에 대한 정보를 제공한다. 직접 no를 추가할 경우 용량 정보를 설정해야 한다.
 
-k8s scheduler는 no에 실행 중이s po에 대한 충분한 리소스가 있음을 보장한다. scheduler는 no에 존재하는 container의 resource request에 대한 총합이 no의 용량보다 크지 않음을 확인한다. request의 총합은 kubelet에 의해 관리되는 모든 container를 포함하며 container runtime을 통해 직접 실행된 container와 kubelet의 제어외의 프로세스는 제외한다.
+k8s scheduler는 no에 실행 중인 po에 대한 충분한 리소스가 있음을 보장한다. scheduler는 no에 존재하는 container의 resource request에 대한 총합이 no의 용량보다 크지 않음을 확인한다. request의 총합은 kubelet에 의해 관리되는 모든 container를 포함하며 container runtime을 통해 직접 실행된 container와 kubelet의 제어외의 프로세스는 제외한다.
 
 **Note**: non-po 프로세스에 대한 자원을 미리 예약하기 원할 경우 [reserve resources for system daemons](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#system-reserved) 페이지를 참고한다.
 
@@ -340,8 +347,8 @@ Reason:         Terminated
 Message:        Pod was terminated in response to imminent node shutdown.
 ```
 
-## Non Graceful node shutdown
-
 ### Pod Priority based graceful node shutdown
+
+## Non Graceful node shutdown
 
 ## Swap memory management

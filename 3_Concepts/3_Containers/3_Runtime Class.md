@@ -54,6 +54,11 @@ kubelet은 명시된 RuntimeClass를 사용해 po를 실행한다. 만약 명시
 dockershim을 사용하는 경우 RuntimeClass는 runtime handler를 docker로 고정한다. dockershim은 사용자 정의 runtime handler를 지원하지 않는다.
 
 #### containerd
+containerd의 설정 파일인 /etc/containerd/config.toml을 통해 runtime handler가 설정된다. runtime selection 내에 유요한 handler가 설정된다:
+
+```
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.${HANDLER_NAME}]
+```
 
 #### CRI-O
 
