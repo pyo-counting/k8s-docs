@@ -53,7 +53,7 @@ status:
 volume은 po와 동일한 라이프타임을 갖는다.
 
 ## Pod phase
-po의 status 필드는 phase 필드를 갖는 PodStatus object다.
+po의 phase는 .status.phase 필드(PodStatus object)를 통해 정의된다.
 
 po의 phase는 라이프사이클 중 어떤 상태에 있는지에 대한 간단한 요약이다. phase는 container 또는 po의 관측 정보에 대한 포괄적인 상태를 표현하도록 의도되지는 않았다.
 
@@ -74,7 +74,7 @@ phase에 가능한 값은 다음과 같다.
 no가 죽거나 cluster에서 연결이 종료되면, k8s는 손실된 no의 모든 po phase를 Failed로 설정하는 정책을 적용한다.
 
 ## Container states
-po의 phase 뿐만 아니라 k8s는 po 내부의 각 container state(`.state.containerStatuses.state`)도 추적한다. container lifecycle hook을 사용하면 container lifecycle 중 특정 지점에서 실행할 event를 트리거할 수 있다.
+po의 phase 뿐만 아니라 k8s는 po 내부의 각 container state(`.state.containerStatuses[*].state`)도 추적한다. container lifecycle hook을 사용하면 container lifecycle 중 특정 지점에서 실행할 event를 트리거할 수 있다.
 
 container는 세 가지 state를 갖는다.
 
@@ -88,7 +88,7 @@ po의 spec에는 restartPolicy 필드가 있다. Always, OnFailure, Never 값을
 restartPolicy는 po 내 모든 container에 적용된다. container가 종료된 후 exponential back-off 지연(10s, 20s, 40s, ...최대 5분)을 갖고 재시작된다. container가 실행된 후 10분 간 문제가 없으면 kubelet은 container에 대한 restart backoff timer를 초기화한다.
 
 ### Pod conditions
-po는 PodStatus 오브젝트를 가지며 po의 통과 여부를 나타내는 PodConditions 배열을 가진다.
+po는 PodStatus 오브젝트를 가지며 po의 통과 여부를 나타내는 .status.conditions[*] 필드(PodConditions 배열)를 가진다.
 
 - PodScheduled: po가 no에 스케줄되었다.
 - ContainersReady: po의 모든 container가 준비되었다.
@@ -105,9 +105,31 @@ po는 PodStatus 오브젝트를 가지며 po의 통과 여부를 나타내는 Po
 |message|condition 마지막 변경에 대한 human-readable 이유|
 
 ### Pod readiness
-애플리케이션을 위한 Pod readiness를 PodStatus에 추가할 수 있다. 이를 사용하기 위해 kubelet이 po readiness를 평가하기 위한 추가 condition들을 po의 spec 내 readinessGates 필드에 추가 할 수 있다.
+애플리케이션을 위한 Pod readiness를 PodStatus에 추가할 수 있다. 이를 사용하기 위해 kubelet이 po readiness를 평가하기 위한 추가 condition들을 po의 .spec.readinessGates 필드에 추가 할 수 있다.
 
-Readiness gates are determined by the current state of status.condition fields for the Pod. If Kubernetes cannot find such a condition in the status.conditions field of a Pod, the status of the condition is defaulted to "False".
+Readiness gates are determined by the current state of .status.condition fields for the Pod. If Kubernetes cannot find such a condition in the status.conditions field of a Pod, the status of the condition is defaulted to "False".
+
+``` yaml
+kind: Pod
+...
+spec:
+  readinessGates:
+    - conditionType: "www.example.com/feature-1"
+status:
+  conditions:
+    - type: Ready                              # a built in PodCondition
+      status: "False"
+      lastProbeTime: null
+      lastTransitionTime: 2018-01-01T00:00:00Z
+    - type: "www.example.com/feature-1"        # an extra PodCondition
+      status: "False"
+      lastProbeTime: null
+      lastTransitionTime: 2018-01-01T00:00:00Z
+  containerStatuses:
+    - containerID: docker://abcd...
+      ready: true
+...
+```
 
 ### Status for Pod readiness
 The kubectl patch command does not support patching object status. To set these status.conditions for the pod, applications and operators should use the PATCH action. You can use a Kubernetes client library to write code that sets custom Pod conditions for Pod readiness.

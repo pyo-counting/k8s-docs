@@ -4,10 +4,11 @@
 - .spec.clusterIP는 .spec.type이 NodePort, ClusterIP, LoadBalancer일 때 자동 할당되거나 사용자가 설정할 수 있다.
 - .spec.clusterIP가 None: headless svc를 의미(cluster ip 미할당). kube-proxy가 해당 svc를 다루지 않기 때문에 프록시, 로드밸런싱되지 않는다. 즉 .spec.ports[*]를 명시해도 의미가 없다.
   - .spec.selector가 있으면 svc DNS lookup 시 pod들의 ip 목록(A 레코드)가 조회됨. ep도 생성됨. .spec.clusterIP: "None"이 아니면 오류. 조회된 pod의 ip와 po의 노출 po로 접근할 수 있다.
-  - .spec.selector가 없으면 svc DNS lookup 시 아무것도 조회 안됨
+  - .spec.selector가 없으면 svc DNS lookup 시 아무것도 조회 안됨. 무슨 용도인지 모르겠음
 - .spec.type이 ClusterIP: \<cluster ip>:\<port>로 접근 가능
 - .spec.type이 NodePort: \<node ip>: \<node port>, \<cluter ip>:\<port>로 접근 가능 
 - .spec.type이 ExternalName: .spec.externalName 필드 필수로 설정 필요. .spec.clusterIP 핃드를 명시하지 않거나 값을 ""으로 설정 필요. cluster ip, port 할당되지 않음. svc DNS lookup 시 CNAME 레코드 조회됨.
+- .spec.externalIPs[*]는 .spec.type이 어떤 값이여도 같이 사용할 수 있다. 
 
 
 k8s는 po에 고유한 ip를 할당한다. 그리고 svc를 이용하면 po 집합에 대한 단일 DNS 이름을 부여할 수 있으며 po 간에 로드 밸런싱을 할 수 있다.
@@ -353,6 +354,12 @@ status:
 
 일부 cloud provider는 .spec.loadBalancerIP 필드를 명시하는 것을 허용한다. 이 경우, 해당 ip를 사용하는 load balancer가 생성된다. loadBalancerIP가 명시되지 않으면 임시 ip가 할당된다. 해당 기능을 지원하지 않는 cloud provider에 대해 loadBalancerIP를 설정하더라도 해당 필드는 무시된다.
 
+기본적으로 LoadBalancer 타입의 k8s svc는 kube-controller-manager 또는 cloud-controller-manager(in-tree controller라고도 함)의 CloudProvider 구성 요소에 내장된 k8s controller에 의해 조정(reconile)된다.
+
+LoadBalancer Controller(LBC)가 LoadBalancer 타입의 k8s svc를 조정하도록 하기 위해 in-tree controller -> LBC로 조정을 오프로드해야한다.
+
+해당 내용으 [관편 페이지](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.5/guide/service/nlb/#configuration)를 참고한다.
+
 #### Load balancers with mixed protocol types
 기본적으로 여러 포트가 정의된 경우 모든 포트는 동일한 프로토콜이어야 하며 해당 프로토콜은 cloud provider가 지원해야 한다.
 
@@ -361,12 +368,12 @@ MixedProtocolLBService feature gate(kube-apiserver v1.24에서 기본 활성화)
 **Note**: cloud provider가 여러 프로토콜 사용을 지원하지 않는 경우 단일 프로토콜만 사용해야 한다.
 
 #### Disabling load balancer NodePort allocation
-.spec.allocateLoadBalancerNodePorts을 false로 설정해 no의 포트 할당을 비활성화 할 수 있다. no의 포트를 사용하는 대신 트래픽을 po로 직접 라우팅하도록 구현된 load balancer에서만 사용해야 한다. 기본적으로 .spec.allocateLoadBalancerNodePorts는 true이기 때문에 no의 포트를 할당한다. nod의 포트가 할당된 svc에서 spec.allocateLoadBalancerNodePorts를 false로 변경하면 해당 no 포트의 할당이 자동으로 해제되지 않는다. no 포트의 할당을 해제하기 위해 svc의 .spec.ports[*].nodePorts 필드를 명시적으로 제거해야 한다.
+.spec.allocateLoadBalancerNodePorts을 false로 설정해 no의 포트 할당을 비활성화 할 수 있다. no의 포트를 사용하는 대신 트래픽을 po로 직접 라우팅하도록 구현된 load balancer에서만 사용해야 한다. 기본적으로 .spec.allocateLoadBalancerNodePorts는 true이기 때문에 no의 포트를 할당한다. no의 포트가 할당된 svc에서 spec.allocateLoadBalancerNodePorts를 false로 변경하면 해당 no 포트의 할당이 자동으로 해제되지 않는다. no 포트의 할당을 해제하기 위해 svc의 .spec.ports[*].nodePorts 필드를 명시적으로 제거해야 한다.
 
 #### Specifying class of load balancer implementation
-cloud provider의 기본 load balancer가 아닌 다른 유형을 사용하길 원할 경우 .spec.loadBalancerClass 필드를 사용한다. 클러스터가 --cloud-provider floag를 사용해 cloud provider를 사용하도록 설정된 경우 .spec.loadBalancerClass의 기본값은 nil이며 cloud provider의 기본 로드 밸런서 구현을 사용한다. 
+cloud provider의 기본 load balancer가 아닌 다른 유형을 사용하길 원할 경우 .spec.loadBalancerClass 필드를 사용한다. 클러스터가 --cloud-provider flag를 사용해 cloud provider를 사용하도록 설정된 경우 .spec.loadBalancerClass의 기본값은 nil이며 cloud provider의 기본 로드 밸런서 구현을 사용한다. 
 
-.spec.loadBalancerClass가 지정된 경우 지정된 클래스와 일치하는 로드 밸런서 구현이 해당 svc를 처리해야 한다. 기본 로드 밸런서 구현의 경우 해당 필드가 설정된 svc는 처리하지 않고 무시한다. spec.loadBalancerClass는 LoadBalancer 타입의의 svc만 설정할 수 있는 필드다. 해당 필드는 변경이 불가하다. .spec.loadBalancerClass 값은 .metadata.label 스타일 지시자로 "internal-vjl" 또는 "example.com/internal-vip "과 같은 접두사가 있어야 한다. 접두사가 없는 것을 사용자를 위해 예약된 값이다.
+.spec.loadBalancerClass가 지정된 경우 지정된 클래스와 일치하는 로드 밸런서 구현이 해당 svc를 처리해야 한다. 기본 로드 밸런서 구현의 경우 해당 필드가 설정된 svc는 처리하지 않고 무시한다. spec.loadBalancerClass는 LoadBalancer 타입의 svc만 설정할 수 있는 필드다. 해당 필드는 변경이 불가하다. .spec.loadBalancerClass 값은 .metadata.label 스타일 지시자로 "internal-vjl" 또는 "example.com/internal-vip "과 같은 접두사가 있어야 한다. 접두사가 없는 것을 사용자를 위해 예약된 값이다.
 
 #### Internal load balancer
 동일한 vip 네트워크 환경에서 svc로부터의 트래픽을 라우팅해야 할 경우도 있다.
@@ -383,8 +390,6 @@ metadata:
         service.beta.kubernetes.io/aws-load-balancer-internal: "true"
 [...]
 ```
-
-aws의 nlb를 사용한 svc는 [AWSL Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/) 페이지를 참고한다.
 
 #### TLS support on AWS
 AWS에서 실행되는 클러스터에서 부분적인 TLS/SSL 지원을 위해 다음과 같은 세 가지 annotation을 추가할 수 있다:
