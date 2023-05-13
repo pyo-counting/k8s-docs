@@ -84,11 +84,11 @@ spec:
 
 Each projected volume source is listed in the spec under sources. The parameters are nearly the same with two exceptions:
 
-- For secrets, the secretName field has been changed to name to be consistent with ConfigMap naming.
-- volumes.projected.defaultMode 필드를 사용해 mode를 설정할 수 있다. 하지만 위 예시와 같이 명시적으로 각 volume.projected.sources[*].items[*].mode로 개별 source에 대해 설정할 수도 있다.
+For secrets, the secretName field has been changed to name to be consistent with ConfigMap naming.
+The defaultMode can only be specified at the projected level and not for each volume source. However, as illustrated above, you can explicitly set the mode for each individual projection.
 
 ## serviceAccountToken projected volumes
-TokenRequestProjection feature gateway가 활성화된 경우 po 내 sa의 token을 마운트할 수 있다.
+sa의 토큰을 po내 특정 위치에 마운트할 수 있다. 아래는 예시다:
 
 ``` yaml
 apiVersion: v1
@@ -121,3 +121,13 @@ The expirationSeconds is the expected duration of validity of the service accoun
 **Note**: A container using a projected volume source as a subPath volume mount will not receive updates for those volume sources.
 
 ## SecurityContext interactions
+The proposal for file permission handling in projected service account volume enhancement introduced the projected files having the correct owner permissions set.
+
+### Linux
+linux 환경에서 .spec.securityContext.runAsUser 필드가 설정되어 있고 projected volume이 있는 po의 경우, projected 파일은 container user ownership을 포함한 올바른 ownership set을 갖는다.
+
+When all containers in a pod have the same runAsUser set in their PodSecurityContext or container SecurityContext, then the kubelet ensures that the contents of the serviceAccountToken volume are owned by that user, and the token file has its permission mode set to 0600.
+
+**Note**: Ephemeral containers added to a Pod after it is created do not change volume permissions that were set when the pod was created.
+
+If a Pod's serviceAccountToken volume permissions were set to 0600 because all other containers in the Pod have the same runAsUser, ephemeral containers must use the same runAsUser to be able to read the token.
