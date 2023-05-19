@@ -370,7 +370,7 @@ mount propagation은 container.volumeMounts의 mountPropagation 필드를 통해
   마찬가지로, 동일한 volume에 대한 Bidirectional mount propagation이 설정된 po가 해당 volume에 추가적인 마운트를 수행하면 HostToContainer mount propagation 설정의 container가 해당 정보를 볼 수 있다.
 
   이 mode는 [mount(8)](https://man7.org/linux/man-pages/man8/mount.8.html)에 설명된 rslave mount propagation과 동일하다.
-- Bidirectional: volume mount는 HostToContainer mount와 동일하게 동작한다. 추가적으로 container에 의해 생성된 volume mount도 host와 동일한 volume을 사용하는 모든 po의 container로도 전파된다.
+- Bidirectional: volume mount는 HostToContainer mount와 동일하게 동작한다. 추가적으로 container에 의해 생성된 volume mount도 host, 동일한 volume을 사용하는 모든 po의 container로도 전파된다.
 
   해당 mode에 대한 전형적인 사용 예는 FlexVolume, CSI driver po 또는 hostpath volume를 사용하는 po다.
 

@@ -91,7 +91,7 @@ spec:
 ```
 
 ## Lifecycle and PersistentVolumeClaim
-volume claim을 위한 파라미터를 po의 spec.volume에서 정의할 수 있다. label, annotation, pvc을 위한 모든 필드가 지원된다. po가 생성되면, ephemeral volume controller는 po가 속한 동일한 ns에 pvc objetc를 생성하고 po가 삭제될 때에는 pvc도 삭제되도록 만든다.
+volume claim을 위한 파라미터를 po의 spec.volumes에서 정의할 수 있다. label, annotation, pvc을 위한 모든 필드가 지원된다. po가 생성되면 ephemeral volume controller는 po가 속한 동일한 ns에 pvc objetc를 생성하고 po가 삭제될 때에는 pvc도 삭제되도록 만든다.
 
 sc의 volumeBindingMode 필드가 Immediate 또는 WaitForFirstConsumer 인지에 따라 volume binding과 provisioning을 트리거한다. generic ephemeral volume의 경우 후자를 권장하는데, 이 경우 scheduler가 po를 할당하기에 적합한 no를 선택하기가 쉬워지기 때문이다. VolumeBindingImmediate을 사용하는 경우 scheduler는 volume이 사용 가능해지는 즉시 해당 volume에 접근 가능한 no를 선택하도록 강요받는다.
 

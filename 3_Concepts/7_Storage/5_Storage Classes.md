@@ -79,9 +79,9 @@ sc에 의해 동적으로 생성된 pv은 class의 .mountOptions[*] 필드에 �
 ### Volume Binding Mode
 .volumeBindingMode 필드는 volume의 binding, dynamic provisioning 동작을 제어한다. 기본 값은 Immediate다.
 
-Immediate 모드는 pvc가 생성되면 dynamic provisioning, binding이 발생한다. For storage backends that are topology-constrained and not globally accessible from all Nodes in the cluster, PersistentVolumes will be bound or provisioned without knowledge of the Pod's scheduling requirements. This may result in unschedulable Pods.
+Immediate 모드는 pvc가 생성되면 dynamic provisioning, binding이 발생한다. topology 제한, 클러스터 내 모든 no로부터 전역 접근이 불가한 경우 pv는 po의 스케줄링 요구 사항과 관계 없이 bind, provision된다. 즉, po에 대한 unschedulable 상태를 야기 시킬 수도 있다.
 
-WaitForFirstConsumer 모드는 pvc을 사용하는 po가 생성될 때까지 pv의 provisioning, binding을 지연시킨다. pv는 po의 스케줄링 제약 조건에 의해 지정된 토폴로지에 따라 선택되거나 프로비전된다. 여기에는 리소스 요구 사항, node selecotr, pod affinity/anti-affinity, taint/toleration이 포함된다.
+WaitForFirstConsumer 모드는 pvc을 사용하는 po가 생성될 때까지 pv의 provisioning, binding을 지연시킨다. pv는 po의 스케줄링 제약 조건에 의해 지정된 topology에 따라 선택되거나 provision된다. 여기에는 리소스 요구 사항, node selecotr, pod affinity/anti-affinity, taint/toleration이 포함된다.
 
 다음 플러그인은 dynamic provisioning의 WaitForFirstConsumer를 지원한다.
 
@@ -97,7 +97,7 @@ WaitForFirstConsumer 모드는 pvc을 사용하는 po가 생성될 때까지 pv�
 #### FEATURE STATE
 CSI volume 역시 dynamic provisioning, pre-created pv을 지원하지만 지원하는 topology key와 예제는 관련 documentation을 살펴봐야한다.
 
-**Note**: WaitForFirstConsumer를 사용하도록 선택하는 경우 pd .spec에서 nodeName을 사용하여 no affinity를 설정하지 않도록 권장한다. 이 경우 nodeName이 사용되면 scheduler가 무시되고 pvc는 보류 상태로 유지된다.
+**Note**: WaitForFirstConsumer를 사용하도록 선택하는 경우 po .spec에서 nodeName을 사용하여 no affinity를 설정하지 않도록 권장한다. 이 경우 nodeName이 사용되면 scheduler가 무시되고 pvc는 보류 상태로 유지된다.
 
 대신 아래와 같이 nodeselector에 hostname을 사용한다.
 
@@ -151,7 +151,6 @@ sc에 속하는 volume을 설명하는 파라미터를 .parameters 필드를 통
 sc에는 최대 512개의 파라미터를 정의할 수 있다. .parameters 필드의 총 크기(key, value 크기 합)은 256KiB를 넘을 수 없다.
 
 ### Local
-
 ``` yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
