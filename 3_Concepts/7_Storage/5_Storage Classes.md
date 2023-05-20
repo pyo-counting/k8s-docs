@@ -145,6 +145,9 @@ allowedTopologies:
     - us-central-1a
     - us-central-1b
 ```
+
+.allowedTopologies[*] 필드는 volume을 dynamic provisioning할 수 있는 no topology를 제한한다. 각 volume plugin은 자체적으로 지원하는 topology 명세를 정의한다. .allowedTopologies[*] 목록이 빈 값일 경우 topology 제한이 없음을 의미한다. 해당 필드는 VolumeScheduling 기능이 활성화된 서버에서만 유효하다.
+
 ## Parameters
 sc에 속하는 volume을 설명하는 파라미터를 .parameters 필드를 통해 설정할 수 있다. provisioner에 따라 다른 파라미터를 사용할 수 있다. For example, the value io1, for the parameter type, and the parameter iopsPerGB are specific to EBS. When a parameter is omitted, some default is used.
 
