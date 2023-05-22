@@ -16,7 +16,7 @@ pv는 두 가지 방식을 통해 프로비저닝 된다: static, dynamic
 클러스터 관리자가 pv를 직접 생성한다. pv는 실제 스토리지에 대한 상세 사항을 저장하고 있으며 클러스터 사용자가 사용할 수 있다.
 
 #### Dynamic
-관리자가 생성한 static pv가 사용자의 pvc과 일치하지 않으면 클러스터는 volume을 동적 프로비저닝을 시도한다. 이 프로비저닝은 sc를 기반으로 한다. pvc는 sc를 요청해야 하며 관리자는 동적 프로비저닝이 동작할 수 있도록 sc를 관리해야 한다. pvc 내 sc 필드가 ""라면 pvc는 동적 프로비저닝을 비활성화한다.
+관리자가 생성한 static pv가 사용자의 pvc과 매칭되지 않으면 클러스터는 volume을 동적 프로비저닝을 시도한다. 이 프로비저닝은 sc를 기반으로 한다. pvc는 sc를 요청해야 하며 관리자는 동적 프로비저닝이 동작할 수 있도록 sc를 관리해야 한다. pvc 내 sc 필드가 ""라면 pvc는 동적 프로비저닝을 비활성화한다.
 
 sc를 기반으로 동적 스토리지 프로비저닝을 사용하려면 클러스터 관리자가 API server내 DefaultStorageClass admission controller를 활성화해야 한다. API server의 --enable-admission-plugins flag 값 목록중 DefaultStorageClass가 포함되어 있는지 확인 및 설정하면 된다.
 
@@ -444,7 +444,7 @@ Mount options are not validated. If a mount option is invalid, the mount fails.
 pv는 no affinity를 지정하여 volume에 접근할 수 있는 no를 제한하는 제약 조건을 정의할 수 있다. pv를 사용하는 po는 no affinity에 의해 선택된 no에만 스케줄링된다. no affinity를 지정하려면 pv의 .spec.nodeAffinity 필드를 이용한다.
 
 ### Phase
-volume은 아래 phase를 따른다:
+volume은 아래 phase를 갖는다:
 
 - Available: claim에 대해 아직 바운드 되지 않은 리소스
 - Bounded: claim에 바운딩된 volume
@@ -496,10 +496,9 @@ matchLabels, matchExpressions의 모든 필수 조건은 AND 연산자로 연산
 ### Class
 pvc에는 .spec.storageClassName 필드를 설정할 수 있다. 요청된 클래스의 pv(pvc와 동일한 storageClassName을 가진 pv)만 pvc에 바인드될 수 있다.
 
-pvc는 반드시 클래스를 가질 필요는 없다. .spec.storageClassName이 ""로 설정된 pvc는 항상 클래스가 없는 pvc를 요청하는 것으로 해석되므로 클래스가 없는 pv에만 바인딩될 수 있다(annotation이 없거나 ""로 설정). .spec.storageClassName이 없는 pvc와는 다르며 DefaultStorageClass admission 플러그인 활성화 여부에 따라 클러스터에서 다르게 처리된다.
+pvc는 반드시 클래스를 가질 필요는 없다. .spec.storageClassName이 ""로 설정된 pvc는 항상 클래스가 없는 pvc를 요청하는 것으로 해석되므로 클래스가 없는 pv에만 바인딩될 수 있다(annotation이 없거나 ""로 설정). .spec.storageClassName 필드 자체가 생략된 pvc와는 다르며 DefaultStorageClass admission 플러그인 활성화 여부에 따라 클러스터에서 다르게 처리된다.
 
 - admission 플러그인이 활성화 됐다면 관리자는 기본 sc를 설정한다. .spec.storageClassName 필드가 없는 모든 pvc는 기본 pv에 바인딩 될 수 있다. 기본 sc는 storageclass.kubernetes.io/is-default-class annotation을 true로 생성하면 된다. 관리자가 기본 sc를 설정하지 않는다면 admission 플러그인이 비활성화된 것처럼 동작한다. 1개 이상의 기본 sc가 있다면 admission 플러그인은 모든 pvc에 대한 생성을 금지한다.
-
 - admission 플러그인이 비활성화 됐다면 기본 sc의 개념이 없는 것이다. storageClassName이 ""로 설정된 pvc는 storageClassName이 ""로 설정된 pv에만 바인딩 될 수 있다. 그러나 기본 sc를 사용할 수 있게 되면 storageClassName이 누락된 pvc를 업데이트할 수 있다. pvc가 업데이트되면 더이상 storageClassName이 ""인 pv로 바인딩 되지 않는다.
 
 자세한 내용은 [retroactive default StorageClass assignment](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#retroactive-default-storageclass-assignment) 페이지를 참고한다.

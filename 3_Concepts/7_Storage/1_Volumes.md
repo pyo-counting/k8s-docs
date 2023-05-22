@@ -333,7 +333,15 @@ csi volume은 po에서 3가지 방식을 통해 사용 가능하다:
 
 CSI persistent volume을 설정하기 위해 stroage 관리자는 아래 필드를 사용할 수 있다:
 
-- 
+- driver:
+- volumeHandle:
+- readOnly:
+- fsType:
+- volumeAttributes:
+- controllerPublishSecretRef
+- CSINodeExpandSecret feature gate:
+- nodePublishSecretRef:
+- nodeStageSecretRef:
 
 #### CSI raw block volume support
 외부 CSI driver를 사용하는 벤더사는 k8s 워크로드에서 raw block volume 지원을 구현할 수 있다.
