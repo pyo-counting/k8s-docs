@@ -50,9 +50,9 @@ spec:
 ## Updating a Deployment
 **Note**: deploy의 rollout은 po template(`.spec.template`)이 변경되면 트리거된다.
 
-deploy는 업데이트 되는 동안 일정한 수의 po만 중단되는 것을 보장한다. 기본적으로 최소 75% 이상의 po가 동작하는 것을 보장한다.
+deploy는 업데이트 되는 동안 일정한 수의 po만 중단되는 것을 보장한다. 기본적으로 최소 75% 이상의 po가 동작하는 것을 보장한다(`.spec.strategy.rollingUpdate.maxUnavailable`).
 
-또한 deploy는 최대 생성되는 po의 수를 제한한다. 기본적으로 최대 125% 이하의 po가 동작할 수 있도록 제한한다.
+또한 deploy는 최대 생성되는 po의 수를 제한한다. 기본적으로 최대 125% 이하의 po가 동작할 수 있도록 제한한다(`.spec.strategy.rollingUpdate.maxSurge`).
 
 **Note**: replicas - maxUnavailable <= availableReplicas <= replicas + maxSurge. availableReplicas는 terminating po를 포함하지 않는다. 결과적으로 rollout 시 deploy의 po는 예상한 것보다 많기 때문에 deploy에 의해 사용되는 리소스 역시 더 많다. 이러한 예상 밖의 사용량은 po의 terminationGracePeriodSeconds 시간이 지날때 까지 지속된다.
 
@@ -68,7 +68,7 @@ deploy controller는 새로운 deploy을 발견하고, rs이 desired po를 생�
 **Note**: API 버전 apps/v1에서 deploy의 label selector는 생성 이후에 변경할 수 없다.
 
 ## Rolling Back a Deployment
-기본적으로 deploy의 rollout 히스토리는 시스템에 저장되며 원하는 경우 언제든지 rollback수 있다(revision 히스토리 제한은 변경 가능하다).
+기본적으로 deploy의 rollout 히스토리는 시스템에 저장되며 원하는 경우 언제든지 rollback수 있다(revision 히스토리 제한은 `.spec.revisionHistoryLimit` 필드를 통해 변경 가능).
 
 **Note**: deploy의 revision은 deploy rollout이 트리거될 때 생성된다. 즉 deploy의 po template(.spec.template)이 변경될 때 생성된다. deploy의 replica 변경은 revision을 생성하지 않는다.
 

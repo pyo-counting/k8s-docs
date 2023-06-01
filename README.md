@@ -1,6 +1,7 @@
 # Kubernetes
 Kubernetes 학습
 
+---
 ## 요약
 - k8s의 worker node 구성 요소중 container 실행을 담당하는 kublet은 container로 실행할 수 없다.
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
@@ -57,20 +58,34 @@ Kubernetes 학습
   - Bounded: claim에 바운딩된 volume
   - Released: claim이 삭제되었지만, 리소스는 아직 cluster가 reclaim하지 않음
   - Failed: volume이 dynamic reclaim에 대해 실패함
-- aws EFS csi driver 사용과 관련된 내용
-    ```
-    EFS CSI driver supports dynamic provisioning and static provisioning. Currently Dynamic Provisioning creates an access point for each PV. This mean an AWS EFS file system has to be created manually on AWS first and should be provided as an input to the storage class parameter. For static provisioning, AWS EFS file system needs to be created manually on AWS first. After that it can be mounted inside a container as a volume using the driver.
-    ```
-    - dynamic provisioning을 할 사용할 경우에는 존재하는 efs에 대해 새로운 access point(파라미터와 함꼐)를 생성 및 해당 access point를 통해 efs에 접근한다. access point를 사용해 efs에 접근할 경우 동일 efs 내에서도 특정 경로를 투르 디렉토리로 인식하도록 만든다. 이러한 루트 디렉토리 생성을 위한 파라미터를 storage class의 .parameters 필드를 통해 정의한다. efs csi driver 내에서는 해당 access point의 루트 디렉토리에서 각 pvc에 대한 디렉토리를 추가 생성하기 때문에 여러 po에서 동일한 efs 내 위치를 접근하기 위해서는 dynamic provisioning을 사용을 통해서는 불가하다. 이를 위해서는 static provisioning을 사용해야 한다. static provisioning의 경우에는 따로 access point를 생성하지 않고 efs 내 특정 경로에 마운트할 수 있기 때문에 여러 pv 내에서 efs 내 경로를 공유할 수 있다. 물론 static provisioning을 사용할 경우에도 특정 access point를 통해 
-    접근이 가능하지만 이 때는 먼더 aws에서 직접 access point를 생성해야 한다.
-    - efs csi driver에서 지원하는 accessmode는 소스코드 상 ReadWriteOnce(RWO), ReadWriteMany(RWX)를 지원하는 것으로 보인다(https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/7d0b76bca26f7e0c258f3cdc68286aacffbfe5b3/pkg/driver/node.go#LL36C3-L37C3).
-    - efs csi driver의 경우 CSI ephemeral volumes은 지원하지 않는다.
-    
+
+---    
 ## 명령어
 - kubectl get [RESOURCE] --field-selector
 
+---
 ## 체크리스트
 - po내 ports[*].hostPort에 사용된 port는 호스트 netstat 조회 시 보이지 않음. 하지만 type=ClusterIP svc로 expose 시 netstat에 조회됨
 - svc externalIPs 설정 시, no의 IP로 svc 접근 가능
 - local pv의 경우, pv 생성 시 디렉토리가 호스트 내 존재해야 함. 자동 생성되지 않음 확인
 - hpa의 cpu 사용률 계산 시 po를 선택하는 방법 알아보기
+- container의 liveness, readiness, startup probe들도 back-off 재시작이 있는지
+
+---
+## k8s addon(plugin)
+- aws EFS csi driver
+  - ```
+    EFS CSI driver supports dynamic provisioning and static provisioning. Currently Dynamic Provisioning creates an access point for each PV. This mean an AWS EFS file system has to be created manually on AWS first and should be provided as an input to the storage class parameter. For static provisioning, AWS EFS file system needs to be created manually on AWS first. After that it can be mounted inside a container as a volume using the driver.
+    ```
+    dynamic provisioning을 할 사용할 경우에는 존재하는 efs에 대해 새로운 access point(파라미터와 함께)를 생성 및 해당 access point를 통해 efs에 접근한다. access point를 사용해 efs에 접근할 경우 동일 efs 내에서도 특정 경로를 투르 디렉토리로 인식하도록 만든다. 이러한 루트 디렉토리 생성을 위한 파라미터를 storage class의 .parameters 필드를 통해 정의한다. efs csi driver 내에서는 해당 access point의 루트 디렉토리에서 각 pvc에 대한 디렉토리를 추가 생성하기 때문에 여러 po에서 동일한 efs 내 위치를 접근하기 위해서는 dynamic provisioning을 사용을 통해서는 불가하다. 이를 위해서는 static provisioning을 사용해야 한다. static provisioning의 경우에는 따로 access point를 생성하지 않고 efs 내 특정 경로에 마운트할 수 있기 때문에 여러 pv 내에서 efs 내 경로를 공유할 수 있다. 물론 static provisioning을 사용할 경우에도 특정 access point를 통해 접근이 가능하지만 이 때는 먼저 aws에서 직접 access point를 생성해야 한다.
+      - efs csi driver 설치 시, `delete-access-point-root-dir` 파라미터를 통해 volume에 대한 삭제 시, access point root directory를 삭제할 지 여부를 설정할 수 있다. 기본 값은 false로 삭제되지 않는다.
+  - efs csi driver에서 지원하는 accessmode는 소스코드 상 ReadWriteOnce(RWO), ReadWriteMany(RWX)를 지원하는 것으로 보인다(https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/7d0b76bca26f7e0c258f3cdc68286aacffbfe5b3/pkg/driver/node.go#LL36C3-L37C3).
+    - efs csi driver의 경우 CSI ephemeral volumes은 지원하지 않는다.
+- aws lbc(load balancer controller)
+  - aws application elb의 경우 k8s ing resoucre, network elb의 경우 k8s svc resourcew를 통해 provision된다.
+    - network elb(svc)
+      - svc의 .spec.ports[*].port가 aws network elb 상에서 listener로 등록되며, 각 listener의 모든 target은 svc의 .spec.selector에 매칭되는 po의 집합이다. 각 listener의 target group은 k8s 상에서 TargetGroupBinding(crd)로 구현된다.
+      - ing와 같이 ingress group을 사용해 여러 svc에서 1개의 aws network elb를 공유하는 것은 불가능하다. 단지 1개의 svc에서 정의된 .spec.ports[*] 필드를 사용해 여러 listener를 만들고 실제 target group은 해당 svc의 .spec.selector에 매칭되는 po들의 집합이다.
+    - application elb(ing)
+      - annotation을 통해 listener port를 지정할 수 있으며, 기본적으로 .spec.rules[*]에 설정된 rule 별로 설정된 svc가 listener의 target group으로 등록된다. target group은 k8s 상에서 TargetGroupBinding(CRD)로 구현된다.
+      - annotation을 사용해 1개의 rule에 대한 target group에 대한 condition, action을 설정할 수 있다. 하지만 target group에 대한 health check, order, protocol, attributes 등은 ing에서 한 번만 지정되기 때문에 해당 설정을 공유하게 된다.
