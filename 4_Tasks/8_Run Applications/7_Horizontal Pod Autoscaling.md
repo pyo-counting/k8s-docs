@@ -13,23 +13,23 @@ hpa는 k8s API resource와 controller로 구현됐다. hpa API resource는 contr
 
 k8s는 hpa를 간헐적으로(intermittently) 실행되는 컨트롤 루프 형태로 구현했다(지속적인 프로세스가 아니다). 실행 주기는 kube-controller-manager의 --horizontal-pod-autoscaler-sync-period 파라미터에 의해 설정된다(기본 주기는 15초).
 
-`.spec.metrics[*].type`은 metric 소스의 타입을 나타낸다. 사용 가능한 값은 ContainerResource, External, Object, Pods, Resource가 있다. ContainerResource은 HPAContainerMetrics feature-gate가 활성화 됐을 때 사용 가능하다.
+`.spec.metrics[*].type`은 metric 소스의 타입을 나타낸다. 사용 가능한 값은 ContainerResource, External, Object, Pods, Resource가 있다.
 
-- ContainerResource: scale 대상 po 내 container의 리소스(resource request, limit) metric.
+- ContainerResource: scale 대상 po 내 container의 리소스(resource request, limit) metric. 이러한 metric은 k8s에 내장되어 있으며 have special scaling options on top of those available to normal per-pod metrics using the "pods" source. 이는 alpha 기능으로 HPAContainerMetrics feature flag가 활성화되어야 한다.
 - External: k8s object와 상관 없는 global metric. 클러스터 밖에서 실행되는 구성 요소에 대한 metric을 기반으로 autoscaling을 가능하게 한다. 예를 들어 클러스터 밖에 있는 로드밸런서의 QPS
 - Object: 단일 k8s object을 나타내는 metric. 예를 들어 ingress에 대한 hits-per-second
 - Pods: target po를 나타내는 metric. 예를 들어 transactions-processed-per-second
-- Resource: scale 대상 po의 resource metric
+- Resource: scale 대상 po의 리소스 (resource request. limit)metric. 이러한 metric은 k8s에 내장되어 있으며 have special scaling options on top of those available to normal per-pod metrics using the "pods" source.
 
-각 주기마다, controller manager는 각 hpa 정의에 지정된 metric에 대한 리소스 사용률을 질의한다. controller manager는 `.spec.scaleTargetRef`에 정의된 타겟 resource를 찾고, 타겟 resource의 `.spec.selector` label을 보고 po를 선택하며, 리소스 metric API(po 단위 리소스 metric) 또는 custom metric API(그 외 모든 meric 용)로부터 metric을 수집한다.
+각 주기마다, controller manager는 각 hpa 정의에 지정된 metric에 대한 리소스 사용률을 질의한다. controller manager는 `.spec.scaleTargetRef`에 정의된 타겟 resource를 찾고, 타겟 resource의 `.spec.selector` label을 보고 po를 선택하며, 리소스 metric API(po 단위 resource metric) 또는 custom metric API(그 외 모든 meric 용)로부터 metric을 수집한다.
 
-- po 단위 리소스 metric(예를 들어 CPU)의 경우 controller는 hpa가 대상으로하는 각 po에 대한 metric을 리소스 metric API에서 가져온다. 목표 사용률 값이 설정된 경우 controller는 각 po의 container에 대한 해당 resource request의 백분율로 사용률 값을 계산한다. 목표 정수값이 설정된 경우 metric 값을 계산없이 직접 사용한다. 그리고나서 controller는 모든 대상 po에서 사용된 사용률의 평균 또는 정수 값(지정된 대상 유형에 따라 다름)을 가져와서 desired replica 값을 scale하는데 사용되는 비율을 계산한다.
+- po 단위 resource metric(예를 들어 CPU)의 경우 controller는 hpa가 대상으로하는 각 po에 대한 metric을 리소스 metric API에서 가져온다. target으로 utilization 값이 설정된 경우 controller는 각 po의 container에 대한 해당 resource request의 백분율로 사용률 값을 계산한다. target으로 value 값이 설정된 경우 metric 값을 계산없이 직접 사용한다. 그런다음 controller는 모든 대상 po에서 사용된 utilization의 평균 또는 value 값(지정된 대상 유형에 따라 다름)을 가져와서 desired replica 값을 scale하는데 사용되는 비율을 계산한다.
 
   po의 일부 container에 resource request가 설정되지 않은 경우 po의 CPU 사용률은 정의되지 않으며 hpa는 해당 metric에 대해 아무런 조치도 취하지 않는다. autoscaling 알고리즘의 작동 방식에 대한 자세한 내용은 아래에서 살펴본다.
 
-- po 단위 사용자 custom metric의 경우, controller는 사용률 값이 아닌 정수 값을 사용한다는 점을 제외하고는 po 단위 리소스 metric과 유사하게 동작한다.
+- po 단위 custom custom metric의 경우, controller는 utilization 값이 아닌 value 값을 사용한다는 점을 제외하고는 po 단위 resource metric과 유사하게 동작한다.
 
-- object metric, external metric의 경우, object를 표현하는 단일 metric을 가져온다. 이 metric은 목표 값과 비교되어 위와 같은 비율을 생성한다. autoscaling/v2 API 버전에서는, 비교가 이루어지기 전에 해당 값을 po의 개수로 선택적으로 나눌 수 있다.
+- object metric, external metric의 경우, object를 표현하는 단일 metric을 가져온다. 이 metric은 target value와 비교되어 위와 같은 비율을 생성한다. autoscaling/v2 API 버전에서는, 비교가 이루어지기 전에 해당 값을 po의 개수로 선택적으로 나눌 수 있다.
 
 hpa를 사용하는 일반적인 방법은 aggregated API(metrics.k8s.io, custom.metrics.k8s.io, external.metrics.k8s.io)로부터 metric을 가져오도록 설정하는 것이다. metrics.k8s.io API는 보통 metric server라는 add-on에 의해 제공된다.
 
@@ -204,7 +204,7 @@ behavior:
       periodSeconds: 60
 ```
 
-periodSeconds 정책이 유지되어야 하는 시간을 의미한다. 즉, 첫 번째 정책의 경우 1분 내에 최대 4개의 po를 scale down한다. 두 번째 정책의 경우 1분 내에 최대 10%의 po를 scale down한다.
+periodSeconds은 정책이 유지되어야 하는 시간을 의미한다. 즉, 첫 번째 정책이 채택되면 1분 동안 해당 정책이 유효하며 1분 동안 최대 4개의 po를 scale down한다. 두 번째 정책의 경우 1분 내에 최대 10%의 po를 scale down한다.
 
 기본적으로 변화의 크기가 가장 큰 정책이 선택되므로 po가 40개 이상일 경우에만 두 번째 정책이 선택된다. 40개 이하일 경우 첫 번째 정책이 적용된다. 예를 들어 80개의 replica가 있는 상황에서 10개의 replica까지 scale down이 필요할 경우 첫 번째 단계에서는 8개의 replica가 줄어든다. 두 번째 단계에서는 72개의 replica 중 10%인 7.2의 올림 8개가 줄어든다. autoscaler controller의 각 루프마다 replica의 개수에 따라 po 변화량은 다시 계산된다. replica 개수가 40개 이하일 경우부터는 첫 번째 정책이 적용되어 한 번에 최대 4개의 replica가 줄어든다.
 
@@ -223,7 +223,7 @@ behavior:
 
 계산된 metric에 의해 target이 scale down되어야하는 경우 알고리즘은 이전의 desired state를 확인한다. 즉, 명시된 기간 내 최대 값을 확인한다. 위 예시의 경우 이전 5분에 대한 desired state 값을 확인한다.
 
-이를 통해 scaling 알고리즘이 po를 자주 제거한느 것을 방지할 수 있다.
+이를 통해 scaling 알고리즘이 po를 자주 제거하는 것을 방지할 수 있다.
 
 ### Default Behavior
 사용자는 모든 필드에 대해 값을 지정할 필요가 없다. 설정이 필요한 값만 명시하면 된다. 사용자가 설정한 값은 hpa의 기본 값과 병합된다. 아래는 hpa의 기본 설정이다:
