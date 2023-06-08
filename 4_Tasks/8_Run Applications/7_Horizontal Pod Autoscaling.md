@@ -182,6 +182,14 @@ autoscaling/v2 API를 사용해 여러 metric을 통한 hpa를 설정할 수 있
   - custom metric의 경우 custom.metrics.k8s.io API다. metric 솔루션 공급 업체가 제공하는 "adapter" API server에서 제공된다. 사용 가능한 k8s metric adapter가 있는지 metric pipeline을 확인한다.
   - external metric의 경우 external.metrics.k8s.io API다. 이는 위에서 설명한 custom metric dapater에 의해 제공된다.
 
+아래는 `kubectl get apiservice` 결과 예시다.
+``` bash
+$ kubectl get apiservice | grep metrics
+NAME                                   SERVICE                                        AVAILABLE   AGE
+v1beta1.external.metrics.k8s.io        datadog-ns/datadog-cluster-agent-metrics-api   True        26m
+v1beta1.metrics.k8s.io                 kube-system/metrics-server                     True        5m43s
+```
+
 위와 같이 서로 다른 metric path의 디자인 목적은 [the HPA V2](https://git.k8s.io/design-proposals-archive/autoscaling/hpa-v2.md), [custom.metrics.k8s.io](https://git.k8s.io/design-proposals-archive/instrumentation/custom-metrics-api.md), [external.metrics.k8s.io](https://git.k8s.io/design-proposals-archive/instrumentation/external-metrics-api.md) 페이지를 참고한다.
 
 ## Configurable scaling behavior
