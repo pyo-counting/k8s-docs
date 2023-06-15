@@ -9,14 +9,14 @@ k8s에서 controller는 클러스터의 상태를 관찰 한 다음 경우에 �
 ## Controller pattern
 controller는 적어도 1개의 k8s의 resource 타입을 추적한다. 이러한 object는 .spec 필드를 통해 desired state를 표현한다. 해당 resoure에 대한 controller는 object의 current state를 .sepc에 정의된 desired state에 가깝게 유지하기 위한 책임을 갖는다.
 
-controller는 이를 위한 작업을 스스로 수행할 수 있다. 일반적으로 k8s에서는 controller가 API서버로 메시지를 전송한다. 관련된 내용ㅇㄴ 아래에서 살펴본다.
+controller는 이를 위한 작업을 스스로 수행할 수 있다. 일반적으로 k8s에서는 controller가 API서버로 메시지를 전송한다. 관련된 내용은 아래에서 살펴본다.
 
 ### Control via API server
 job controller는 k8s에 내장된 controller다. 내장된 controller는 API server와 상호작용함으로써 상태를 관리한다.
 
 job은 po를 실행함으로써 작업을 수행하는 k8s resource다. 
 
-job controller는 새로운 작업을 확인하면 클러스터 내 no들의 kubelet에서 해당 작업을 수행하기 위한 po를 실행하게한다. job controller는 직접 po 또는 container를 실행하지는 않는다. 대신 job controller는 API server에 po에 대한 생성 또는 삭제를 요청한다. 그러면 control plance의 다른 구성요소가 해당 요청에 대응해 작업을 완료시킨다.
+job controller는 새로운 작업을 확인하면 클러스터 내 no들의 kubelet에서 해당 작업을 수행하기 위한 po를 실행하게한다. job controller는 직접 po 또는 container를 실행하지는 않는다. 대신 job controller는 API server에 po에 대한 생성 또는 삭제를 요청한다. 그러면 control plane의 다른 구성요소가 해당 요청에 대응해 작업을 완료시킨다.
 
 job resource objec의 desired state는 .spec 필드에 명시된 작업을 수행하는 것이다. job controller는 해당 작업을 수행함으로써 job resource의 current state를 desired state에 가까워지도록 유지하기위해 노력한다.
 
