@@ -1,4 +1,4 @@
-container 내 디스크에 저장된 파일은 수명이 짧다(ephemeral). container의 state는 저장되지 않기 때문에 container의 lifetime 간 생성, 수정된 파일은 저장되지 않는다. crash가 발생하면 kubelet은 clean state로 container를 재시작한다. 또 다른 문제는 po 내 container간 파일을 공유다. 이러한 문제를 해결하기 위해 k8s volume이라는 추상적 개념이 존재한다.
+container 내 디스크에 저장된 파일은 수명이 짧다(ephemeral). container의 state는 저장되지 않기 때문에 container의 lifetime 간 생성, 수정된 파일은 저장되지 않는다. crash가 발생하면 kubelet은 clean state로 container를 재시작한다. 또 다른 문제는 po 내 container간 파일 공유다. 이러한 문제를 해결하기 위해 k8s volume이라는 추상적 개념이 존재한다.
 
 ## Background
 k8s는 다양한 유형의 volume 타입 지원한다. po는 여러 volume 타입을 동시에 사용할 수 있다. ephemeral volume 타입은 po와 같은 lifetime을 갖지만 persistent volume은 po의 lifetime과 관계없다. po가 삭제되면 ephemeral volume도 삭제되지만 persistent volume은 삭제되지 않는다.
