@@ -92,7 +92,7 @@ sts po는 1) 순서, 2) 안정적인 네트워크 식별자, 3) 안정적인 스
 N개의 레플리카가 있는 sts 내에서 각 po에 대해 0에서 N-1 까지의 정수가 순서대로 할당되며 해당 sts 내에서 고유하다.
 
 ### Stable Network ID
-sts의 각 po는 sts의 이름과 po의 순번에서 hostname을 얻는다. hostname을 구성하는 패턴은 \$(statefulset name)-\$(ordinal) 이다. 위의 예시에서 생성된 3개 파드의 이름은 web-0,web-1,web-2 이다. sts에 있는 po의 도메인을 제어하기 위해 headless svc를 사용할 수 있다. 이 svc가 관리하는 도메인은 \$(service name).\$(namespace).svc.cluster.local 의 형식을 가지며, 여기서 "cluster.local"은 클러스터 도메인이다. 각 po는 생성되면 \$(podname).\$(governing service domain) 형식을 가지는 DNS 서브 도메인을 갖게된다. 여기서 거버닝 서비스(governing service)는 sts의 `.spec.serviceName` 필드에 의해 정의된다.
+sts의 각 po는 sts의 이름과 po의 순번에서 hostname을 얻는다. hostname을 구성하는 패턴은 \$(statefulset name)-\$(ordinal) 이다. 위의 예시에서 생성된 3개 po의 이름은 web-0,web-1,web-2 이다. sts에 있는 po의 도메인을 제어하기 위해 headless svc를 사용할 수 있다. 이 svc가 관리하는 도메인은 \$(service name).\$(namespace).svc.cluster.local 의 형식을 가지며, 여기서 "cluster.local"은 클러스터 도메인이다. 각 po는 생성되면 \$(podname).\$(governing service domain) 형식을 가지는 DNS 서브 도메인을 갖게된다. 여기서 거버닝 서비스(governing service)는 sts의 `.spec.serviceName` 필드에 의해 정의된다.
 
 클러스터에서 DNS가 구성된 방식에 따라, 새로 실행된 po의 DNS 이름을 즉시 찾지 못할 수 있다. 이 동작은 클러스터의 다른 클라이언트가 po가 생성되기 전에 po의 hostname에 대한 쿼리를 이미 보낸 경우에 발생할 수 있다. 네거티브 캐싱(DNS에서 일반적)은 이전에 실패한 조회 결과가 po가 실행된 후에도 적어도 몇 초 동안 기억되고 재사용됨을 의미한다.
 
@@ -101,7 +101,7 @@ po를 생성한 후 즉시 po를 검색해야 하는 경우, 몇 가지 옵션�
 - DNS 조회에 의존하지 않고 쿠버네티스 API를 직접(예를 들어 watch 사용) 쿼리한다.
 - k8s DNS 공급자의 캐싱 시간(일반적으로 CoreDNS의 cm을 편집하는 것을 의미하며, 현재 30초 동안 캐시함)을 줄인다.
 
-사용자는 파드의 네트워크 식별자에 대한 제공을 보장하기 위해 headless svc를 생성할 책임이 있다.
+사용자는 po의 네트워크 식별자에 대한 제공을 보장하기 위해 headless svc를 생성할 책임이 있다.
 
 아래는 클러스터 도메인, svc 이름, sts 이름의 조합을 기반으로 sts po의 DNS이름에 어떻게 영향을 주는 예시를 보여준다.
 
@@ -125,6 +125,8 @@ sts controller가 po를 생성할 때, `statefulset.kubernetes.io/pod-name` labe
 - po에 scale 작업을 적용하기 전에 모든 선행 po가 Running, Ready 상태여야 한다.
 - n번 po가 종료되기 전에 n+1 po가 완전히 종료되어야 한다.
 
+위는 `.spec.podManagementPolicy` 필드가 기본 값 OrderedReay 상태일 떄 동작 방식이다(scale up, po 교체, scale down 시 적용).
+
 sts의 경우 `.spec.template.terminationGracePeriodSeconds` 필드에 대해 0 값을 사용하지 말아야 한다. 이는 안전하지 않으며 사용하지 않는 것을 권장한다. 관련해서 [force deleting StatefulSet Pods](https://v1-25.docs.kubernetes.io/docs/tasks/run-application/force-delete-stateful-set-pod/)을 참고한다.
 
 위 nginx 예제에서 web-0, web-1, web-2 순서대로 po가 배포된다. web-1은 web-0이 Running, Ready 상태가 되기 전에 배포되지 않으며, web-2도 web-1에 대해 동일하다. web-1이 Running, Ready 상태가 된 이후 web-2이 배포되기 전에 web-0이 실패하면 web-2는 web-0이 성공적으로 다시 Running, Ready 상태가 되기 전에 배포되지 않는다.
@@ -132,7 +134,7 @@ sts의 경우 `.spec.template.terminationGracePeriodSeconds` 필드에 대해 0 
 sts의 replica는 1로 설정하면 web-2가 먼저 종료된다. web-1은 web-2이 완전히 종료 및 삭제되기 전까지 종료되지 않는다. web-2가 종료 및 삭제되고 web-1이 종료되기 전에 web-0이 종료되면 web-1은 web-0.이 성공적으로 다시 Ruinning, Ready 상태가 되기 전까지 종료되지 않는다.
 
 ### Pod Management Policies
-`.spec.podManagementPolicy` 필드를 사용해 고유성 및 식별자를 유지하면서 순차 보증은 완화할 수 있다.
+`.spec.podManagementPolicy` 필드를 사용해 고유성 및 식별자를 유지하면서 순차 보증은 완화할 수 있다. 
 
 #### OrderedReady Pod Management
 `.spec.podManagementPolicy` 값이 OrderedReady. OrderedReady po management는 sts에 대해 기본 값이다.
@@ -167,7 +169,7 @@ k8s control plane은 이전 업데이트된 po가 Running, Ready 상태까지 �
 
 만약 po template을 Running, Ready 상태가 될 수 없는 설정으로 업데이트하는 경우(예시: 잘못된 바이너리 또는 애플리케이션 단 설정 오류로 ) sts은 roll out을 중지하고 대기한다.
 
-이 상태에서는 po template을 올바른 설정으로 되돌리는 것으로 충분하지 않다. [known iusse](https://github.com/kubernetes/kubernetes/issues/67250)와 같이 sts는 손상된 파드가 Ready(절대 되지 않음)될 때까지 기다리며 정상 동작하는 설정으로 되돌리는 것을 시도를 하기 전까지 기다린다.
+이 상태에서는 po template을 올바른 설정으로 되돌리는 것으로 충분하지 않다. [known iusse](https://github.com/kubernetes/kubernetes/issues/67250)와 같이 sts는 손상된 po가 Ready(절대 되지 않음)될 때까지 기다리며 정상 동작하는 설정으로 되돌리는 것을 시도를 하기 전까지 기다린다.
 
 template 되돌린 이후에는 추가적으로 sts이 잘못된 설정을 통해 생성 및 실행하려고 시도한 모든 po를 삭제해야 한다. 그러면 sts은 되돌린 template을 사용해서 po를 다시 생성하기 시작한다.
 

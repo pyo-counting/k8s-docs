@@ -74,11 +74,25 @@ Kubernetes 학습
 ---
 ## k8s addon(plugin)
 - aws EFS csi driver
+  - elastic file system에 대해 access point를 생성하면 실제 file system의 root directory를 숨길 수 있다. 생성한 access point를 통해 접근하면 실제 file system의 루트 디렉토리가 아닌 access point의 루트 디렉토리에 접근한다.
+  - access point를 생성할 때 설정 가능한 옵션은 다음과 같다.
+    - root directory path: access point의 루트 디렉토리로 사용할 경로(file system 기준 절대 경로).
+    - udi, gid, secondary gid: acccess point를 통해 접근하는 사용자의 uid, gid를 강제한다.
+    - OwnerUid, OwnerGiD, Permissions: root directory path를 생성할 떄 사용할 디렉토리의 소유자, 그룹 권한 정보
   - ```
-    EFS CSI driver supports dynamic provisioning and static provisioning. Currently Dynamic Provisioning creates an access point for each PV. This mean an AWS EFS file system has to be created manually on AWS first and should be provided as an input to the storage class parameter. For static provisioning, AWS EFS file system needs to be created manually on AWS first. After that it can be mounted inside a container as a volume using the driver.
+    EFS CSI driver supports dynamic provisioning and static provisioning. Currently Dynamic Provisioning creates an access point for each PV. This mean an AWS EFS file system has to be created manually on AWS first and should be provided as an input to the storage class parameter(parameters.fileSystemId). For static provisioning, AWS EFS file system needs to be created manually on AWS first. After that it can be mounted inside a container as a volume using the driver.
     ```
-    dynamic provisioning을 할 사용할 경우에는 존재하는 efs에 대해 새로운 access point(파라미터와 함께)를 생성 및 해당 access point를 통해 efs에 접근한다. access point를 사용해 efs에 접근할 경우 동일 efs 내에서도 특정 경로를 투르 디렉토리로 인식하도록 만든다. 이러한 루트 디렉토리 생성을 위한 파라미터를 storage class의 .parameters 필드를 통해 정의한다. efs csi driver 내에서는 해당 access point의 루트 디렉토리에서 각 pvc에 대한 디렉토리를 추가 생성하기 때문에 여러 po에서 동일한 efs 내 위치를 접근하기 위해서는 dynamic provisioning을 사용을 통해서는 불가하다. 이를 위해서는 static provisioning을 사용해야 한다. static provisioning의 경우에는 따로 access point를 생성하지 않고 efs 내 특정 경로에 마운트할 수 있기 때문에 여러 pv 내에서 efs 내 경로를 공유할 수 있다. 물론 static provisioning을 사용할 경우에도 특정 access point를 통해 접근이 가능하지만 이 때는 먼저 aws에서 직접 access point를 생성해야 한다.
-      - efs csi driver 설치 시, `delete-access-point-root-dir` 파라미터를 통해 volume에 대한 삭제 시, access point root directory를 삭제할 지 여부를 설정할 수 있다. 기본 값은 false로 삭제되지 않는다.
+      - dynamic provisioning
+        - AWS 상에 file system이 먼저 생성되어 있어야 한다.
+        - pv에 따라 해당 file system 내에서 access point를 생성한다.
+        - access point를 사용해 file system에 접근할 경우 동일 file system 내에서도 특정 경로를 투르 디렉토리로 인식하도록 만든다.
+        - access point를 생성 시 설정 가능한 [파라미터](https://github.com/kubernetes-sigs/aws-efs-csi-driver/tree/master#storage-class-parameters-for-dynamic-provisioning)
+        - access point의 root directory 경로는 \${.parameters.basePath}/\${.parameters.subPathPattern}가 된다.
+      - static provisioning
+        - AWS 상에 file system이 먼저 생성되어 있어야 한다.
+        - access point 없이 file system에 접근이 가능하다.
+        - pv를 생성할 때 [`.csi.volumeHandle`](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/examples/kubernetes/access_points/README.md#efs-access-points) 필드를 통해 file system id, sub-path, access point 설정이 가능하다. 포맷은 `[FileSystemId]:[Subpath]:[AccessPointId]`
+      - efs csi driver 설치 시, `delete-access-point-root-dir` 파라미터를 통해 dynamic provisioning을 통해 생성된 pv가 삭제될 떄 관련 access point의 삭제 여부도 제어할 수 있다.
   - efs csi driver에서 지원하는 accessmode는 소스코드 상 ReadWriteOnce(RWO), ReadWriteMany(RWX)를 지원하는 것으로 보인다(https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/7d0b76bca26f7e0c258f3cdc68286aacffbfe5b3/pkg/driver/node.go#LL36C3-L37C3).
     - efs csi driver의 경우 CSI ephemeral volumes은 지원하지 않는다.
 - aws lbc(load balancer controller)
