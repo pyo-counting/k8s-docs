@@ -20,7 +20,7 @@ no가 시작되면 각 no의 kubelet은 no object에 label을 추가한다. 이�
 
 cluster가 여러 zone 또는 region에 있는 경우 no label와 [Pod topology spread constrains](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)를 사용해 region, zone, 특정 no 간에 po의 분산 방법을 제어할 수 있다. kube-scheduler는 해당 정보를 사용해 po를 배치하며 이를 통해 전체 workload에 대한 영향도를 줄일 수 있다. 
 
-예를 들어 sts의 replicar 3개가 모두 서로 다른 zone에서 실행되고 있는지 확인하는 제약조건을 설정할 수 있다. You can define this declaratively without explicitly defining which availability zones are in use for each workload.
+예를 들어 sts의 replica 3개가 모두 서로 다른 zone에서 실행되고 있는지 확인하는 제약조건을 설정할 수 있다. You can define this declaratively without explicitly defining which availability zones are in use for each workload.
 
 ### Distributing nodes across zones
 k8s의 코어는 사용자를 위해 no를 생성하지 않는다. 사용자가 직접 no를 생성하거나 [Cluster API](https://cluster-api.sigs.k8s.io/) 같은 도구를 사용할 수 있다.
@@ -40,7 +40,7 @@ You can specify a StorageClass for PersistentVolumeClaims that specifies the fai
 ## Networking
 k8s는 zone-aware 네트워킹을 기능을 포함하지 않는다. [network plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)을 사용해 cluster 네트워킹을 구성할 수 있으며 해당 네트워크 솔루션은 zone과 관련된 구성 요소를 포함할 수도 있다. 예를 들어 cloud provider가 `type=LoadBalancer` svc를 지원하는 경우 lb는 동일한 zone으로 트래픽을 라우팅할 수 있다. 자세한 내용은 각 cloud provider의 공식 문서를 참고한다.
 
-on-premise에서도 위와 같은 내용을 고려해야 한다. 다양한 failure zone 처리를 포함한 svc, ingress 동작은 clusterrㅏ 정확히 설정된 방식에 따라 달라진다.
+on-premise에서도 위와 같은 내용을 고려해야 한다. 다양한 failure zone 처리를 포함한 svc, ingress 동작은 cluster 설정에 따라 달라진다.
 
 ## Fault recovery
 cluster를 구성할 때 한 region의 모든 failure zone이 동시에 오프라인 상태가 될 경우 서비스를 복원할 수 있는지 여부와 방법을 고려해야 할수도 있다. For example, do you rely on there being at least one node able to run Pods in a zone? Make sure that any cluster-critical repair work does not rely on there being at least one healthy node in your cluster. For example: if all nodes are unhealthy, you might need to run a repair Job with a special toleration so that the repair can complete enough to bring at least one node into service.
