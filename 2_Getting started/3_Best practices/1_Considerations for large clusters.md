@@ -26,12 +26,12 @@ no 추가 / 삭제를 통해 cluster를 스케일링할 수 있다. 스케일링
 
 fault-tolerance을 제공하기 위해 failure zone 별로 적어도 하나의 instance를 실행해야 한다. k8s no는 동일한 failure zone에 있는 control plane 엔드포인트로 트래픽을 자동으로 라우팅하지 않지만 cloud provider는 이를 수행할 수 있는 고유한 메커니즘을 제공할 수 있다.
 
-예를 들어 managed load balancer를 사용해 failure zone A의 kubelet과 po에서 발생하는 동일한 failure zone a A에 있는 control plane 호스트에만 전송하도록 설정할 수 있다. failure zone A의 단일 control plane 호스트 또는 엔드포인트가 오프라인 상태가 되면 zone A의 no에 대한 모든 control plane 트래픽이 zone 간 전송된다. 각 zone에 여러 개의 control plane 호스트를 실행하면 이러한 결과가 발생할 가능성이 낮아질 수 있다.
+예를 들어 managed load balancer를 사용해 failure zone A의 kubelet과 po에서 발생하는 트래픽을 동일한 failure zone a A에 있는 control plane 호스트에만 전송하도록 설정할 수 있다. failure zone A의 단일 control plane 호스트 또는 엔드포인트가 오프라인 상태가 되면 zone A의 no에 대한 모든 control plane 트래픽이 zone 간 전송된다. 각 zone에 여러 개의 control plane 호스트를 실행하면 이러한 결과가 발생할 가능성이 낮아질 수 있다.
 
 ### etcd storage
 대규모 cluster의 성능을 향상시키기 위해 Event object를 별도의 etcd 전용 instance에 저장할 수 있다.
 
-cluster를 생성할 때 custom 도구를 사용해 아래 내용을 수행할 수 있다.
+cluster를 생성할 때 custom을 수행하면된다.
 - 추가 etcd instancen을 실행 및 설정
 - kube-apiserver가 해당 etcd에 event object를 저장할 수 있도록 설정
 
@@ -57,4 +57,4 @@ addon의 기본 limit은 일반적으로 작은 크기의 cluster에서의 경�
 그렇기 때문에 대형 cluster를 관리하기 위해 아래 내용을 고려한다.
 - addon의 vertical scaling: addon에 대해 1개의 replica가 존재할 경우 request, limit을 확장한다.
 - addon의 horizontal scaling: po의 replica를 증가시킨다. 물론 cluster가 매우 큰 경우 limit을 더 확장해야 한다. VerticalPodAutoscaler를 recommender mode로 사용해 request, limit에 대한 제안을 확인할 수도 있다.
-- no당 1개의 po(ds으로 관리): cpu, memoy limit을 확장한다.
+- no당 1개의 po(ds으로 관리): horizontal scaling이 안되기 때문에 cpu, memoy limit을 확장한다.
