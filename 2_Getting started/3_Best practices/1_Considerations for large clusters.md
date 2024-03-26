@@ -33,7 +33,7 @@ fault-tolerance을 제공하기 위해 failure zone 별로 적어도 하나의 i
 
 cluster를 생성할 때 custom 도구를 사용해 아래 내용을 수행할 수 있다.
 - 추가 etcd instancen을 실행 및 설정
-- API server가 해당 etcd에 event object를 저장할 수 있도록 설정
+- kube-apiserver가 해당 etcd에 event object를 저장할 수 있도록 설정
 
 추가 내용은 [Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/), [Set up a High Availability etcd cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/setup-ha-etcd-with-kubeadm/)을 참고한다.
 
@@ -52,7 +52,7 @@ k8s resource limit 기능은 po, container의 memory 누수로 인한 다른 구
         memory: 200Mi
 ```
 
-addon의 기본 limit은 일반적으로 작은 크기의 cluster에서의 경험을 통해 수집한 데이터를 기반으로 한다. 대형 cluster에서 실행할 때는 기본 값보다 더 큰 resource를 소모한다.
+addon의 기본 limit은 일반적으로 작은 크기의 cluster에서의 경험을 통해 수집한 데이터를 기반으로 한다. 대형 cluster에서 실행할 때는 기본 값보다 더 큰 resource를 소모한다. 규모가 큰 cluster를 운영할 때 이러한 기본 값을 사용하게되면 memory limit으로 계속해서 addon이 kill될 수도 있다.
 
 그렇기 때문에 대형 cluster를 관리하기 위해 아래 내용을 고려한다.
 - addon의 vertical scaling: addon에 대해 1개의 replica가 존재할 경우 request, limit을 확장한다.
