@@ -57,7 +57,7 @@ sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables ne
 ## cgroup drivers
 리눅스에서 프로세스에 할당된 리소스를 제한하기 위해 control groups를 사용한다.
 
-kublet과 container runtime 모두 control group을 통해 po, container에 대한 리소스 관리를 수행하고 cpu/memory request, limit을 설정한다. control group을 사용하기 위해 kublet과 container runtime이은 cgroup driver를 사용해야 한다. kublet과 container runtime이 동일한 cgroup driver를 사용하고 동일하게 구성되는 것이 중요하다.
+kublet과 container runtime 모두 control group을 통해 po, container에 대한 리소스 관리를 수행하고 cpu/memory request, limit을 설정한다. control group을 사용하기 위해 kublet과 container runtime은 cgroup driver를 사용해야 한다. kublet과 container runtime이 동일한 cgroup driver를 사용하고 동일하게 구성되는 것이 중요하다.
 
 2가지 cgroup driver가 존재한다.
 - cgroupfs
@@ -117,7 +117,7 @@ k8s 1.26는 기본적으로 CRI API의 v1을 사용한다. 이전 버전은 기�
 ### containerd
 containerd를 CRI runtime으로 사용할 떄 고려할 내용을 설명한다.
 
-containerd 설치는 [getting started with containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md)을 참고한다. `config.toml` 설정파일을 생성한 후 아래 내용을 확인한다.
+containerd 설치는 [getting started with containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md)을 참고한다. `config.toml` 설정 파일을 생성한 후 아래 내용을 확인한다.
 
 리눅스 환경에서 기본 경로는 `/etc/containerd/config.toml`이다.
 
@@ -156,6 +156,8 @@ k8s v1.28부터 alpha feature을 사용해 cgroup driver에 대한 automatic det
 [plugins."io.containerd.grpc.v1.cri"]
   sandbox_image = "registry.k8s.io/pause:3.2"
 ```
+
+You might need to restart containerd as well once you've updated the config file: systemctl restart containerd.
 
 Please note, that it is a best practice for kubelet to declare the matching pod-infra-container-image. If not configured, kubelet may attempt to garbage collect the pause image. There is ongoing work in containerd to pin the pause image and not require this setting on kubelet any longer.
 
