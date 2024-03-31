@@ -4,22 +4,22 @@ In addition to supporting tooling, the recommended labels describe applications 
 
 The metadata is organized around the concept of an application. Kubernetes is not a platform as a service (PaaS) and doesn't have or enforce a formal notion of an application. Instead, applications are informal and described with metadata. The definition of what an application contains is loose.
 
-**Note**: 권장 label은 애플리케이션을 보다 쉽게 관리할 수 있지만 필수 사항은 아니다.
+> **Note**:  
+> 권장 label은 애플리케이션을 보다 쉽게 관리할 수 있지만 필수 사항은 아니다.
 
 공유 label, annotation은 `app.kubernetes.io` 공통 접두사를 공유한다. 접두사가 없는 label은 사용자 개인의 것이다. 접두사를 통해 사용자 label과 공유 label을 구분한다.
 
 ## Labels
 이러한 label을 최대한 활용하기 위해서는 모든 resource object에 해당 label을 적용하면 된다.
 
-|Key|Description|Example|Type|
-|---|-----------|-------|----|
-app.kubernetes.io/name|The name of the application|mysql|string
-app.kubernetes.io/instance|A unique name identifying the instance of an application|mysql-abcxzy|string
-app.kubernetes.io/version|The current version of the application (e.g., a semantic version, revision hash, etc.)|5.7.21|string
-app.kubernetes.io/component|The component within the architecture|database|string
-app.kubernetes.io/part-of|The name of a higher level application this one is part of|wordpress|string
-app.kubernetes.io/managed-by|The tool being used to manage the operation of an application|helm|string
-app.kubernetes.io/created-by|The controller/user who created this resource|controller-manager|string
+| Key                          | Description                                                                      | Example      | Type   |
+|------------------------------|----------------------------------------------------------------------------------|--------------|--------|
+| app.kubernetes.io/name       | The name of the application                                                      | mysql        | string |
+| app.kubernetes.io/instance   | A unique name identifying the instance of an application                         | mysql-abcxzy | string |
+| app.kubernetes.io/version    | The current version of the application (e.g., a SemVer 1.0, revision hash, etc.) | 5.7.21       | string |
+| app.kubernetes.io/component  | The component within the architecture                                            | database     | string |
+| app.kubernetes.io/part-of    | The name of a higher level application this one is part of                       | wordpress    | string |
+| app.kubernetes.io/managed-by | The tool being used to manage the operation of an application                    | helm         | string |
 
 아래는 예시다:
 ``` yaml
@@ -38,3 +38,9 @@ metadata:
 ```
 
 ## Applications And Instances Of Applications
+
+## Examples
+
+### A Simple Stateless Service
+
+### Web Application With A Database

@@ -27,13 +27,17 @@ finalizer를 관리하는 controller는 object 삭제가 요청됐음을 나타�
 
 finalizer에 대한 일반적인 사용 예는 kubernetes.io/pv-protection이 있으며 이는 pv 객체의 우발적인 삭제를 방지하기 위함이다. pv 객체가 po에서 사용 중인 경우 k8s는 pv에 finalizer를 추가한다. 해당 pv를 삭제하려고 하면 terminating 상태가 되지만 finalizer가 존재하기 때문에 controller에서 해당 object를 삭제할 수 없다. po가 pv 사용을 중지하면 k8s는 pv-protection finalizer를 삭제하고 controller는 volume을 삭제한다.
 
+> **Note**:  
+> - object를 삭제하면 k8s는 deletion timestamp를 추가하고 삭제 pending 상태의 object의 `.metadata.finalizers` 필드에 대한 변경을 제한한다.
+> - 삭제가 요청된 이후 object를 다시 부활시킬 수 없다. 유일한 방법은 object를 삭제하고 유사한 object를 다시 생성하는 것이다.
+
 ## Owner references, labels, and finalizers
 owner reference는 label와 마찬가지로 k8s 내 resource object 간 관계를 설명하지만 다른 목적으로 사용된다. controller가 po와 같은 object를 관리할 때 lael을 사용해 관련 object 그룹의 변경 사항을 추적한다. 예를 들어 job이 po를 생성할 때 job controller는 해당 po에 label을 적용하고 동일한 label이 있는 클러스터의 모든 po에 대해 변경 사항을 추적한다.
 
 job controller는 뿐만 아니라 po에 owner reference를 추가해 po를 생성한 job를 참조한다. 이러한 po가 실행되는 동한 job을 삭제하면 k8s는 owner reference(label이 아님)를 사용해 클러스터에서 정리가 필요한 po를 결정한다.
 
-또한 k8s는 삭제 대상 resource에 대한 owner reference를 식별할 때 finalizer 추가 및 처리한다.
+또한 k8s는 삭제 대상 resource에 대한 owner reference를 식별할 때 finalizer도 처리한다.
 
 일부 상황에서 finalizer는 종속 object의 삭제를 차단할 수 있으며, 이로 인해 소유자 object가 완전히 삭제되지 않고 예상보다 오래 유지될 수 있다. 이러한 상황에서 소유자, 종속 object에 대한 finalizer, owner reference를 확인해 원인을 해결해야 한다.
 
-**Note**: object가 삭제 상태에 있는 경우 삭제를 계속 진행할 수 있도록 finalizer를 수동으로 삭제하면 안된다. finalizer는 일반적으로 어떤 이류로 resource에 추가되므로 강제로 삭제하면 클러스터에 문제가 발생할 수도 있다. 이는 finalizer의 목적을 이해하고 다른 방식으로 처리하기 원할 때만 수행해야 한다(예를 들어 종속 object를 수동으로 정리).
+**Note**: object가 삭제 상태에 있는 경우 삭제를 계속 진행할 수 있도록 finalizer를 수동으로 삭제하면 안된다. finalizer는 일반적으로 어떤 이유로 resource에 추가되므로 강제로 삭제하면 클러스터에 문제가 발생할 수도 있다. 이는 finalizer의 목적을 이해하고 다른 방식으로 처리하기 원할 때만 수행해야 한다(예를 들어 종속 object를 수동으로 정리).
