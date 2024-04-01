@@ -17,13 +17,13 @@ metadata:
     tier: frontend
   name: frontend-b2zdv
   namespace: default
-  ownerReferences:x
-  - apiVersion: apps/v1
-    blockOwnerDeletion: true
-    controller: true
-    kind: ReplicaSet
-    name: frontend
-    uid: f391f6db-bb9b-4c09-ae74-6a1f77f3d5cf
+  ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: frontend
+      uid: f391f6db-bb9b-4c09-ae74-6a1f77f3d5cf
 ```
 
 종속 object는 `.metadata.ownerReferences.blockOwnerDeletion` 필드에 boolean 값을 사용해 종속 object에 대한 gc에서 소유자 object를 삭제하지 못하도록 할 수 있다. k8s controller(예를 들어 deploy)는 `.metadata.ownerReference` 필드 설정 시 이 필드를 자동으로 true로 설정한다. 물론 사용자가 직접 설정할 수도 있다.

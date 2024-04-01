@@ -32,7 +32,7 @@ finalizer에 대한 일반적인 사용 예는 kubernetes.io/pv-protection이 �
 > - 삭제가 요청된 이후 object를 다시 부활시킬 수 없다. 유일한 방법은 object를 삭제하고 유사한 object를 다시 생성하는 것이다.
 
 ## Owner references, labels, and finalizers
-owner reference는 label와 마찬가지로 k8s 내 resource object 간 관계를 설명하지만 다른 목적으로 사용된다. controller가 po와 같은 object를 관리할 때 lael을 사용해 관련 object 그룹의 변경 사항을 추적한다. 예를 들어 job이 po를 생성할 때 job controller는 해당 po에 label을 적용하고 동일한 label이 있는 클러스터의 모든 po에 대해 변경 사항을 추적한다.
+owner reference는 label와 마찬가지로 k8s 내 resource object 간 관계를 설명하지만 다른 목적으로 사용된다. controller가 po와 같은 object를 관리할 때 label을 사용해 관련 object 그룹의 변경 사항을 추적한다. 예를 들어 job이 po를 생성할 때 job controller는 해당 po에 label을 적용하고 동일한 label이 있는 클러스터의 모든 po에 대해 변경 사항을 추적한다.
 
 job controller는 뿐만 아니라 po에 owner reference를 추가해 po를 생성한 job를 참조한다. 이러한 po가 실행되는 동한 job을 삭제하면 k8s는 owner reference(label이 아님)를 사용해 클러스터에서 정리가 필요한 po를 결정한다.
 
