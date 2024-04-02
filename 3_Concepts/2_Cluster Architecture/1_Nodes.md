@@ -93,7 +93,7 @@ kubectl describe node <insert-node-name-here>
 자세한 내용은 [Node Status](https://kubernetes.io/docs/reference/node/node-status/)를 참고한다.
 
 ## Node heartbeats
-k8s가 보내는 heartbeat는 cluster가 각 no의 가용성을 파악하고 failure가 감지되면 조치를 취할 수 있도록 도와준다.
+k8s no가 보내는 heartbeat는 cluster가 각 no의 가용성을 파악하고 failure가 감지되면 조치를 취할 수 있도록 도와준다.
 
 2가지 형태의 heartbeat가 있다.
 - no object의 `.status` 필드 업데이트
