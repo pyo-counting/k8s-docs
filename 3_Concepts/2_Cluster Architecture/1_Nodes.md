@@ -92,27 +92,39 @@ kubectl describe node <insert-node-name-here>
 
 자세한 내용은 [Node Status](https://kubernetes.io/docs/reference/node/node-status/)를 참고한다.
 
+## Node heartbeats
+k8s가 보내는 heartbeat는 cluster가 각 no의 가용성을 파악하고 failure가 감지되면 조치를 취할 수 있도록 도와준다.
+
+2가지 형태의 heartbeat가 있다.
+- no object의 `.status` 필드 업데이트
+- kube-node-lease ns의 lease object. 각 no에 대해 lease object를 갖는다.
+
 ## Node controller
 node controller는 no의 다양한 측면을 관리하는 k8s control plane 구성요소다.
 
 node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 
 1. no가 등록될 때 CIDR 블락을 할당(CIDR 할당이 활성화 된 경우)한다.
-2. 두 번째는 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
+2. controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
 3. no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다:
-    - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 unknown으로 변경한다.
-    - no가 unreachable 상태로 남아있는 경우, unreachable no의 po를 위해 API-initiated eviction API를 트리거한다. 기본적으로 node controller는 Unknown 상태가된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
+    - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
+    - no가 unreachable 상태로 남아있는 경우, unreachable no의 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
 
-기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 --node-monitor-period flag를 사용해 설정할 수 있다.
+기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다.
 
 ### Rate limits on eviction
-대부분의 경우 node controller는 초당 eviction 비율을 --node-eviction-rate(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.
+대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.
 
-availability zone의 no가 unhealthy 상태가 되면 no eviction 동작이 변경된다. node controller는 동시에 availability zone에서 unhealthy 상태인 no의 비율(ready condition이 Unknown 또는 False)을 확인한다:
+availability zone의 no가 unhealthy 상태가 되면 no eviction 동작이 변경된다. node controller는 동시에 availability zone에서 unhealthy 상태인 no의 비율(Ready condition이 Unknown 또는 False)을 확인한다.
+- unhealthy no의 비율이 적어도 `--unhealthy-zone-threshold`(기본값 0.55)면 eviction rate가 감소한다.
+- cluster의 규모가 작은 경우(즉, `--large-cluster-size-threshold`(기본값 50) 이하의 no개수), eviction이 중지된다.
+- 그렇지 않으면 eviction 비율이 `--secondary-node-eviction-rate`(기본값 0.01)로 줄어든다.
 
-- unhealthy no의 비율이 적어도 --unhealthy-zone-threshold(기본값 0.55)면 eviction rate가 감소한다.
-- 클러스터의 규모가 작은 경우(즉, --large-cluster-size-threshold(기본값 50) 이하), eviction이 중지된다.
-- 그렇지 않으면 eviction 비율이 --secondary-node-eviction-rate(기본값 0..01)로 줄어든다.
+이러한 정책이 availability zone 마다 적용되는 이유는 한 availability zone이 control plane에서 분리되는 경우 다른 availability zone은 연결된 상태로 유지될 수 있기 때문이다. cluster가 여러 클라우드 제공 업체 availability zone에 걸쳐 있지 않으면, 퇴거 메커니즘은 availability zone당 불가용성을 고려하지 않습니다.
+
+노드를 여러 availability zone에 분산하는 주요 이유 중 하나는 한 영역 전체가 다운될 때 작업 부하를 건강한 영역으로 이동할 수 있도록 하는 것입니다. 따라서 한 영역의 모든 노드가 건강하지 않은 경우 노드 컨트롤러는 --node-eviction-rate의 정상 속도로 퇴거합니다. 모든 영역이 완전히 건강하지 않은 경우 (클러스터의 노드가 모두 건강하지 않은 경우) 모든 노드가 건강하지 않은 것으로 간주됩니다. 이러한 경우 노드 컨트롤러는 제어 평면과 노드 간의 연결성에 문제가 있는 것으로 가정하고 어떠한 퇴거도 수행하지 않습니다. (장애가 발생하고 일부 노드가 다시 나타나면, 노드 컨트롤러는 남아 있는 건강하지 않거나 연결할 수 없는 노드에서 pod를 퇴거합니다).
+
+노드 컨트롤러는 또한 NoExecute 특성이 있는 노드에서 실행되는 pod를 퇴거하는 책임이 있습니다. 단, 해당 pod가 해당 특성을 허용하는 경우에는 그렇지 않습니다. 노드 컨트롤러는 노드가 연결할 수 없거나 준비되지 않은 등의 노드 문제에 해당하는 특성을 추가합니다. 이는 스케줄러가 건강하지 않은 노드에 pod를 배치하지 않도록합니다.
 
 ## Resource capacity tracking
 no object는 node의 리소스 용량에 대한 정보를 추적한다: 예를 들어 이용 가능한 메모리와 CPU 정보. self register no는 등록 시 용량에 대한 정보를 제공한다. 직접 no를 추가할 경우 용량 정보를 설정해야 한다.
