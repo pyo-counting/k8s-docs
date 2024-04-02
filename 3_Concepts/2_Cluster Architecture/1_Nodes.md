@@ -118,11 +118,13 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 availability zone의 no가 unhealthy 상태가 되면 no eviction 동작이 변경된다. node controller는 동시에 availability zone에서 unhealthy 상태인 no의 비율(Ready condition이 Unknown 또는 False)을 확인한다.
 - unhealthy no의 비율이 적어도 `--unhealthy-zone-threshold`(기본값 0.55)면 eviction rate가 감소한다.
 - cluster의 규모가 작은 경우(즉, `--large-cluster-size-threshold`(기본값 50) 이하의 no개수), eviction이 중지된다.
-- 그렇지 않으면 eviction 비율이 `--secondary-node-eviction-rate`(기본값 0.01)로 줄어든다.
+- 위 모든 경우에 해당하지 않으면 eviction 비율이 `--secondary-node-eviction-rate`(기본값 0.01)로 줄어든다.
 
-이러한 정책이 availability zone 마다 적용되는 이유는 한 availability zone이 control plane에서 분리되는 경우 다른 availability zone은 연결된 상태로 유지될 수 있기 때문이다. cluster가 여러 클라우드 제공 업체 availability zone에 걸쳐 있지 않으면, 퇴거 메커니즘은 availability zone당 불가용성을 고려하지 않습니다.
+이러한 정책이 availability zone 마다 적용되는 이유는 한 availability zone이 control plane에서 분리되는 경우 다른 availability zone은 연결된 상태로 유지될 수 있기 때문이다. cluster가 cloud provider의 여러 availability zone에 걸쳐 있지 않으면 eviction 메커니즘은 availability zone당 불가용성은 고려하지 않는다.
 
-노드를 여러 availability zone에 분산하는 주요 이유 중 하나는 한 영역 전체가 다운될 때 작업 부하를 건강한 영역으로 이동할 수 있도록 하는 것입니다. 따라서 한 영역의 모든 노드가 건강하지 않은 경우 노드 컨트롤러는 --node-eviction-rate의 정상 속도로 퇴거합니다. 모든 영역이 완전히 건강하지 않은 경우 (클러스터의 노드가 모두 건강하지 않은 경우) 모든 노드가 건강하지 않은 것으로 간주됩니다. 이러한 경우 노드 컨트롤러는 제어 평면과 노드 간의 연결성에 문제가 있는 것으로 가정하고 어떠한 퇴거도 수행하지 않습니다. (장애가 발생하고 일부 노드가 다시 나타나면, 노드 컨트롤러는 남아 있는 건강하지 않거나 연결할 수 없는 노드에서 pod를 퇴거합니다).
+no를 여러 availability zone에 분산하는 주요 이유 중 하나는 한 zone 전체가 다운될 때 workload를 healthy zone으로 이동할 수 있도록 하기 위함이다. 따라서 한 zone의 모든 no가 unhealthy 상태가 되면 node controller는 evection 비율을 `--node-eviction-rate` 값으로 사용한다. 
+
+모든 zone 완전히 unhealthy가 되면 (클러스터의 노드가 모두 건강하지 않은 경우) 모든 노드가 건강하지 않은 것으로 간주됩니다. 이러한 경우 노드 컨트롤러는 제어 평면과 노드 간의 연결성에 문제가 있는 것으로 가정하고 어떠한 퇴거도 수행하지 않습니다. (장애가 발생하고 일부 노드가 다시 나타나면, 노드 컨트롤러는 남아 있는 건강하지 않거나 연결할 수 없는 노드에서 pod를 퇴거합니다).
 
 노드 컨트롤러는 또한 NoExecute 특성이 있는 노드에서 실행되는 pod를 퇴거하는 책임이 있습니다. 단, 해당 pod가 해당 특성을 허용하는 경우에는 그렇지 않습니다. 노드 컨트롤러는 노드가 연결할 수 없거나 준비되지 않은 등의 노드 문제에 해당하는 특성을 추가합니다. 이는 스케줄러가 건강하지 않은 노드에 pod를 배치하지 않도록합니다.
 
