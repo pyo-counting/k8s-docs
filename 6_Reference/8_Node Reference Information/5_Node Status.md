@@ -173,7 +173,7 @@ k8s API에서 no의 condition은 no 리소스의 .status에 표시된다. 예를
 ]
 ```
 
-no에 문제가 발생하면 k8s control plance은 no에 영향을 미치는 `.status.conditions`과 일치하는 taint를 자동으로 생성한다. 예를 들어 Ready condtion의 상태가 kube-controller-manager의 NodeMonitorGracePeriod(기본 값 40초)보다 오랫동안 Unknown 또는 False로 유지되는 경우에 해당한다. Unknown 상태면 `node.kubernetes.io/unreachable` taint, False 상태면 `node.kubernetes.io/not-ready` taint가 no에 추가된다.
+no에 문제가 발생하면 k8s control plane(node controller)은 no에 영향을 미치는 `.status.conditions`과 일치하는 taint를 자동으로 생성한다. 예를 들어 Ready condtion의 상태가 kube-controller-manager의 `--node-monitor-grace-period`(기본 값 40초)보다 오랫동안 Unknown 또는 False로 유지되는 경우에 해당한다. Unknown 상태면 `node.kubernetes.io/unreachable` taint, False 상태면 `node.kubernetes.io/not-ready` taint가 no에 추가된다.
 
 이러한 taint는 pending po에 대해 kube-scheduler가 po를 no에 할당할 때 no의 taint를 고려한다. 스케쥴링된 기존 po는 NoExecute taint의 영향으로 퇴출될 수도 있다. po는 no에서 계속 실행될 수 있도록 toleration을 포함할 수도 있다.
 
