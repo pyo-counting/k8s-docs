@@ -63,7 +63,7 @@ kubectl을 사용해 no object를 생성, 수정할 수 있다.
 
 no의 label은 po의 label selector와 같이 사용해 스케줄링을 제어할 수 있다.
 
-no를 스케줄링 불가능하도록 만들면 scheduler는 해당 no에 새로운 po를 스케줄링할 수 없지만 기존 po에는 영향을 미치지 않는다. 이는 no의 재부팅, 기타 유지 보수 준비 단계를 위해 유용하다.
+no를 스케줄링 불가능하도록 만들면 kube-scheduler는 해당 no에 새로운 po를 스케줄링할 수 없지만 기존 po에는 영향을 미치지 않는다. 이는 no의 재부팅, 기타 유지 보수 준비 단계를 위해 유용하다.
 
 no를 스케줄링 불가하게 하기 위해 아래 명령어를 사용할 수 있다:
 
@@ -124,29 +124,37 @@ availability zone의 no가 unhealthy 상태가 되면 no eviction 동작은 바�
 
 no를 여러 availability zone에 분산하는 주요 이유 중 하나는 한 zone 전체가 다운될 때 workload를 healthy zone으로 이동할 수 있도록 하기 위함이다. 따라서 한 zone의 모든 no가 unhealthy 상태가 되면 node controller는 evection 비율을 `--node-eviction-rate` 값으로 사용한다. 모든 zone이 unhealthy(cluster의 모든 no가 unhealthy) 상태가 되면 control plane과 node 간 연결에 대한 문제가 있는 것으로 간주하고 eviction을 수행하지 않는다. 일부 no가 다시 나타나면 node controller는 남아있는 unhealthy, unreachable no에서 po를 eviction한다.
 
-node controller는 NoExecute taint가 있는 no에서 실행되는 po를 eviction하는 책임이 있다. 단, 해당 po가 해당 taint에 대한 toleration이 없을 경우에만 해당한다. node controller는 no가 unreachable, ready가 아닌 no에 대해 해당 taint를 추가한다. 이를 통해 scheduler가 해당 no에 po를 배치하지 않도록한다.
+그리고 node controller는 NoExecute taint가 있는 no에서 실행되는 po를 eviction하는 책임이 있다. 단, 해당 po가 해당 taint에 대한 toleration이 없을 경우에만 해당한다. node controller는 no가 unreachable, ready가 아닌 no에 대해 해당 taint를 추가한다. 이를 통해 kube-scheduler가 해당 no에 po를 배치하지 않도록한다.
 
 ## Resource capacity tracking
-no object는 node의 리소스 용량에 대한 정보를 추적한다: 예를 들어 이용 가능한 메모리와 CPU 정보. self register no는 등록 시 용량에 대한 정보를 제공한다. 직접 no를 추가할 경우 용량 정보를 설정해야 한다.
+no object는 no의 리소스 capacity에 대한 정보를 추적한다: 예를 들어 이용 가능한 메모리와 CPU 정보. kubelet을 이용한 no의 self register는 등록 시 capacity에 대한 정보를 제공한다. 반대로 직접 no를 추가할 경우 용량 정보를 설정해야 한다.
 
-k8s scheduler는 no에 실행 중인 po에 대한 충분한 리소스가 있음을 보장한다. scheduler는 no에 존재하는 container의 resource request에 대한 총합이 no의 용량보다 크지 않음을 확인한다. request의 총합은 kubelet에 의해 관리되는 모든 container를 포함하며 container runtime을 통해 직접 실행된 container와 kubelet의 제어외의 프로세스는 제외한다.
+kube-scheduler는 no에 실행 중인 po에 대한 충분한 리소스가 있음을 보장한다. kube-scheduler는 no에 존재하는 container의 resource request에 대한 총합이 no의 capacity보다 크지 않음을 확인한다. request의 총합은 kubelet에 의해 관리되는 모든 container를 포함하며 container runtime을 통해 직접 실행된 container와 kubelet의 제어 외의 프로세스는 제외한다.
 
-**Note**: non-po 프로세스에 대한 자원을 미리 예약하기 원할 경우 [reserve resources for system daemons](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#system-reserved) 페이지를 참고한다.
+> **Note**:  
+> non-po 프로세스에 대한 자원을 미리 예약하기 원할 경우 [reserve resources for system daemons](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#system-reserved) 페이지를 참고한다.
 
 ## Node topology
-TopologyManager feature gate를 활성화한 경우 kubelet은 리소스 할당 결정을 할 때 topology 힌트를 이용할 수 있다. 관련해 [Control Topology Management Policies on a Node](https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/) 페이지를 참고한다.
+TopologyManager [feature gate](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/)를 활성화한 경우 kubelet은 리소스 할당 결정을 할 때 topology 힌트를 이용할 수 있다. 관련해 [Control Topology Management Policies on a Node](https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/) 페이지를 참고한다.
 
 ## Graceful node shutdown
-kubelet은 node system의 shutdown 감지를 시도하고 실행 중인 po를 종료한다. systemd inhibitor lock을 이용해 주어진 시간 동안 node의 종료를 지연시키기 때문에 systemd에 의존한다.
+kubelet은 node system의 shutdown 감지를 시도하고 실행 중인 po를 종료한다. 
 
-kubelet은 node shutdown 동안 일반적인 [pod termination process](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination)를 보장한다.
+kubelet은 node shutdown 동안 일반적인 [pod termination process](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination)를 보장한다. shutdown 중에 kubelet은 새로운 po를 허용하지 않는다(po가 이미 no에 bound되어 있더라도).
+
+gracefule node shutdown은 [systemd inhibitor lock](https://www.freedesktop.org/wiki/Software/systemd/inhibit/)을 이용해 주어진 시간 동안 node의 종료를 지연시키기 때문에 systemd에 의존한다.
 
 graceful node shutdown은 GracefulNodeShutdown feature gate(k8s 1.21부터 기본 활성화)에 의해 제어된다.
 
 기본적으로 shutdownGracePeriod, shutdownGracePeriodCriticalPods 옵션은 0 값으로 설정되어 gracefule node shutdown 기능을 활성화시키지 않는다. 이 기능을 활성화하기 위해 kubelet에 해당 옵션이 0이 아닌 값으로 변경되어야 한다.
 
-graceful shutdown 동안, kubelet은 2개의 phase를 통해 po를 종료한다:
+systemd가 no 종료를 감지하거나 통지하면 kubelet은 no의 Ready conditions을 False status로 설정하고 이유를 "node is shutdown"으로 설정한다. kube-scheduler는 이 condition을 존중하며 no에 po를 스케줄링하지 않는다. 다른 third-party scheduler도 동일한 로직을 따를 것으로 예상된다. 이는 해당 no에 새로운 po가 스케줄링되지 않음을 의미한다.
 
+Once systemd detects or notifies node shutdown, the kubelet sets a NotReady condition on the Node, with the reason set to "node is shutting down". The kube-scheduler honors this condition and does not schedule any Pods onto the affected node; other third-party schedulers are expected to follow the same logic. This means that new Pods won't be scheduled onto that node and therefore none will start.
+
+The kubelet also rejects Pods during the PodAdmission phase if an ongoing node shutdown has been detected, so that even Pods with a toleration for node.kubernetes.io/not-ready:NoSchedule do not start there.
+
+graceful shutdown 동안, kubelet은 2개의 phase를 통해 po를 종료한다:
 
 graceful node shutdown 기능은 2개의 KubeletConfiguration 옵션을 통해 설정된다:
 
