@@ -148,27 +148,29 @@ graceful node shutdown은 GracefulNodeShutdown feature gate(k8s 1.21부터 기�
 
 기본적으로 shutdownGracePeriod, shutdownGracePeriodCriticalPods 옵션은 0 값으로 설정되어 gracefule node shutdown 기능을 활성화시키지 않는다. 이 기능을 활성화하기 위해 kubelet에 해당 옵션이 0이 아닌 값으로 변경되어야 한다.
 
-systemd가 no 종료를 감지하거나 통지하면 kubelet은 no의 Ready conditions을 False status로 설정하고 이유를 "node is shutdown"으로 설정한다. kube-scheduler는 이 condition을 존중하며 no에 po를 스케줄링하지 않는다. 다른 third-party scheduler도 동일한 로직을 따를 것으로 예상된다. 이는 해당 no에 새로운 po가 스케줄링되지 않음을 의미한다.
+systemd가 no 종료를 감지하게 되면 kubelet은 no의 Ready conditions을 False status로 설정하고 이유를 "node is shutdown"으로 설정한다. kube-scheduler는 이 condition을 존중하며 no에 po를 스케줄링하지 않는다. 다른 third-party scheduler도 동일한 로직을 따를 것으로 예상된다. 이는 해당 no에 새로운 po가 스케줄링되지 않음을 의미한다.
 
-Once systemd detects or notifies node shutdown, the kubelet sets a NotReady condition on the Node, with the reason set to "node is shutting down". The kube-scheduler honors this condition and does not schedule any Pods onto the affected node; other third-party schedulers are expected to follow the same logic. This means that new Pods won't be scheduled onto that node and therefore none will start.
-
-The kubelet also rejects Pods during the PodAdmission phase if an ongoing node shutdown has been detected, so that even Pods with a toleration for node.kubernetes.io/not-ready:NoSchedule do not start there.
+그리고 kubelet은 no의 shutdown이 감지됐을 때 kubelet은 PodAdmission phase의 po도 거부하므로 `node.kubernetes.io/not-ready:NoSchedule` toleration이 있는 po도 거부한다.
 
 graceful shutdown 동안, kubelet은 2개의 phase를 통해 po를 종료한다:
+1. no에 실행 중인 regular po 종료
+2. no에 실행 중인 [critical po](https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/#marking-pod-as-critical) 종료
 
-graceful node shutdown 기능은 2개의 KubeletConfiguration 옵션을 통해 설정된다:
+graceful node shutdown 기능은 2개의 [KubeletConfiguration](https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/) 옵션을 통해 설정된다.
+- `shutdownGracePeriod`: no가 shutdown을 지연할 총 시간을 나타낸다. 이는 regular, critical po에 대한 총 po 종료 시간을 나타낸다.
+- `shtdownGracePeriodCriticalPods`: critical po의 종료에 사용될 시간을 타나낸다. 해당 옵션은 shutdownGracePeriod보다 작아야 한다.
 
-- shutdownGracePeriod: node가 shutdown을 지연할 총 시간을 나타낸다. 이는 regular, critical po에 대한 총 po 종료 시간을 나타낸다.
-- shtdownGracePeriodCriticalPods: critical pod의 종료에 사용될 시간을 타나낸다. 해당 옵션은 shutdownGracePeriod보다 작아야 한다.
+> **Note**:  
+> system에 의해(또는 관리자에 의해) no의 termination이 취소되는 경우도 있다. 이 경우 no는 Ready state로 돌아온다. 하지만 po가 이미 termination을 시작한 경우 kubelet에 의해 다시 복구 될수는 없으며 다시 스케쥴링되어야 한다.
 
-예를 들어, shutdownGracePeriod=30, shtdownGracePeriodCriticalPods=10일 경우, kubelet은 node shutdown을 30초 지연한다. shutdown 동안 20초 (30 - 10)는 normal po를 종료하는 시간으로 예약되며, 이 후 10초는 critical po를 종료하는 시간으로 예약된다.
+예를 들어 shutdownGracePeriod=30, shtdownGracePeriodCriticalPods=10일 경우, kubelet은 node shutdown을 30초 지연한다. shutdown 동안 20초 (30 - 10)는 normal po를 종료하는 시간으로 예약되며, 이 후 10초는 critical po를 종료하는 시간으로 예약된다.
 
-**Note**: graceful node shutdown 동안 축출된 po는 shutdown으로 마킹된다. kubectl get po 명령어를 사용해 축축된 po가 Terminated 상태임을 확인할 수 있다. 그리고 kubectl describe po 명령어를 사용해 아래 내용을 확인할 수 있다.
-
-```
-Reason:         Terminated
-Message:        Pod was terminated in response to imminent node shutdown.
-```
+> **Note**:  
+> graceful node shutdown 동안 eviction된 po는 shutdown으로 마킹된다. kubectl get po 명령어를 사용해 eviction된 po가 Terminated 상태임을 확인할 수 있다.
+> ```
+> Reason:         Terminated
+> Message:        Pod was terminated in response to imminent node shutdown.
+> ```
 
 ### Pod Priority based graceful node shutdown
 
