@@ -175,5 +175,10 @@ graceful node shutdown 기능은 2개의 [KubeletConfiguration](https://kubernet
 ### Pod Priority based graceful node shutdown
 
 ## Non Graceful node shutdown
+사용자 에러(shutdownGracePeriod, ShutdownGracePeriodCriticalPods을 잘못 설정), kubelet이 사용하는 inhibitor locks mechanism이 트리거되지 않아 kubelet의 Node Shutdown Manager가 node의 shutdown 동작을 인지하지 못할 수도 있다.
+
+sts의 po는 shutdown no에서 terminating status에 갇히게 된다. kubelet이 po를 삭제할 수 없기 때문에 sts는 동일한 이름의 po를 새로 생성할 수 없다. po가 사용하는 volume이 있는 경우 shutdown no에서 VolumeAttachments이 삭제되지 않기 때문에 volume을 새로운 no에 사용이 불가하다. 결과적으로 sts에서 실행되는 애플리케이션이 적절하게 기능을 수행할 수 없다. 만약 shutdown 됐던 no가 돌아오면 po는 kubelet에 의해 삭제되고 po는 다른 no에 실행 될 것이다. no가 돌아오지 못하면 해당 po는 terminating status로 평생 남게 된다.
+
+To mitigate the above situation, a user can manually add the taint node.kubernetes.io/out-of-service with either NoExecute or NoSchedule effect to a Node marking it out-of-service. If the NodeOutOfServiceVolumeDetachfeature gate is enabled on kube-controller-manager, and a Node is marked out-of-service with this taint, the pods on the node will be forcefully deleted if there are no matching tolerations on it and volume detach operations for the pods terminating on the node will happen immediately. This allows the Pods on the out-of-service node to recover quickly on a different node.
 
 ## Swap memory management
