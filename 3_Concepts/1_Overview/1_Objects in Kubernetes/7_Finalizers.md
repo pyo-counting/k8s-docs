@@ -40,4 +40,5 @@ job controller는 뿐만 아니라 po에 owner reference를 추가해 po를 생�
 
 일부 상황에서 finalizer는 종속 object의 삭제를 차단할 수 있으며, 이로 인해 소유자 object가 완전히 삭제되지 않고 예상보다 오래 유지될 수 있다. 이러한 상황에서 소유자, 종속 object에 대한 finalizer, owner reference를 확인해 원인을 해결해야 한다.
 
-**Note**: object가 삭제 상태에 있는 경우 삭제를 계속 진행할 수 있도록 finalizer를 수동으로 삭제하면 안된다. finalizer는 일반적으로 어떤 이유로 resource에 추가되므로 강제로 삭제하면 클러스터에 문제가 발생할 수도 있다. 이는 finalizer의 목적을 이해하고 다른 방식으로 처리하기 원할 때만 수행해야 한다(예를 들어 종속 object를 수동으로 정리).
+> **Note**:  
+> object가 삭제 상태에 있는 경우 삭제를 계속 진행할 수 있도록 finalizer를 수동으로 삭제하면 안된다. finalizer는 일반적으로 어떤 이유로 resource에 추가되므로 강제로 삭제하면 클러스터에 문제가 발생할 수도 있다. 이는 finalizer의 목적을 이해하고 다른 방식으로 처리하기 원할 때만 수행해야 한다(예를 들어 종속 object를 수동으로 정리).
