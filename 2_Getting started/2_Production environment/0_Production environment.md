@@ -1,4 +1,4 @@
-운영 환경 k8s는 계획과 준비가 필요하다. 만약 중요한 workload를 실행한다면 회복력이 있게 설정되어야 한다. 이 페이지에서는 운영 환경에서 실행할 준비가 될 수 있도록 cluster를 설정하는 방버을 설명한다.
+운영 환경 k8s는 계획과 준비가 필요하다. 만약 중요한 workload를 실행한다면 회복력이 있게 설정되어야 한다. 이 페이지에서는 운영 환경에서 실행할 준비가 될 수 있도록 cluster를 설정하는 방법을 설명한다.
 
 ## Production considerations
 일반적으로 운영 환경 k8s는 개발, 테스트 환경보다 추가 필요 사항이 요구된다. 운영 환경은 많은 사용자 들의 접근, 일관된 가용성(consistent availability), 요구 사항 변경을 수용할 수 있는 resource가 필요하다.
@@ -68,7 +68,7 @@ workload는 k8s control plane 외부, 내부 모두에 영향을 줄 수 있다.
 - ns의 제한 설정: memory, cpu와 같은 resource에 대해 ns 마다 quota 설정을 한다. 자세한 내용은 [Mnage Memory, Cpu, and API Resources](https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/)을 참고한다. 제한을 상속 받기 위해 [Hierarchical Namespaces](https://kubernetes.io/blog/2020/08/14/introducing-hierarchical-namespaces/)를 고려할 수 있다.
 - dns 요구 사항에 대한 준비: worklaod의 scale up에 대해서 DNS service 역시 scale up해야 한다. 자세한 내용은 [Autoscale the DNS service in a Cluster](https://kubernetes.io/docs/tasks/administer-cluster/dns-horizontal-autoscaling/)를 참고한다.
 - 추가적인 sa 생성: 사용자 계정은 사용자가 cluster에서 무엇을 할 수 있는지 결정하고 sa는 특정 ns에서 po의 접근을 정의한다. 기본적으로 po는 ns의 기본 sa를 사용한다. 자세한 내용은 [Managing Service Account](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/)를 참고한다.
-    - 특정 container registry에서 image를 pull할 수 있도록 secret을 추가한ㄷ. 자세한 내용은 [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)를 참고한다.
+    - 특정 container registry에서 image를 pull할 수 있도록 secret을 추가한다. 자세한 내용은 [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)를 참고한다.
     - sa에 RBAC을 할당한다. 자세한 내용은 [ServiceAccount permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#service-account-permissions)을 참고한다.
 
 ## What's next
