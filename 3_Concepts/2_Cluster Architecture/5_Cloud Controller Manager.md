@@ -35,7 +35,110 @@ cloud provider에 따라 route controller는 po 네트워크를 위해 ip 주소
 svc는 cloud에서 제공하는 load balancer, ip 주소, network packet filtering, target health check와 같은 cloud 구성 요소와 통합된다. service controller는 해당 구성 요소가 필요한 svc object를 생성할 때 cloud provider API와 상호 작용해 load balancer와 같은 인프라 구성 요소를 구성한다.
 
 ## Authorization
+cloud-controller-manager가 작업을 수행하기 위해 다양한 API object에 대해 필요한 접근 권한을 설명한다.
+
 ### Node controller
+node controller는 no object에 대해서만 작업을 수행하며 모든 접근이 필요하다.
+
+`v1/Node`
+- get
+- list
+- create
+- update
+- patch
+- watch
+- delete
+
 ### Route controller
+route controller는 no object의 생성을 읽고 적절한 route를 구성한다. 이를 위해 no object에 대한 get 접근이 필요하다.
+
+`v1/Node`
+- get
+
 ### Service controller
+service controller는 svc object의 생성, 업데이트, 삭제를 감시하고 해당 svc에 대한 endpoint를 적잘하게 구성한다(endpointslice의 경우 kube-controller-manager가 필요에 따라 관리한다).
+
+svc에 접근하기 위해 list, watch 접근이 칠요하다. 그리고 svc를 업데이트하기 위해 patch, update 접근이 칠요하다.
+
+svc에 대한 endpoint object를 설정하기 위해 create, list, get, watch, update 접근이 필요하다.
+
+`v1/Service`
+- list
+- get
+- watch
+- patch
+- update
+
 ### Others
+cloud-controller-manager 구현을 위해 event object 생성 접근 권한, 안전한 작동을 보장하기 위해 sa 생성 접근 권한이 필요하다.
+
+`v1/Event`
+- create
+- patch
+- update
+
+`v1/ServiceAccount`
+- create
+
+cloud-controller-manager를 위한 RBAC clusterrole은 다음과 같다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cloud-controller-manager
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+```
