@@ -45,9 +45,9 @@ cloud 별 제어 로직을 내장한 k8s control plane 구성요소. [cloud-cont
 kube-controller-manager와 마찬가지로 cloud-controller-manager는 논리적으로 독립적인 여러 제어 루프를 단일 바이너리로 결합한 단일 프로세스로 실행한다. 수평 확장도 가능하다.
 
 아래 controller는 cloud provider 족속성을 가질 수 있다:
-- `Node controller`: 응답이 멈춘 이후 클라우드에서 no가 삭제됐는지 여부를 확인
-- `Route controller`: cloud 인프라 내 라우트 설정
-- `Service controller`: cloud provider load balancer 생성 / 업데이트 / 삭제
+- `node controller`: 응답이 멈춘 이후 클라우드에서 no가 삭제됐는지 여부를 확인
+- `route controller`: cloud 인프라 내 라우트 설정
+- `service controller`: cloud provider load balancer 생성 / 업데이트 / 삭제
 
 ## Node Components
 no 구성요소는 모든 no에서 실행되어 동작 중인 po를 관리하고 k8s runtime 환경을 제공한다.
