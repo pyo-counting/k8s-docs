@@ -104,13 +104,28 @@ node controller는 no의 다양한 측면을 관리하는 k8s control plane 구�
 
 node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 
-1. no가 등록될 때 CIDR 블락을 할당(CIDR 할당이 활성화 된 경우)한다.
+1. no가 등록될 때 CIDR 블락을 할당한다(`--allocate-node-cidrs=true`일 경우). kube-controller-manager는 po 네트워킹을 위한 cluster의 CIDR 중 no CIDR를 각 no 별로 할당한다. CIDR 크기는 `--node-cidr-mask-size`을 통해 설정한다.
 2. controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
 3. no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다:
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
     - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
 
 기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다.
+
+kubelet
+- `--node-status-update-frequency`: (기본값 10s) kubelet의 no object의 `.status`를 업데이트하는 주기
+
+kube-controller-manager
+- `--allocate-node-cidrs`: po, svc에 ip를 할당할지 여부
+- `--service-cluster-ip-range`: svc에 할당할 주소 cidr. `--allocate-node-cidrs=true`이어야 한다.
+- `--cluster-cidr`: k8s cluster(또는 po) cidr. po에 할당할 주소 cidr. `--allocate-node-cidrs=true`이어야 한다. 예를 들어 172.0.0.0/16
+- `--node-cidr-mask-size`: (기본값 24). no가 po의 ip 할당에 사용할 cidr 크기(`--cluster-cidr` 기반).
+- `--node-monitor-period`:(기본값 5s) kube-apiserver를 통해 no의 `.status` 확인 및 동기화하는 시간
+- `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `--node-status-update-frequency`보다 충분히 큰 값이어야 한다.
+![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)
+
+위 그림에서는 `--pod-eviction-timeout`가 있지만 이는 k8s v1.29 기준 없어진 flag다.
+
 
 ### Rate limits on eviction
 대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.

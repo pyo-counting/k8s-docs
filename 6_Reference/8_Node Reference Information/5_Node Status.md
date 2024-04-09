@@ -194,7 +194,7 @@ no는 2가지 heartbeat 방식을 사용한다:
 - no의 `.status` 필드를 업데이트한다.
 - kube-node-lease ns의 lease object. 각 no에 대해 lease object를 갖는다.
 
-no의 `.status`를 업데이트하는 것에 비해 lease resource는 더 간단하다. heartbeat를 위해 lease를 사용하는 것은 큰 클러스터의 경우 성능에 영향을 줄여준다.
+no의 `.status`를 업데이트하는 것에 비해 lease resource는 더 간단하다. heartbeat를 위해 lease를 사용하는 것은 규모가 큰 클러스터의 경우 성능에 영향을 줄여준다.
 
 kubelet은 no의 `.status`를 생성 및 업데이트, lease object를 업데이트해야 하는 책임이 있다.
 - kubelet은 상태가 변경되거나 설정 간격 동안 업데이트가 없는 경우 no의 `.status`를 업데이트 한다. `.status` 업데이트에 대한 기본 간격은 5분이다(이는 unreachable no에 대한 기본 타임아웃 시간인 40초보다 훨씬 길다).
