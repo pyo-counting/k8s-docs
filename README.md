@@ -4,6 +4,7 @@
 ## 요약
 - [node-problem-detector](https://github.com/kubernetes/node-problem-detector)
 - k8s의 worker node 구성 요소 중 container 실행을 담당하는 kubelet은 container로 실행할 수 없다.
+- kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다.
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
   - namespace:
     - `mnt`: mount points

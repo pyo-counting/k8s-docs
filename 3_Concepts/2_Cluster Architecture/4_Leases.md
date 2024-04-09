@@ -19,7 +19,7 @@ kube-system        kube-scheduler                                     ip-10-0-57
 ```
 
 ## Node heartbeats
-k8s는 kube-apiserver로의 kubelet no heartbeat를 위해 Lease API를 사용한다. 모든 no은 kube-node-lease ns에 동일한 이름을 갖는 lease object가 있다. 기본적으로 모든 kubelet heartbeat는 lease 오브젝트의 `.spec.renewTime` 필드를 업데이트하는 요청이다. k8s control plane은 no의 가용성을 결정하는데 해당 필드를 사용한다.
+k8s는 kube-apiserver로의 kubelet no heartbeat를 위해 Lease API를 사용한다. 모든 no은 kube-node-lease ns에 동일한 이름을 갖는 lease object가 있다. 기본적으로 모든 kubelet heartbeat는 lease object의 `.spec.renewTime` 필드를 업데이트하는 요청이다. k8s control plane은 no의 가용성을 결정하는데 해당 필드를 사용한다.
 
 ## Leader election
 또한 k8s는 구성요소의 1개의 인스턴스만 실행되도록 보장한다. 이는 HA 구성에서 kube-controller-manager, kube-scheduler와 같은 control plane의 구성요소에서 사용하며 구성 요소의 인스턴스 하나만 활성화되고 다른 인스턴스는 대기상태여야 한다.

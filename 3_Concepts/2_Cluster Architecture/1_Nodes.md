@@ -36,16 +36,16 @@ no object의 이름은 DNS subdomain name 규칙을 따라야한다.
 두 개의 no가 동시에 동일한 이름을 가질 수 없다. k8s는 동일한 이름의 resource에 대해 동일한 object로 생각한다. 동일한 이름을 갖는 no의 경우 동일한 state(네트워크, root disk 내용), label 등의 정보를 갖는다고 생각한다. 이로 인해 이름을 변경하지 않고 인스턴스가 수정되면 불일치가 발생할 수 있다. no를 교체하거나 업데이트해야 하는 경우 기존 no object를 먼저 kube-apiserver에서 제거하고 업데이투 후 다시 추가해야 한다.
 
 ### Self-registration of Nodes
-kubelet에 `--register-node` flag를 true(기본 값)으로 설정하면 kubelet은 kube-apiserver에 스스로 등록한다. 대부분의 경우 선호하는 방식이다.
+kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설정하면 kubelet은 kube-apiserver에 스스로 등록한다. 대부분의 경우 선호하는 방식이다.
 
-스스로 등록할 경우 kubelet에 아래 flag를 사용한다.
+스스로 등록할 경우 kubelet에 flag 또는 설정 파일 내 필드를 사용한다.
 - `--kubeconfig`: kube-apiserver에 인증하기 위해 사용되는 credentials의 경로
 - `--cloud-provider`: metadata를 읽기 위해 cloud provier와 통신하는 방법
-- `--register-node`: kube-apiserver에 스스로 등록할지 여부
-- `--register-with-taints`: no의 taints 목록(`<key>=<value>:<effect>`를 ,로 구분)
+- `.registerNode`: kube-apiserver에 스스로 등록할지 여부
+- `.registerWithTaints`: no의 taints 목록(`<key>=<value>:<effect>`를 ,로 구분)
 - `--node-ip`: no의 IP 주소. no의 여러 ip주소를 사용할 수 있으며 dual-stack cluster의 경우 [configure IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#configure-ipv4-ipv6-dual-stack)를 참고한다. 이 flag를 명시하지 않으면 no의 기본 ipv4 주소를 사용하고 ipv4 주소가 없으면 ipv6 주소를 사용한다.
 - `--node-labels`: no의 label ([NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)에 의해 강제되는 label 규칙도 있다)
-- `--node-status-update-frequency`: kubelet이 no의 상태를 kube-apiserver에 보고하는 주기
+- `.nodeStatusUpdateFrequency`: kubelet이 no의 상태를 kube-apiserver에 보고하는 주기. 자세한 내용은 아래를 참고한다.
 
 [Node authorization mode](https://kubernetes.io/docs/reference/access-authn-authz/node/), [NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)가 활성화된 경우, kubelet은 자체 no의 resource만 생성/수정할 수 있는 권한이 있다. 
 
@@ -57,9 +57,9 @@ kubelet에 `--register-node` flag를 true(기본 값)으로 설정하면 kubelet
 ### Manual Node administration
 kubectl을 사용해 no object를 생성, 수정할 수 있다.
 
-직접 no object를 생성하기 위해 kubelet의 `--register-node=false` flag를 사용한다.
+직접 no object를 생성하기 위해 kubelet 설정 파일 내 `.registerNode` 필드를 사용한다.
 
-`--register-node` flag와 상관없이 no obejct를 수정할 수 있다. 예를 들어 label 수정하거나 unschedulable로 마킹할 수 있다.
+`.registerNode` 필드와 상관없이 no obejct를 수정할 수 있다. 예를 들어 label 수정하거나 unschedulable로 마킹할 수 있다.
 
 no의 label은 po의 label selector와 같이 사용해 스케줄링을 제어할 수 있다.
 
@@ -99,6 +99,8 @@ k8s no가 보내는 heartbeat는 cluster가 각 no의 가용성을 파악하고 
 - no object의 `.status` 필드 업데이트
 - kube-node-lease ns의 lease object. 각 no에 대해 lease object를 갖는다.
 
+kubelet의 no heartbeat와 관련된 상세 사항은 [Node status](https://kubernetes.io/docs/reference/node/node-status/)를 참고한다.
+
 ## Node controller
 node controller는 no의 다양한 측면을 관리하는 k8s control plane 구성요소다.
 
@@ -111,9 +113,6 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
     - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
 
 기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다.
-
-kubelet
-- `--node-status-update-frequency`: (기본값 10s) kubelet의 no object의 `.status`를 업데이트하는 주기
 
 kube-controller-manager
 - `--allocate-node-cidrs`: po, svc에 ip를 할당할지 여부
