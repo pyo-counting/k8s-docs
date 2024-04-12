@@ -1,3 +1,3 @@
 cr은 k8s API의 extension이다. k8s는 cr 추가를 위한 두 가지 방법을 제공한다.
 - crd(CustomResourceDefinition): 사용자가 지정한 API group, kind, schema를 사용해 새로운 cr API를 선언적으로 정의할 수 있다. k8s control plane은 cr의 저장과 처리를 담당한다. crd를 사용하면 사용자 API server 없이 새로운 유형의 resource를 만들 수 있다.
-- aggregation lasyer: kube-apiserver 뒤에서 proxy 역할을 수행한다. 이러한 방식을 API Aggregation(AA)라고 부른다. 사용자의 APi server를 작성 및 배포함으로써 cr에 대한 특수 구현을 제공할 수 있다. kube-apiserver는 사용자가 지정한 cr API에 대한 요청을 사용자의 API server로 위임한다.
+- aggregation lasyer: kube-apiserver 뒤에서 proxy 역할을 수행한다. 이러한 방식을 API Aggregation(AA)라고 부른다. 사용자의 API server를 작성 및 배포함으로써 cr에 대한 특수 구현을 제공할 수 있다. kube-apiserver는 사용자가 지정한 cr API에 대한 요청을 사용자의 API server로 위임한다.

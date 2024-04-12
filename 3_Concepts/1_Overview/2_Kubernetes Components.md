@@ -34,7 +34,7 @@ no가 배정되지 않은 새로 생성된 po를 감지(watch)하고 실행할 n
 컨트롤러의 예시는 다음과 같다:
 - `node controller`: no가 다운되었을 때 통지와 대응에 관한 책임을 가진다.
 - `job controller`: job object를 감시하며 해당 작업을 수행하기 위한 po를 생성한다.
-- `EndpointSlice controller`: EndpointSlice object를 관리한다(즉, svc와 po를 연결시킨다).
+- `endpointSlice controller`: EndpointSlice object를 관리한다(즉, svc와 po를 연결시킨다).
 - `service account controller`: 새로운 ns에 대한 기본 sa을 생성한다.
 
 위 controller 외에도 더 많은 controller가 존재한다.

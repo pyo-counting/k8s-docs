@@ -20,5 +20,8 @@ API Discovery
 Aggregated Discovery
 API groups and versioning
 API changes
-API Extension
-What's next
+
+## API Extension
+k8s API는 두 가지 방법을 통해 확장할 수 있다
+1. [Custom resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)는 kube-apiserver가 resource API를 제공하는 방법을 선언적으로 정의할 수 있다.
+2. [aggregation layer](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/)을 사용해 k8s API을 구현할 수 있다.

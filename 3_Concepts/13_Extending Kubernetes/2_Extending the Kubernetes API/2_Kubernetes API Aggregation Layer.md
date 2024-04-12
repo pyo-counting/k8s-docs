@@ -8,7 +8,6 @@ aggregation layer는 kube-apiserver 프로세스 안에서 동작한다. 확장 
 APIService를 구현하는 가장 일반적인 방법은 cluster 내에 실행되고 있는 po에서 extension API server를 실행하는 것이다. extension API server를 사용해서 cluster의 resource를 관리하는 경우 extension API server("extension-apiserver" 라고도 한다)는 일반적으로 하나 이상의 controller와 쌍을 이룬다. apiserver-builder library는 extension API server와 연관된 controller에 대한 골격을 제공한다.
 
 ### Response latency
-### Response latency
 extension-apiserver는 kube-apiserver로 오가는 연결에 대해 latency가 낮아야 한다. kube-apiserver의 discovery request은 왕복 latency가 5초 이내여야 한다.
 
 extension API server가 latency에 대한 요구 사항을 달성할 수 없는 경우 이를 충족할 수 있도록 변경하는 것을 고려한다.
