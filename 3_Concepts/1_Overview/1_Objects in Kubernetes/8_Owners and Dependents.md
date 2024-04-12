@@ -1,6 +1,6 @@
 k8s에서 일부 object는 다른 object를 소유한다. 예를 들어 rs는 po를 소유할 수 있다. 이렇게 종속 object들은 소유자 object에 의존한다.
 
-소유에 대한 개념은 일부 resource가 사용하는 [labels and selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)에 대한 개념과는 다르다. 예를 들어 endpointSlices를 생성하는 svc가 있다. control plane은 label을 사용해 svc에서 사용되는 endpointSlices 구분할 수 있다. label 뿐만 아니라 endpointSlices에는 owner reference가 있다. Owner references help different parts of Kubernetes avoid interfering with objects they don’t control.
+소유에 대한 개념은 일부 resource가 사용하는 [labels and selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)에 대한 개념과는 다르다. 예를 들어 endpointSlices를 생성하는 svc가 있다. control plane은 label을 사용해 svc에서 사용되는 endpointSlices 구분할 수 있다. label 뿐만 아니라 endpointSlices에는 owner reference가 있다. k8s의 각 controller-manager는 owner reference를 통해 자신이 제어하는 object를 구별한다.
 
 ## Owner references in object specifications
 종속 object는 소유자 object를 참조할 수 있도록 `.metadata.ownerReferences`필드가 있다. 유효한 owner reference일 경우 해당 필드는 종속 object와 동일한 ns 내의 object 이름과 UID로 구성된다. k8s는 rs, ds, deploy, jobs, cj, rc와 같은 object에 종속되는 object에 이 필드 값을 자동으로 설정한다. 이 필드의 값을 수정해 이러한 관계를 수동으로 설정할 수도 있다. 하지만 일반적으로 k8s가 자동으로 관리하도록 허용할 수 있다.

@@ -1,14 +1,14 @@
-operator는 cr(custom resource)를 사용해 애플리케이션과 관련 구성요소를 관리하는 k8s 소프트웨어 확장이다. operator는 k8s의 원칙, 특히 control loop(controller)를 따른다.
+operator는 [custom resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)를 사용해 애플리케이션과 관련 구성요소를 관리하는 k8s 소프트웨어 extension이다. operator는 k8s의 원칙, 특히 [control loop](https://kubernetes.io/docs/concepts/architecture/controller/)를 따른다.
 
 ## Motivation
-operator 패턴은 애플리케이션 또는 애플리케이션과 관련된 구성요소 집합을 관리하는 운영하는 사람의 주요 업무를 포착하는 것을 목표로한다. 특정 애플리케이션을 관리하고 운영하는 사람은 해당 시스템의 동작 방식, 배포 방법, 문제 발생 시 해결 방법을 잘 안다.
+operator pattern은 애플리케이션 또는 애플리케이션과 관련된 구성요소 집합을 관리하는 운영자의 주요 업무를 포착하는 것을 목표로한다. 특정 애플리케이션을 관리하고 운영하는 사람은 해당 시스템의 동작 방식, 배포 방법, 문제 발생 시 해결 방법을 잘 안다.
 
-k8s에서 워크로드를 실행하는 사람들은 반복 적인 작업을 처리하기 위해 자동화를 하는 것을 좋아한다. The operator pattern captures how you can write code to automate a task beyond what Kubernetes itself provides.
+k8s에서 workload를 실행하는 사람들은 반복적인 작업을 처리하기 위해 자동화를 하는 것을 좋아한다. operator pattern은 k8s가 제공하는 것 이상의 작업을 자동화하기 위해 코드를 작성하는 방법을 포착한다.
 
 ## Operators in Kubernetes
 k8s는 기본적으로 자동화를 위해 디자인되었다. k8s 코어에는 내장된 자동화 기능을 지원한다. k8s를 사용해 워크로드 배포 및 실행을 자동화할 수 있으며, k8s가 해당 작업을 수행하는 방식도 자동화할 수 있다.
 
-k8s의 operator 패턴 개념을 통해 k8s 코드 자체를 수정하지 않고도 controller를 하나 이상의 cr에 연결해 클러스터의 동작을 확장할 수 있다. operator는 cr의 controller 역할을 하는 k8s API 클라이언트다.
+k8s의 operator pattern 개념을 통해 k8s 코드 자체를 수정하지 않고도 controller를 하나 이상의 custom resource에 연결해 cluster의 동작을 확장할 수 있다. operator는 custom resource의 controller 역할을 하는 k8s API 클라이언트다.
 
 ## An example operator
 operator를 사용하해 자동화할 수 있는 몇 가지 예시는 다음과 같다.
@@ -32,7 +32,7 @@ operator 패턴에 대한 자세한 예시는 다음과 같다.
 7. operator는 관리하는 resource에 견고한 자동화를 제공하는 것을 목표로 하기 때문에 추가 지원 코드가 있다. 이 예제에서 코드는 데이터베이스가 이전 버전을 실행 중인지 확인하고, 업그레이드된 경우 이를 업그레이드하는 job 오브젝트를 생성한다.
 
 ## Deploying operators
-operator를 배포하는 가장 일반적인 방법은 crd 정의, 관련 controller를 클러스터에 추가하는 것이다. 컨테이너화된 애플리케이션을 실행하는 것처럼 controller는 일반적으로 control plane 외부에서 실행된다. 예를 들어 클러스터에서 controller를 deploy로 실행할 수 있다.
+operator를 배포하는 가장 일반적인 방법은 crd 정의, 관련 controller를 cluster에 추가하는 것이다. 컨테이너화된 애플리케이션을 실행하는 것처럼 controller는 일반적으로 control plane 외부에서 실행된다. 예를 들어 cluster에서 controller를 deploy로 실행할 수 있다.
 
 ## Using an operator
 operator가 배포되면 operator가 사용하는 resource의 종류를 추가/수정/삭제해 사용한다. 위의 예에 따라 operator 자체에 대한 deploy를 설정한 후 아래 명령어를 수행한다.
