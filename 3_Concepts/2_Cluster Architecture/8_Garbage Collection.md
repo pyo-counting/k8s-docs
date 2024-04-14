@@ -24,15 +24,14 @@ owner reference는 일부 리소스에서 사용하는 label selector 메커니�
 > In v1.20+, if the garbage collector detects an invalid cross-namespace ownerReference, or a cluster-scoped dependent with an ownerReference referencing a namespaced kind, a warning Event with a reason of OwnerRefInvalidNamespace and an involvedObject of the invalid dependent is reported. You can check for that kind of Event by running kubectl get events -A --field-selector=reason=OwnerRefInvalidNamespace.
 
 ## Cascading deletion
-k8s는 object를 삭제할 때 더 이상 owner reference가 없는지 확인한다. 예를 들어 rs을 삭제할 때 남겨진 po가 없는지 확인하고 삭제한다. k8s가 object를 삭제할 때 cascading deletion 프로세스를 사용해 종속 object를 자동으로 삭제할지 여부를 제어할 수 있다. cascading deletion에는 다음과 같은 두 가지 종류가 있다:
-
+k8s는 object를 삭제할 때 더 이상 owner reference가 없는지 확인한다. 예를 들어 rs을 삭제할 때 남겨진 po가 없는지 확인하고 삭제한다. k8s가 object를 삭제할 때 cascading deletion 프로세스를 사용해 종속 object를 자동으로 삭제할지 여부를 제어할 수 있다. cascading deletion에는 다음과 같은 두 가지 종류가 있다.
 - Foreground cascading deletion
 - Background cascading deletion
 
 또한 k8s의 finalizers를 사용해 gc가 owner reference가 있는 resource을 언제 어떻게 삭제할지 제어할 수 있다.
 
 ### Foreground cascading deletion
-foreground cascading deletion에서는 삭제하려는 소유자 object가 먼저 삭제 중 상태가 된다. 이 상태에서는 소유자 object에 다음과 같은 일이 일어난다:
+foreground cascading deletion에서는 삭제하려는 소유자 object가 먼저 삭제 중 상태가 된다. 이 상태에서는 소유자 object에 다음과 같은 일이 일어난다.
 - kube-apiserver가 object의 `.metadata.deletionTimestamp` 필드를 object가 삭제 마킹된 시간으로 설정한다.
 - kube-apiserver가 `.metadata.finalizers` 필드를 foregroundDeletion로 설정한다.
 - object는 삭제 과정이 완료되기 전까지 kube-apiserver를 통해 조회할 수 있다.
@@ -53,17 +52,16 @@ kubelet은 사용되지 않는 image에 대한 gc를 2분, container에 대한 g
 사용되지 않는 container와 image에 대한 gc 옵션을 설정하기 위해 configuration file 사용하여 kubelet을 수정하고 KubeletConfiguration 리소스 타입의 gc과 관련된 파라미터를 수정한다.
 
 ### Container image lifecycle
-k8s는 kubelet의 일부인 image manager가 cadvisor와 협동하여 모든 image의 라이프사이클을 관리한다. kubelet은 gc 결정을 내릴 때 다음 디스크 사용량 제한을 고려한다:
+k8s는 kubelet의 일부인 image manager가 cadvisor와 협동하여 모든 image의 lifecycle을 관리한다. kubelet은 gc 결정을 내릴 때 다음 디스크 사용량과 관련된 설정 값을 고려한다.
+- `imageGCHighThresholdPercent`
+- `imageGCLowThresholdPercent`
 
-- HighThresholdPercent
-- LowThresholdPercent
-
-HighThresholdPercent 값을 초과한 디스크 사용량은 마지막으로 사용된 시간을 기준으로 오래된 image 순서대로 삭제하는 gc를 트리거한다. kubelet은 디스크 사용량이 LowThresholdPercent 값에 도달할 때까지 image를 삭제한다.
+`imageGCHighThresholdPercent` 값을 초과한 디스크 사용량은 마지막으로 사용된 시간을 기준으로 오래된 image 순서대로 삭제하는 gc를 트리거한다. kubelet은 디스크 사용량이 `imageGCHighThresholdPercent` 값에 도달할 때까지 image를 삭제한다.
 
 ## Garbage collection for unused container images
 alpha 기능으로 디스크 사용량과 무관하게 로컬에 있는 사용되지 않는 image의 최대 시간을 설정할 수 있다. 이는 각 no의 kubelet에 대한 설정이다.
 
-이 기능을 사용하기 위해 kubelet의 ImageMaximumGCAge feature gate를 활성화하고 kubelet 설정 파일에서 ImageMaximumGCAge 필드를 사용하면 된다.
+이 기능을 사용하기 위해 kubelet의 ImageMaximumGCAge feature gate를 활성화하고 kubelet 설정 파일에서 `ImageMaximumGCAge` 필드를 사용하면 된다.
 
 값은 k8s에서 사용하는 duration 형태를 사용한다. 예를 들어 3일 12시간은 3d12h로 표현한다.
 

@@ -35,6 +35,7 @@ controller는 k8s API의 client다. k8s가 client이고 원격 서비스를 호�
 
 ### Extension points
 아래 그림은 k8s cluster 구성요소 별 extension point를 보여준다.
+
 ![](https://kubernetes.io/docs/concepts/extend-kubernetes/extension-points.png)
 
 #### Key to the figure 
@@ -113,7 +114,6 @@ storage plugin를 위한 [Kubernetes Volume Plugin FAQ for Storage Vendors](http
 
 ### Network plugins
 k8s cluster no는 po 네트워크, k8s 네트워크 모델의 다른 측면을 지원하기 위해 network plugin이 필요하다.
-
 
 [Network plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)는 k8s의 다양한 네트워킹 토폴로지와 기술을 사용할 수 있도록 한다.
 ### Kubelet image credential provider plugins

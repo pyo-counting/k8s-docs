@@ -4,7 +4,7 @@
 
 사용자는 온도를 설정함으로써 사용자가 원하는 desired state를 온도 조절기에 알려준다. 실제 방의 온드는 current state다. 온도 조절기는 장비를 켜거나 끔으로써 current state를 desired state에 가깝게 유지하려고 한다.
 
-k8s에서 controller는 클러스터의 상태를 관찰 한 다음 경우에 따라 생성 또는 변경을 요청하는 control loop다. 각 controller는 현재 클러스터 상태를 desired state와 최대한 동일하게 만들기 위해 노력한다.
+k8s에서 controller는 cluster의 상태를 관찰 한 다음 경우에 따라 생성 또는 변경을 요청하는 control loop다. 각 controller는 cluster의 current state를 desired state와 최대한 동일하게 만들기 위해 노력한다.
 
 ## Controller pattern
 controller는 적어도 1개의 k8s의 resource 타입을 추적한다. 이러한 object는 `.spec` 필드를 통해 desired state를 표현한다. 해당 resoure에 대한 controller는 object의 current state를 `.sepc`에 정의된 desired state에 가깝게 유지하기 위한 책임을 갖는다.
@@ -16,11 +16,11 @@ job controller는 k8s에 내장된 controller다. 내장된 controller는 kube-a
 
 job은 po를 실행함으로써 작업을 수행하는 k8s resource다. 
 
-job controller는 새로운 작업을 확인하면 cluster 내 no들의 kubelet에서 해당 작업을 수행하기 위한 po를 실행하게한다. job controller는 직접 po 또는 container를 실행하지는 않는다. 대신 job controller는 kube-apiserver에 po에 대한 생성 또는 삭제를 요청한다. 그러면 control plane의 다른 구성요소가 해당 요청에 대응해 작업을 완료시킨다.
+job controller는 새로운 job을 확인하면 cluster 내 no들의 kubelet에서 해당 작업을 수행하기 위한 po를 실행하게한다. job controller는 직접 po 또는 container를 실행하지는 않는다. 대신 job controller는 kube-apiserver에 po에 대한 생성 또는 삭제를 요청한다. 그러면 control plane의 다른 구성요소가 해당 요청에 대응해 작업을 완료시킨다.
 
 job resource objec의 desired state는 `.spec` 필드에 명시된 작업을 수행하는 것이다. job controller는 해당 작업을 수행함으로써 job resource의 current state를 desired state에 가까워지도록 유지하기위해 노력한다.
 
-뿐만 아니라 controller는 object의 설정을 업데이트 한다. 예를 들어 작업이 완료되면, job이 완료되었음을 나타내기 위해 Finished로 표시하도록 업데이트한다.
+뿐만 아니라 controller는 object의 설정을 업데이트 한다. 예를 들어 작업이 완료되면, job이 완료되었음을 나타내기 위해 `Finished`로 표시하도록 업데이트한다.
 
 ### Direct control
 일부 controller는 cluster 외부를 변경해야하는 경우도 있다.
@@ -36,7 +36,7 @@ k8s는 cloud-native 관점에서 시스템을 관찰하며 지속적인 변화�
 
 cluster는 언제든지 작업이 발생하고 자동으로 실패를 고칠수 있다. 이는 잠재적으로 cluster가 안정적인 상태에 도달하지 못하는 것을 의미한다.
 
-cluster의 controller 실행 중이고 유용한 변경을 수행할 수 있는 한 전체 상태가 안정적인지 아닌지는 중요하지 않다.
+cluster를 위한 controller가 실행 중이고 유용한 변경을 수행할 수 있는 한 전체 상태가 안정적인지 아닌지는 중요하지 않다.
 
 ## Design
 디자인 원리에 따라 k8s는 cluster 상태의 각 특정 측면을 관리하는 많은 controller를 사용한다. 일반적으로 control loop(controller)는 한 종류의 k8s resource의 desired state를 추적하며, desired state로 만들기 위해 다른 종류의 resource를 관리한다. 예를 들어, job controller는 새로운 job을 확인하기 위해 job object를 추적하고 job이 완료됐는지 확인하기 위해 po object를 추적한다. 이 경우 po는 job controller 생성하는 반면, job은 다른 controller가 생성한다.
