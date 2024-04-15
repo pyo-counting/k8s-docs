@@ -65,13 +65,48 @@ crd를 사용하면 cr을 처리하기 위해 별도의 API server를 개발할 
 새로운 사용자 지정 리소스를 등록하고 해당 새로운 리소스 유형의 인스턴스를 다루며 이벤트를 처리하기 위해 컨트롤러를 사용하는 예제는 사용자 지정 컨트롤러 예제를 참조하십시오.
 
 ## API server aggregation
+일반적으로 k8s API의 각 resource는 REST 요청을 처리하고 object의 persistent storage을 관리하는 코드가 필요하다. kube-apiserver는 po, svc와 같은 내장된 resource를 처리하며 crd를 통해 생성된 cr도 처리할 수도 있다.
 
-Choosing a method for adding custom resources
-Comparing ease of use
-Advanced features and flexibility
-Common Features
-Preparing to install a custom resource
-Third party code and new points of failure
-Storage
-Authentication, authorization, and auditing
-Accessing a custom resource
+aggregation layer을 사용하면 cr을 처리하도록 구현된 자체 API server를 개발, 배포할 수 있다. kube-apiserver는 요청을 자체 API server로 위임하기 때문에 모든 client가 사용할 수 있다.
+
+## Choosing a method for adding custom resources
+crd는 사용하기 편한 반면, AA는 더 유연하다. 사용자 입장에서 필요에 따른 방법을 사용하면 된다.
+
+일반적으로 crd는 아래 경우에 사용한다.
+- 적은 수의 필드가 존재하는 경우
+- 회사 내에서 사용하는 경우, 소규모 open-source project로 사용하는 경우
+
+### Comparing ease of use
+
+### Advanced features and flexibility
+
+### Common Features
+
+## Preparing to install a custom resource
+cluster에 cr를 추가하기 전에 주의해야 할 사항이 있다.
+
+### Third party code and new points of failure
+crd를 생성하는 동안 새로운 point of failure(예를 들어 직접 kube-apiserver에서 third party code를 실행하는 것)가 추가되지 않는다. 패키지(예를 들어 chart)나 다른 installation bundle은 새로운 crd와 비즈니스 로직을 구현하는 third-party code에 대한 deploy를 포함한다.
+
+AA server를 설치하는 것은 항상 새로운 deploy를 실행하는 것을 포함한다.
+
+### Storage
+cr은 cm과 동일한 방법으로 storage 공간을 소비한다. 너무 많은 cr를 생성하는 것은 API server의 storage 공간을 부족하게 할 수도 있다.
+
+AA server는 kube-apiserver와 동일한 storage를 사용하기 때문에 동일한 문제가 발생할 수 있다.
+
+### Authentication, authorization, and auditing
+crd는 kube-apiserver의 내장된 resource와 동일한 authentication, authorization, audit log를 사용한다.
+
+authorization을 위해 rbac를 사용하는 경우 대부분의 rbac role을 새로운 reousrce에 대한 접근을 부여하지 않는다(cluster-admin role, *를 사용하는 role 제외). 그렇기 때문에 새로운 resource에 대한 접근을 위해 명시적으로 부여해야 한다. crd, AA는 종종 새로운 role과 같이 제공되기도 한다.
+
+AA server는 kube-apiserver와 동일한 authentication, authorization, audit log를 사용한다.
+
+## Accessing a custom resource
+k8s [client libraries]()를 사용해 cr에 접근할 수 있다. 모든 client library가 cr을 지원하는 것은 아니다. 
+
+아래 방법을 사용해 cr에 접근할 수 있다.
+- kubectl
+- k8s dynamic client
+- 직접 작성한 REST client
+- [Kubernetes client generation tools](https://github.com/kubernetes/code-generator)를 사용해 생성된 client(generating one is an advanced undertaking, but some projects may provide a client along with the CRD or AA)
