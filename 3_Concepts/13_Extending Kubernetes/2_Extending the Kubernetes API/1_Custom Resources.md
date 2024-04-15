@@ -19,6 +19,23 @@ cluster의 lifecycle과 독립적으로 실행 중인 cluster에 custom controll
 ### Declarative APIs
 
 ## Should I use a ConfigMap or a custom resource?
+아래 내용에 해당할 경우 cf를 사용한다.
+- mysql.conf, pom.xml과 같이 파일 포맷이 문서화가 이미 잘 된 경우
+- cm에 전체 설정을 관리하길 원하는 경우
+- 설정 파일의 목적이 po 내 실행되는 프로그램일 경우
+- 파일을 사용하는 주체가 k8s API보다 po의 환경 변수 또는 파일을 선호하는 경우
+- 파일이 변경됨에 따라 deploy가 rolling update를 수행하길 원하는 경우
+
+> **Note**:  
+> 민감 정보는 secret을 이용한다.
+
+아래 내용에 해당할 경우 cr(crd 또는 AA)를 사용한다.
+- 새로운 resource 생성, 업데이트를 위해 k8s client library, CLI를 사용하길 원하는 경우
+- `kubectl get my-object object-name`과 같이 kubectl 명령어를 통해 지원하길 원하는 경우
+- 새로운 object에 대한 업데이트를 추적하는 자동화를 구축하고 다른 object에 대한 CRUD를 수행하길 원하는 경우
+- object에 대한 업데이트를 처리하는 자동화를 작성하길 원하는 경우
+- `.spec`, `.status`, `.metadata`와 같이 k8s API convention을 사용하길 원하는 경우
+- 제어하는 resource 집합에 대해 추상화를 원하는 경우
 
 ## Adding custom resources
 k8s는 cr 추가를 위한 두 가지 방법을 제공한다.
@@ -39,6 +56,13 @@ crd(Custom Resource Definitions)는 사용자가 새로운 유형의 resource를
 > 아키텍처적으로 [cloud native](https://www.cncf.io/about/faq/) 애플리케이션 아키텍처는 구성 요소 간의 느슨한 결합을 선호한다. workload의 일부가 루틴 작업에 대한 백엔드 서비스를 필요로 할 경우 해당 백엔드 서비스를 구성 요소로 실행하거나 외부 서비스로 사용해야 한다. 이렇게 함으로써 워크로드가 일반 작업에 대해 k9s API에 의존하지 않게 된다.
 
 ## CustomResourceDefinitions
+[CustomResourceDefinition](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/) API resource를 사용해 cr을 정의할 수 있다. crd object를 정의하면 지정한 이름과 스키마를 가진 새로운 cr이 생성된다. k8s API는 cr을 처리하며 cr을 위한 저장소를 제공한다. crd object의 이름은 유효한 [DNS subdomain name](https://kubernetes.io/docs/concepts/overview/working-with-objects/names#dns-subdomain-names)이어야 한다.
+
+crd를 사용하면 cr을 처리하기 위해 별도의 API server를 개발할 필요는 없지만 [API server aggregation](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#api-server-aggregation)보다 유연성 및 확장성이 떨어진다.
+
+에제는 [https://github.com/kubernetes/sample-controller](https://github.com/kubernetes/sample-controller)을 참고한다.
+
+새로운 사용자 지정 리소스를 등록하고 해당 새로운 리소스 유형의 인스턴스를 다루며 이벤트를 처리하기 위해 컨트롤러를 사용하는 예제는 사용자 지정 컨트롤러 예제를 참조하십시오.
 
 ## API server aggregation
 
