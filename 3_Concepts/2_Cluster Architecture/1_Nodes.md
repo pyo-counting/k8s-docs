@@ -76,6 +76,9 @@ kubectl cordon $NODENAME
 > **Note**:  
 > ds의 일부인 po는 스케줄링 불가한 no에서도 실행될 수 있다. ds는 일반적으로 workload 애플리케이션이 제거되더라도 no에서 실행되어야 하는 no lacal 서비스다.
 
+## Label
+k8s가 모든 no에 추가하는 label은 [standard set of labels](https://kubernetes.io/docs/reference/node/node-labels/)을 참고한다.
+
 ## Node status
 no의 status는 아래 정보를 포함한다:
 
@@ -121,6 +124,7 @@ kube-controller-manager
 - `--node-cidr-mask-size`: (기본값 24). no가 po의 ip 할당에 사용할 cidr 크기(`--cluster-cidr` 기반).
 - `--node-monitor-period`:(기본값 5s) kube-apiserver를 통해 no의 `.status` 확인 및 동기화하는 시간
 - `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `--node-status-update-frequency`보다 충분히 큰 값이어야 한다.
+
 ![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)
 
 위 그림에서는 `--pod-eviction-timeout`가 있지만 이는 k8s v1.29 기준 없어진 flag다.

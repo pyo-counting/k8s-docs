@@ -1,31 +1,36 @@
-특정 no에 po를 실행할 수 있도록 제한할 수 있다. 이를 수행하는 방법에는 여러 가지가 있으며 권장되는 접근 방식은 label selector를 사용해 선택을 용이하게 하는 것이다. 보통은 scheduler가 자동으로 합리적인 배치(예: 리소스가 부족한 no에 po를 배치하지 않도록 no 간에 po를 분배)를 수행하기 때문에 이러한 제약 조건은 필요하지 않다. 그러나, 예를 들어 SSD가 장착된 머신에 po가 배포되도록 하거나 또는 많은 통신을 하는 두 개의 서로 다른 서비스의 po를 동일한 가용성 영역(availability zone)에 배치하는 경우와 같이, po가 어느 no에 배포될지를 제어해야 하는 경우도 있다.
+po가 특정 no에서만 실행될 수 있도록 제약하거나 특정 no를 선호하도록 할 수 있다. 이를 위한 여러 가지 방법이 있으며 권장되는 접근 방식은 모두 label selector를 사용하는 것이다. 일반적으로 이러한 제약 조건을 설정할 필요가 없다. scheduler가 합리적인 배치를 자동으로 수행하기 때문이다(예: po를 no 간에 분산하여 no에 충분한 여유 resource가 없는 no에 po를 배치하지 않는다). 그러나 SSD가 연결된 no에 po가 배치되도록 하거나 많은 통신을 하는 두 가지 다른 서비스의 po를 동일한 availability zone에 배치하려는 경우와 같이 특정 no에 po를 배포하고자 하는 경우가 있을 수 있다.
 
-k8s가 특정 po를 어느 no에 스케줄링할지 아래 설정을 통해 결정할 수 있다:
-
-- node label에 매칭되는 nodeSelector
-- affinity, anti-affinity
-- nodeName 필드
-- pod topology spread constraints
+k8s에서 특정 po를 배치할 위치(no)를 선택하는 데 다음과 같은 방법을 사용할 수 있다.
+- po의 `.spec.nodeSelector` 필드
+- po의 `.spec.affinity` 필드
+- po의 `.spec.nodeName` 필드
+- po의 `.spec.topologySpreadConstraints` 필드
 
 ## Node labels
-다른 k8s object와 마찬가지로 no는 label을 갖는다. 직접 label을 추가/삭제/수정 할 수 있다. k8s는 클러스터 내 모든 no에 기본적으로 필요한 label을 할당한다. 공통적인 no label은 [Well-Known Labels, Annotations and Taints](https://kubernetes.io/docs/reference/labels-annotations-taints/) 페이지를 참고한다.
+다른 k8s object와 마찬가지로 no도 `.metadata.labels` 필드가 있다. k8s는 cluster의 모든 no에 [standard set of labels](https://kubernetes.io/docs/reference/node/node-labels/)을 할당한다(k8s 구성 요소 중 kubelet이 설정).
 
-**Note**: 이러한 label의 값은 클라우드 제공자에 따라 다르며 신뢰성이 보장되지 않는다. 예를 들어 kubernetes.io/hostname의 값은 일부 환경에서는 no 이름과 동일하고 다른 환경에서는 다른 값을 사용할 수도 있다.
+> **Note**:  
+> label 값은 cloud provider마다 다를 수 있으며 보장되지 않는다ㅏ. 예를 들어, `kubernetes.io/hostname` label의 값은 일부 환경에서 no 이름과 동일할 수 있고 다른 환경에서는 다른 값을 가질 수도 있다.
 
 ### Node isolation/restriction
-no에 label을 추가해 po를 특정 no 또는 no 그룹에 스케줄링되도록 할 수 있다. 이 기능을 사용해 특정 po가 특정 격리/보안/규제 속성을 만족하는 no에서만 실행되도록 할 수 있다.
+no에 label을 추가해 특정 no나 no 그룹에 po를 스케줄링할 수 있다. 이 기능을 사용해 특정 po가 특정 isolation, security, regulatory property을 가진 no에서만 실행되도록 할 수 있다.
 
-no 격리를 위해 label을 사용할 때 kubelet이 변경할 수 없는 label 키를 설정해야 한다. 이를 통해 손상(compromised)된 no가 해당 label을 자체적으로 수정해 scheduler가 해당 no에 workload를 스케줄링하는 것읇 방지할 수 있다.
+no isolation를 위해 label을 사용하는 경우 kubelet이 수정할 수 없는 label key를 사용하는 것을 권장한다. 이를 통해 손상(compromised)된 no(kubelet)가 해당 label을 자체적으로 수정해 scheduler가 해당 no에 workload를 스케줄링하는 것읇 방지할 수 있다.
 
-NodeRestriction admission plugin은 kubelet이 node-restriction.kubernetes.io/ 접두사를 갖는 label을 설정하거나 변경하지 못하도록 한다.
+[`NodeRestriction` admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)은 kubelet이 `node-restriction.kubernetes.io/` 접두사가 있는 label을 설정하거나 수정하는 것을 방지한다.
 
-no 격리를 위해 label 접두사를 사용하려면:
-
-1. node authorizer를 사용하고 있는지, 그리고 NodeRestriction admission plugin을 활성화 했는지 확인한다.
-2. no에 node-restriction.kubernetes.io/ 접두사를 갖는 label을 추가하고, node selector에서 해당 abel을 사용한다. 예: example.com.node-restriction.kubernetes.io/fips=true 또는 example.com.node-restriction.kubernetes.io/pci-dss=true
+no 격리를 위해 해당 label 접두사를 사용하기 위해 아래 내용을 확인한다.
+1.[Node authorizer](https://kubernetes.io/docs/reference/access-authn-authz/node/)을 사용하는지, `NodeRestriction` admission plugin이 활성화 됐는지
+2. no에 `node-restriction.kubernetes.io/` 접두사가 있는 label을 추가하고 이러한 label을 label selector에서 사용한다. 예를 들어, `example.com.node-restriction.kubernetes.io/fips=true` 또는 `example.com.node-restriction.kubernetes.io/pci-dss=true`와 같이 사용한다.
 
 ## nodeSelector
-spec.nodeSelector 필드는 no 선택 제한의 가장 간단하면서도 추천하는 방법이다. k8s는 사용자가 해당 필드에 명시한 label을 갖는 no에만 po를 스케쥴링한다.
+no 제약 조건 중 가장 간단한 방법은 po의 `.spec.nodeSelector` 필드를 사용하는 것이다. k8s는 해당 필드에 명시된 label 조건을 만족하는 no에만 po를 스케줄링한다.
+
+자세한 내용은 [Assign Pods to Nodes](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes)를 참고한다.
+
+
+
+
 
 ## Affinity and anti-affinity
 nodeSelector는 po를 특정 label이 있는 no에 스케줄링 되도록 제한하는 가장 간단한 방법이다. affinity, anti-affinity은 제한에 대한 더 많은 기능을 제공한다. affinity, anti-affinity의 이점은 아래와 같다:
