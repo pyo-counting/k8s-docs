@@ -34,9 +34,9 @@ nodeSelector는 po를 특정 label이 있는 no에 스케줄링 되도록 제한
 - 규칙이 "soft", "preference" 임을 나타낼 수 있으며 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다.
 - no label 대신 no(또는 다른 topological domain)에서 실행 중인 다른 po의 label을 사용해 po를 제한할 수 있다. 이를 통해 po가 동일 no에 함께 배치되도록 규칙을 정의할 수 있다.
 
-affinity 기능은 다음의 두 가지 종류로 구성된다:
-- `node affinity`: nodeSelector 필드와 비슷하지만 더 표현적이고 소프트(soft) 규칙을 지정할 수 있다.
-- `inter-pod affinity/anti-affinity`: 다른 po의 label을 이용하여 po를 제한할 수 있다.
+affinity 기능은 다음의 두 가지 종류로 구성된다.
+- node affinity(`.spec.affinity.nodeAffinity`): nodeSelector 필드와 비슷하지만 더 표현적이고 소프트(soft) 규칙을 지정할 수 있다.
+- inter-pod affinity/anti-affinity(`.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`): 다른 po의 label을 이용하여 po를 제한할 수 있다.
 
 ### Node affinity
 node affinity는 개념적으로 nodeSelector 와 비슷하며 no의 label을 기반으로 po가 스케줄링될 수 있는 no를 제한할 수 있다. node affinity에는 다음 두 종류가 있다.
@@ -169,27 +169,32 @@ addedAffinity는 엔드 유저에게 표시되지 않으므로, 예상치 못한
 
 
 ### Inter-pod affinity and anti-affinity
-po 사이에 affinity와 anti-affinity를 사용해 no label 대신, 각 no에 이미 실행 중인 다른 po의 label을 기반으로 po가 스케줄링될 no를 제한할 수 있다.
+inter-pod affinity와 anti-affinity를 사용해 no label 대신, 각 no에 이미 실행 중인 다른 po의 label을 기반으로 po가 스케줄링될 no를 제한할 수 있다.
 
-po 사이에 affinity와 anti-affinity 규칙은 "X가 규칙 Y를 충족하는 po를 이미 실행중인 경우 이 po는 X에서 실행해야 한다(anti-affinity의 경우에는 "실행하면 안 된다")"의 형태이며, 여기서 X는 노드, rack, 클라우드 제공자 zone 또는 region 등이며 Y는 k8s가 충족할 규칙이다.
+inter-pod affinity와 anti-affinity 규칙은 "X가 규칙 Y를 충족하는 po를 이미 실행중인 경우 이 po는 X에서 실행해야 한다(anti-affinity의 경우에는 "실행하면 안 된다")"의 형태이며, 여기서 X는 no, rack, cloud provider zone, region과 같은 topology domain이며 Y는 k8s가 충족해야할 규칙이다.
 
-이러한 규칙(Y)은 label selector로 작성하며 연관된 ns 목록을 선택적으로 명시할 수도 있다. k8s에서 po는 ns에 속하는(namespaced) object이므로, po label도 암묵적으로 특정 ns에 속하게 된다. po label에 대한 모든 label selector는 k8s가 해당 label을 어떤 ns에서 탐색할지를 명시해야 한다.
+이러한 규칙(Y)은 label selector로 작성하며 관련있는 ns 목록을 선택적으로 명시할 수도 있다. k8s에서 po는 ns에 속하는(namespaced) object이므로, po label도 암묵적으로 특정 ns에 속하게 된다. po label에 대한 모든 label selector는 k8s가 해당 label을 어떤 ns에서 탐색할지를 명시해야 한다.
 
-topologyKey를 사용하여 토폴로지 도메인(X)를 나타낼 수 있으며, 이는 시스템이 도메인을 표시하기 위해 사용하는 노드 label의 키이다. 이에 대한 예시는 [Well-Known Labels, Annotations and Taints](https://kubernetes.io/docs/reference/labels-annotations-taints/)를 참고한다.
+topologyKey 필드를 사용해 topology domain(X)를 나타낼 수 있으며, 이는 시스템이 도메인을 표시하기 위해 사용하는 노드 label key이다. 이에 대한 예시는 [Well-Known Labels, Annotations and Taints](https://kubernetes.io/docs/reference/labels-annotations-taints/)를 참고한다.
 
-**Note**: po 사이에 affinity와 anti-affinity에는 상당한 양의 프로세싱이 필요하기에 대규모 클러스터에서는 스케줄링 속도가 크게 느려질 수 있다. 수백 개의 no를 넘어가는 클러스터에서 이를 사용하는 것은 추천하지 않는다.
+> **Note**:  
+> inter-pod affinity와 anti-affinity에는 상당한 양의 프로세싱이 필요하기에 대규모 cluster에서는 스케줄링 속도가 크게 느려질 수 있다. 수백 개의 no를 넘어가는 cluster에서 이를 사용하는 것은 추천하지 않는다.
 
-**Note**: po anti-affinity에서는 no에 일관된 label을 지정해야 한다. 즉, 클러스터의 모든 no는 topologyKey 와 매칭되는 적절한 레이블을 가지고 있어야 한다. 일부 또는 모든 no에 topologyKey로 명시한 label이 없는 경우에는 의도하지 않은 동작이 발생할 수 있다.
+> **Note**:  
+> po anti-affinity에서는 no에 일관된 label을 지정해야 한다. 즉, cluster의 모든 no는 topologyKey와 매칭되는 적절한 label을 가지고 있어야 한다. 일부 또는 모든 no에 topologyKey로 명시한 label이 없는 경우에는 의도하지 않은 동작이 발생할 수 있다.
 
 #### Types of inter-pod affinity and anti-affinity
 no affinity와 마찬가지로 po affinity, anti-affinity에는 다음의 2 종류가 있다:
 
-- requiredDuringSchedulingIgnoredDuringExecution
-- preferredDuringSchedulingIgnoredDuringExecution
+- `requiredDuringSchedulingIgnoredDuringExecution`
+- `preferredDuringSchedulingIgnoredDuringExecution`
 
-예를 들어, requiredDuringSchedulingIgnoredDuringExecution affinity를 사용하여 서로 통신을 많이 하는 두 파드를 동일 클라우드 제공자 zone에 배치하도록 scheduler에게 지시할 수 있다. 비슷하게, preferredDuringSchedulingIgnoredDuringExecution anti-affinity를 사용해 po를 여러 클라우드 제공자 zone에 퍼뜨릴 수 있다.
+예를 들어, requiredDuringSchedulingIgnoredDuringExecution affinity를 사용하여 서로 통신을 많이 하는 두 po를 동일 cloud provider zone에 배치하도록 scheduler에게 지시할 수 있다. 비슷하게, preferredDuringSchedulingIgnoredDuringExecution anti-affinity를 사용해 po를 여러 cloud provider zone에 퍼뜨릴 수 있다.
 
-po사이의 affinity를 사용하려면, po 스펙에 affinity.podAffinity 필드를 사용한다. po간 anti-affinity를 사용하려면, po 스펙에 affinity.podAntiAffinity 필드를 사용한다.
+po사이의 affinity를 사용하려면, po에 `.spec.affinity.podAffinity` 필드를 사용한다. po간 anti-affinity를 사용하려면, po에 `.spec.affinity.podAntiAffinity` 필드를 사용한다.
+
+#### Scheduling a group of pods with inter-pod affinity to themselves
+스케줄링 중인 po가 동일 affinity를 갖는 여러 po 중 첫 번째 po인 경우 다른 모든 affinity에 대한 검사를 통과하면 스케줄링이 허용된다. This is determined by verifying that no other pod in the cluster matches the namespace and selector of this pod, that the pod matches its own terms, and the chosen node matches all requested topologies. This ensures that there will not be a deadlock even if all the pods have inter-pod affinity specified.
 
 #### Pod affinity example
 ``` yaml
@@ -226,20 +231,24 @@ spec:
 
 이 예시는 하나의 po affinity 규칙과 하나의 po anti-affinity 규칙을 정의한다. po affinity 규칙은 "하드" requiredDuringSchedulingIgnoredDuringExecution을, anti-affinity 규칙은 "소프트" preferredDuringSchedulingIgnoredDuringExecution을 사용한다.
 
-affinity 규칙은 security=S1 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에만 po를 스케줄링하도록 scheduler에 지시한다. 더 정확히 말하면, 만약 security=S1 po label이 있는 po를 실행하고 있는 no가 zone=V에 하나 이상 존재한다면, scheduler는 po를 topology.kubernetes.io/zone=V label이 있는 no에 배치해야 한다.
+affinity 규칙은 security=S1 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에만 po를 스케줄링하도록 scheduler에 지시한다. 예를 들어 cluster가 Zone V임을 명시하는 topology.kubernetes.io/zone=V label이 있고, 해당 no들 중 security=S1 po label이 있는 po가 이미 실행 중이라면 scheduler는 Zone V no 중 security=S1 po가 이미 실행 중인 no에 po를 배치한다. 반대로 말하면 Zone V 중 security=S1이 있는 po가 실행 중이지 않는 no에는 po가 스케줄링되지 않는다.
 
-anti-affinity 규칙은 security=S2 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에는 가급적 파드를 스케줄링하지 않도록 scheduler에 지시한다. 더 정확히 말하면, 만약 security=S2 po label이 있는 po가 실행되고 있는 zone=R에 다른 no도 존재한다면, scheduler는 security=S2 label이 있는 no에는 가급적 해당 po를 스케줄링하지 않야아 한다.
+
+
+
+anti-affinity 규칙은 security=S2 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에는 가급적 po를 스케줄링하지 않도록 scheduler에 지시한다. 예를 들어 cluster가 Zone R임을 명시하는 topology.kubernetes.io/zone=R label이 있고, 해당 no들 중 security=S2 po label이 있는 po가 이미 실행 중이라면 scheduler는 Zone R no에는 가급적 po를 스케줄링 하지 않는다.
+
+더 정확히 말하면, 만약 security=S2 po label이 있는 po가 실행되고 있는 zone=R에 다른 no도 존재한다면, scheduler는 security=S2 label이 있는 no에는 가급적 해당 po를 스케줄링하지 않야아 한다.
 
 po affinity, anti-affinity에 대한 자세한 내용은 [design proposal](https://github.com/kubernetes/design-proposals-archive/blob/main/scheduling/podaffinity.md)을 참조한다. 
 
 po affinity, anti-affinity의 operator 필드에 In, NotIn, Exists 및 DoesNotExist 값을 사용할 수 있다.
 
 원칙적으로, topologyKey에는 성능과 보안상의 이유로 다음의 예외를 제외하면 어느 label 키도 사용할 수 있다.
-
 - po affinity, anti-affinity에 대해, 빈 topologyKey 필드는 requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution 내에 허용되지 않는다.
 - requiredDuringSchedulingIgnoredDuringExecution po anti-affinity 규칙에 대해, LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 kubernetes.io/hostname으로 제한한다. 커스텀 토폴로지를 허용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다.
 
-labelSelector와 topologyKey에 더하여 선택적으로, labelSelector가 비교해야 하는 ns의 목록을 labelSelector 및 topologyKey 필드와 동일한 계층 namespaces 필드에 명시할 수 있다. 생략하거나 비워 두면, 해당 affinity, anti-affinity 정의가 있는 po의 ns를 기본값으로 사용한다.
+labelSelector와 topologyKey에 더하여 선택적으로, labelSelector가 비교해야 하는 ns의 목록을 namespaces 필드에 명시할 수 있다. 생략하거나 비워 두면, 해당 affinity, anti-affinity 정의가 있는 po의 ns를 기본값으로 사용한다.
 
 #### Namespace selector
 ns 집합에 대한 label 쿼리인 namespaceSelector 를 사용해 일치하는 ns를 선택할 수도 있다. affinity는 namespaceSelector와 namespaces에 의해 선택된 모든 ns에 적용된다. 빈 namespaceSelector ({})는 모든 ns와 일치하는 반면, null 또는 빈 namespaces 목록과 null namespaceSelector 는 규칙이 적용된 po의 ns에 매치된다.
