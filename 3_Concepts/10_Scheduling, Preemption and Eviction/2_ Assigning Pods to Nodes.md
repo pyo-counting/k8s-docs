@@ -79,7 +79,7 @@ spec:
 ```
 
 위 예시는 아래 규칙이 적용된다.
-- no는 반드시 `topology.kubernetes.io/zone` key의 값이 antarctica-east1 또는 antarctica-west1인 label이 존재해야 한다.
+- no는 반드시 label `topology.kubernetes.io/zone` key의 값이 antarctica-east1 또는 antarctica-west1인 label이 존재해야 한다.
 - no는 `another-node-label-key` key의 값이 another-node-label-value인 label이 있으면 선호된다.
 
 operator 필드에는 In, NotIn, Exists, DoesNotExist, Gt, Lt를 사용할 수 있다.
@@ -166,8 +166,6 @@ addedAffinity는 엔드 유저에게 표시되지 않으므로, 예상치 못한
 > **Note**:  
 > ds po를 생성하는 ds controller는 scheduling profile을 지원하지 않는다. ds controller가 po를 생성할 때, 기본 k8s scheduler는 해당 po를 배치하고 ds controller의 모든 nodeAffinity 규칙을 준수한다.
 
-
-
 ### Inter-pod affinity and anti-affinity
 inter-pod affinity와 anti-affinity를 사용해 no label 대신, 각 no에 이미 실행 중인 다른 po의 label을 기반으로 po가 스케줄링될 no를 제한할 수 있다.
 
@@ -231,35 +229,33 @@ spec:
 
 이 예시는 하나의 po affinity 규칙과 하나의 po anti-affinity 규칙을 정의한다. po affinity 규칙은 "하드" requiredDuringSchedulingIgnoredDuringExecution을, anti-affinity 규칙은 "소프트" preferredDuringSchedulingIgnoredDuringExecution을 사용한다.
 
-affinity 규칙은 security=S1 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에만 po를 스케줄링하도록 scheduler에 지시한다. 예를 들어 cluster가 Zone V임을 명시하는 topology.kubernetes.io/zone=V label이 있고, 해당 no들 중 security=S1 po label이 있는 po가 이미 실행 중이라면 scheduler는 Zone V no 중 security=S1 po가 이미 실행 중인 no에 po를 배치한다. 반대로 말하면 Zone V 중 security=S1이 있는 po가 실행 중이지 않는 no에는 po가 스케줄링되지 않는다.
+affinity 규칙은 security=S1 label이 있는 기존 po를 실행하는 no와 동일한 zone에 있는 no에만 po를 스케줄링하도록 scheduler에 지시한다. 예를 들어 cluster가 Zone V임을 명시하는 topology.kubernetes.io/zone=V label이 있는 no가 있고, 해당 no들 중 security=S1 label이 있는 po가 이미 실행 중이라면 scheduler는 Zone V no에 po를 배치한다. 반대로 말하면 Zone V 중 security=S1이 있는 po가 실행 중이지 않다면 해당 zone의 no에는 po가 스케줄링되지 않는다.
 
-
-
-
-anti-affinity 규칙은 security=S2 label이 있는 하나 이상의 기존 po의 zone와 동일한 zone에 있는 no에는 가급적 po를 스케줄링하지 않도록 scheduler에 지시한다. 예를 들어 cluster가 Zone R임을 명시하는 topology.kubernetes.io/zone=R label이 있고, 해당 no들 중 security=S2 po label이 있는 po가 이미 실행 중이라면 scheduler는 Zone R no에는 가급적 po를 스케줄링 하지 않는다.
-
-더 정확히 말하면, 만약 security=S2 po label이 있는 po가 실행되고 있는 zone=R에 다른 no도 존재한다면, scheduler는 security=S2 label이 있는 no에는 가급적 해당 po를 스케줄링하지 않야아 한다.
+anti-affinity 규칙은 security=S2 label이 있는 기존 po를 실행하는 no와 동일한 zone에 있는 no에는 가급적 po를 스케줄링하지 않도록 scheduler에 지시한다. 예를 들어 cluster가 Zone R임을 명시하는 topology.kubernetes.io/zone=R label이 있는 no가 있고, 해당 no들 중 security=S2 po label이 있는 po가 이미 실행 중이라면 scheduler는 Zone R no에는 가급적 po를 스케줄링 하지 않는다. 반대로 말하면 Zone R 중 security=S2가 있는 po가 실행 중이지 않다면 anti-affinity 규칙은 해당 zone으로의 스케줄링에는 영향을 미치지 않는다.
 
 po affinity, anti-affinity에 대한 자세한 내용은 [design proposal](https://github.com/kubernetes/design-proposals-archive/blob/main/scheduling/podaffinity.md)을 참조한다. 
 
 po affinity, anti-affinity의 operator 필드에 In, NotIn, Exists 및 DoesNotExist 값을 사용할 수 있다.
 
 원칙적으로, topologyKey에는 성능과 보안상의 이유로 다음의 예외를 제외하면 어느 label 키도 사용할 수 있다.
-- po affinity, anti-affinity에 대해, 빈 topologyKey 필드는 requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution 내에 허용되지 않는다.
+- po affinity, anti-affinity에 대해, 빈 topologyKey 필드는 requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution에서 허용되지 않는다.
 - requiredDuringSchedulingIgnoredDuringExecution po anti-affinity 규칙에 대해, LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 kubernetes.io/hostname으로 제한한다. 커스텀 토폴로지를 허용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다.
 
 labelSelector와 topologyKey에 더하여 선택적으로, labelSelector가 비교해야 하는 ns의 목록을 namespaces 필드에 명시할 수 있다. 생략하거나 비워 두면, 해당 affinity, anti-affinity 정의가 있는 po의 ns를 기본값으로 사용한다.
 
 #### Namespace selector
-ns 집합에 대한 label 쿼리인 namespaceSelector 를 사용해 일치하는 ns를 선택할 수도 있다. affinity는 namespaceSelector와 namespaces에 의해 선택된 모든 ns에 적용된다. 빈 namespaceSelector ({})는 모든 ns와 일치하는 반면, null 또는 빈 namespaces 목록과 null namespaceSelector 는 규칙이 적용된 po의 ns에 매치된다.
+ns 집합에 대한 label 쿼리인 namespaceSelector를 사용해 매칭되는 ns를 선택할 수도 있다. affinity는 namespaceSelector와 namespaces에 의해 선택된 모든 ns에 적용된다. 빈 namespaceSelector ({})는 모든 ns와 일치하는 반면, null 또는 빈 namespaces 목록과 null namespaceSelector는 규칙이 적용된 po의 ns에 매치된다.
+
+#### matchLabelKeys
+
+#### mismatchLabelKeys
 
 #### More practical use-cases
-po affinity, anti-affinity는 rs, sts, deploy등과 함께 사용할 때 더욱 유용할 수 있다. 이러한 규칙을 사용하여, workload 집합이 예를 들면 '동일한 node'와 같이 동일하게 정의된 토폴로지와 같은 위치에 배치되도록 쉽게 구성할 수 있다.
+inter-pod affinity, anti-affinity는 rs, sts, deploy등과 함께 사용할 때 더욱 유용할 수 있다. 이러한 규칙을 사용하여, workload 집합이 예를 들면 '동일한 node'와 같이 동일하게 정의된 topology와 같은 위치에 배치되도록 쉽게 구성할 수 있다.
 
-redis와 같은 in-memory 캐시를 사용하는 웹 애플리케이션을 실행하는 세 개의 노드로 구성된 클러스터를 가정한다. 이 때 웹 서버를 가능한 한 캐시와 같은 위치에서 실행되도록 하기 위해 po affinity, anti-affinity를 사용할 수 있다.
+redis와 같은 in-memory 캐시를 사용하는 웹 애플리케이션을 실행하는 세 개의 no로 구성된 cluster를 가정한다. 이 때 웹 서버를 가능한 한 캐시와 같은 위치에서 실행되도록 하기 위해 inter-pod affinity, anti-affinity를 사용할 수 있다.
 
-다음의 redis 캐시 deploy 예시에서, replica는 app=store label을 갖는다. podAntiAffinity 규칙은 scheduler로 하여금 app=store label이 있는 replica를 한 no에 여러 개 배치하지 못하도록 한다. 이렇게 하여 캐시 po를 각 노드에 분산하여 생성한다.
-
+다음의 redis 캐시 deploy 예시에서, replica는 app=store label을 갖는다. podAntiAffinity 규칙은 scheduler로 하여금 app=store label이 있는 replica를 한 no에 여러 개 배치하지 못하도록 한다. 이렇게 하여 캐시 po를 각 no에 분산하여 생성한다.
 ``` yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -290,7 +286,7 @@ spec:
         image: redis:3.2-alpine
 ```
 
-아래 deploy는 app=web-store label을 갖는 replica를 생성한다. po affinity 규칙은 scheduler로 하여금 app=store label이 있는 po를 실행 중인 no에 각 replica를 배치하도록 한다. po anti-affinity 규칙은 scheduler로 하여금 app=web-store label이 있는 서버 po를 한 no에 여러 개 배치하지 못하도록 한다.
+아래 deploy는 app=web-store label을 갖는 replica를 생성한다. inter-pod affinity 규칙은 scheduler로 하여금 app=store label이 있는 po를 실행 중인 no에 각 replica를 배치하도록 한다. po anti-affinity 규칙은 scheduler로 하여금 app=web-store label이 있는 서버 po를 한 no에 여러 개 배치하지 못하도록 한다.
 
 ``` yaml
 apiVersion: apps/v1
@@ -331,28 +327,28 @@ spec:
         image: nginx:1.16-alpine
 ```
 
-위의 두 deploy를 생성하면 다음과 같은 클러스터 형상이 나타나는데, 세 no에 각 웹 서버가 캐시와 함께 있도록 배치된다.
-
-|node-1|node-2|node-3|
-|------|------|------|
-|webserver-1|webserver-2|webserver-3|
-|cache-1|cache-2|cache-3|
+위의 두 deploy를 생성하면 다음과 같은 cluster 형상이 나타나는데, 세 no에 각 웹 서버가 캐시와 함께 있도록 배치된다.
+|    node-1   |    node-2   |    node-3   |
+|:-----------:|:-----------:|:-----------:|
+| webserver-1 | webserver-2 | webserver-3 |
+|   cache-1   |   cache-2   |   cache-3   |
 
 전반적인 효과는 동일한 no에서 실행 중인 단일 클라이언트가 각 캐시 인스턴스에 접근할 가능성이 있다는 것이다. 이 접근 방식은 skew(불균형 로드)와 대기 시간을 모두 최소화하는 것을 목표로 한다.
 
 [ZooKeeper tutorial](https://kubernetes.io/docs/tutorials/stateful-application/zookeeper/#tolerating-node-failure)에서 위 예시와 동일한 기술을 사용해 고 가용성을 위한 anti-affinity로 구성된 sts의 예시를 확인할 수 있다.
 
 ## nodeName
-spec.nodeName은 affinity, spec.nodeSelector보다 더 직접적인 no 선택 방법이다. spec.nodeName 필드가 명시되면 scheduler는 po를 무시하고 명시된 no의 kubelet이 해당 po를 자기 no에 배치하려고 시도한다. 이는 다른 규칙보다 우선 적용된다.
+`.spec.nodeName`은 affinity, `.spec.nodeSelector`보다 더 직접적인 no 선택 방법이다. `.spec.nodeName` 필드가 명시되면 scheduler는 해당 po를 무시하고 명시된 no의 kubelet이 해당 po를 자기 no에 배치하려고 시도한다. 이는 다른 규칙보다 우선 적용된다.
 
-몇 가지 제한 사항이 있다:
+몇 가지 제한 사항이 있다.
+- 명시한 no가 존재하지 않을 경우, 때떄로 po는 실행되지 않고 삭제될 수도 있다.
+- 명시된 no에 po를 수용할 수 있는 리소스가 없는 경우 po는 실패하고 이에 대한 이유는 다음과 같이 표기된다: `OutOfmemory` 또는 `OutOfcpu`
+- cloud 환경에서 no의 이름은 항상 예측할 수 없다.
 
-- 명시한 no가 존재하지 않을 경우, po는 실행되지 않고 삭제될 수도 있다.
-- 명시된 no에 po를 수용할 수 있는 리소스가 없는 경우 po는 실패하고 이에 대한 이유는 다음과 같이 표기된다: OutOfmemory 또는 OutOfcpu
-- 클라우드 환경에서 no의 이름은 항상 예측할 수 없다.
+> **Warning**:  
+> `.spec.nodeName`은 custom scheduler, scheduler를 무시시해야 하는 advanced use case를 위한 목적으로 존재한다. Bypassing the schedulers might lead to failed Pods if the assigned Nodes get oversubscribed. scheduler를 패스하지 않고 특정 no에 po를 할당하기 위해서는 node affinity, nodSelector를 사용한다.
 
-다음은 예시다:
-
+다음은 예시다.
 ``` yaml
 apiVersion: v1
 kind: Pod
@@ -367,3 +363,21 @@ spec:
 
 ## Pod topology spread constraints
 topology spread constraint를 사용해 regions, zones, nodes, 사용자 정의 topology domain 간에 po가 클러스터 전체에 분산되는 방식을 제어할 수 있다. 이를 통해 성능, 예상 가용성, 전체 활용도를 향상시킬 수 있다.
+
+## Operators
+nodeAffinity, podAffinity의 Operator 필드에 논리 연산자를 사용할 수 있다.
+|   Operator   |                             Behavior                            |
+|:------------:|:---------------------------------------------------------------:|
+|      In      |    The label value is present in the supplied set of strings    |
+|     NotIn    | The label value is not contained in the supplied set of strings |
+|    Exists    |            A label with this key exists on the object           |
+| DoesNotExist |           No label with this key exists on the object           |
+
+아래 연산자는 nodeAffinity에만 사용할 수 있다.
+| Operator |                                                                              Behaviour                                                                              |
+|:--------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|    Gt    |   The supplied value will be parsed as an integer, and that integer is less than the integer that results from parsing the value of a label named by this selector  |
+|    Lt    | The supplied value will be parsed as an integer, and that integer is greater than the integer that results from parsing the value of a label named by this selector |
+
+> **Note**:  
+> Gt, Lt 연산자는 정수가 아닌 값에 대해서는 동작하지 않는다. 값이 정수로 파싱되지 않는다면 po는 스케줄링에 실패한다. 그리고 Gt, Lt는 podAffinity에서 사용이 불가하다.
