@@ -122,7 +122,7 @@ kube-controller-manager
 - `--service-cluster-ip-range`: svc에 할당할 주소 cidr. `--allocate-node-cidrs=true`이어야 한다.
 - `--cluster-cidr`: k8s cluster(또는 po) cidr. po에 할당할 주소 cidr. `--allocate-node-cidrs=true`이어야 한다. 예를 들어 172.0.0.0/16
 - `--node-cidr-mask-size`: (기본값 24). no가 po의 ip 할당에 사용할 cidr 크기(`--cluster-cidr` 기반).
-- `--node-monitor-period`:(기본값 5s) kube-apiserver를 통해 no의 `.status` 확인 및 동기화하는 시간
+- `--node-monitor-period`:(기본값 5s). no의 status를 확인하는 주기
 - `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `--node-status-update-frequency`보다 충분히 큰 값이어야 한다.
 
 ![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)
