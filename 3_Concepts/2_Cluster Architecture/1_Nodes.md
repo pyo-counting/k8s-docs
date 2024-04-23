@@ -123,7 +123,7 @@ kube-controller-manager
 - `--cluster-cidr`: k8s cluster(또는 po) cidr. po에 할당할 주소 cidr. `--allocate-node-cidrs=true`이어야 한다. 예를 들어 172.0.0.0/16
 - `--node-cidr-mask-size`: (기본값 24). no가 po의 ip 할당에 사용할 cidr 크기(`--cluster-cidr` 기반).
 - `--node-monitor-period`:(기본값 5s). no의 status를 확인하는 주기
-- `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `--node-status-update-frequency`보다 충분히 큰 값이어야 한다.
+- `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `.nodeStatusUpdateFrequency`보다 충분히 큰 값이어야 한다.
 
 ![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)
 
@@ -164,7 +164,7 @@ gracefule node shutdown은 [systemd inhibitor lock](https://www.freedesktop.org/
 
 graceful node shutdown은 GracefulNodeShutdown feature gate(k8s 1.21부터 기본 활성화)에 의해 제어된다.
 
-기본적으로 shutdownGracePeriod, shutdownGracePeriodCriticalPods 옵션은 0 값으로 설정되어 gracefule node shutdown 기능을 활성화시키지 않는다. 이 기능을 활성화하기 위해 kubelet에 해당 옵션이 0이 아닌 값으로 변경되어야 한다.
+기본적으로 `.shutdownGracePeriod`, `.shutdownGracePeriodCriticalPods` 옵션은 값이 0으로 설정되어 gracefule node shutdown 기능을 활성화시키지 않는다. 이 기능을 활성화하기 위해 kubelet에 해당 옵션이 0이 아닌 값으로 변경되어야 한다.
 
 systemd가 no 종료를 감지하게 되면 kubelet은 no의 Ready conditions을 False status로 설정하고 이유를 "node is shutdown"으로 설정한다. kube-scheduler는 이 condition을 존중하며 no에 po를 스케줄링하지 않는다. 다른 third-party scheduler도 동일한 로직을 따를 것으로 예상된다. 이는 해당 no에 새로운 po가 스케줄링되지 않음을 의미한다.
 
@@ -197,6 +197,27 @@ graceful node shutdown 기능은 2개의 [KubeletConfiguration](https://kubernet
 
 sts의 po는 shutdown no에서 terminating status에 갇히게 된다. kubelet이 po를 삭제할 수 없기 때문에 sts는 동일한 이름의 po를 새로 생성할 수 없다. po가 사용하는 volume이 있는 경우 shutdown no에서 VolumeAttachments이 삭제되지 않기 때문에 volume을 새로운 no에 사용이 불가하다. 결과적으로 sts에서 실행되는 애플리케이션이 적절하게 기능을 수행할 수 없다. 만약 shutdown 됐던 no가 돌아오면 po는 kubelet에 의해 삭제되고 po는 다른 no에 실행 될 것이다. no가 돌아오지 못하면 해당 po는 terminating status로 평생 남게 된다.
 
-To mitigate the above situation, a user can manually add the taint node.kubernetes.io/out-of-service with either NoExecute or NoSchedule effect to a Node marking it out-of-service. If the NodeOutOfServiceVolumeDetachfeature gate is enabled on kube-controller-manager, and a Node is marked out-of-service with this taint, the pods on the node will be forcefully deleted if there are no matching tolerations on it and volume detach operations for the pods terminating on the node will happen immediately. This allows the Pods on the out-of-service node to recover quickly on a different node.
+위의 상황을 완화하기 위해 사용자는 no에 수등으로 `taint node.kubernetes.io/out-of-service` taint(NoExecute 또는 NoSchedule) 를 추가해서 no를 out-of-service로 마킹할 수 있다. 만약 kube-controller-manager에 NodeOutOfServiceVolumeDetach feature gate가 활성화 되어있고 no가 위 taint를 갖는 경우 po에 toleration이 없으며 강제로 삭제되고 no에서 종료되는 po에 대한 volume detach 작업이 즉시 수행된다. 이를 통해 다른 no에서 po를 빠르게 다시 실행할 수 있다.
+
+node non-graceful shutdown 동안 po는 두 단계를 통해 삭제된다.
+1. out-of-service toleration이 없은 po는 강제 삭제한다.
+2. 삭제되는 po에 대한 volume을 즈깃 detach한다.
+
+> **Note**:  
+> - `node.kubernetes.io/out-of-service` taint를 추가하기 전에 no가 shutdown 됐는지 확인이 필요하다(재시작 중이면 안됨).
+> - The user is required to manually remove the out-of-service taint after the pods are moved to a new node and the user has checked that the shutdown node has been recovered since the user was the one who originally added the taint.
+
+### Forced storage detach on timeout
+no가 unhealthy 상태이고 6분 동안 po 삭제에 성공하지 못하면 k8s는 강제로 volume을 detach한다. 해당 no에서 volume을 여전히 사용하는 po는 [CSI specification](https://github.com/container-storage-interface/spec/blob/master/spec.md#controllerunpublishvolume)(ControllerUnpublishVolume. "must be called after all NodeUnstageVolume and NodeUnpublishVolume on the volume are called and succeed")를 위반할 수 있다. 이러한 상황에서 no의 volume은 데이터에 대한 손상을 겪을 수 있다.
+
+force storage detach on timeout는 optional이기 때문에 사용자는 "Non-graceful node shutdown" 기능을 대신 사용할 수도 있다.
+
+force storage detach on timeout은 kube-controller-manager의 disable-force-detach-on-timeout 설정을 사용해 비활성화할 수 있습니다. force detach on timeout 기능을 비활성화하면 6분 이상 작동하지 않는 no에서 호스팅되는 volume에 해당하는 [VolumeAttachment](https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/volume-attachment-v1/)가 삭제되지 않는다.
+
+이 설정이 적용된 후에도 volume에 연결된 unhealthy po는 위에서 언급한 Non-Graceful Node Shutdown 절차를 통해 복구해야 한다.
+
+> **Note**:  
+> - Non-Graceful Node Shutdown 사용에 주의해야 한다.
+> - 위 문서화된 단계에서 벗어나면 데이터 손상이 발생할 수도 있다.
 
 ## Swap memory management
