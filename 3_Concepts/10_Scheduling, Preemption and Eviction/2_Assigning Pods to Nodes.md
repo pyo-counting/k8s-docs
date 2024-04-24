@@ -20,7 +20,7 @@ no isolation를 위해 label을 사용하는 경우 kubelet이 수정할 수 없
 [`NodeRestriction` admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)은 kubelet이 `node-restriction.kubernetes.io/` 접두사가 있는 label을 설정하거나 수정하는 것을 방지한다.
 
 no 격리를 위해 해당 label 접두사를 사용하기 위해 아래 내용을 확인한다.
-1.[Node authorizer](https://kubernetes.io/docs/reference/access-authn-authz/node/)을 사용하는지, `NodeRestriction` admission plugin이 활성화 됐는지
+1. [Node authorizer](https://kubernetes.io/docs/reference/access-authn-authz/node/)의 사용 여부, `NodeRestriction` admission plugin의 활성화 여부
 2. no에 `node-restriction.kubernetes.io/` 접두사가 있는 label을 추가하고 이러한 label을 label selector에서 사용한다. 예를 들어, `example.com.node-restriction.kubernetes.io/fips=true` 또는 `example.com.node-restriction.kubernetes.io/pci-dss=true`와 같이 사용한다.
 
 ## nodeSelector
@@ -84,12 +84,12 @@ spec:
 
 operator 필드에는 In, NotIn, Exists, DoesNotExist, Gt, Lt를 사용할 수 있다.
 
-NotIn, DoesNotExist는 node anti-affinity를 정의할 떄 허용된다. 이 대신 [node taints](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)를 사용할 수도 있다.
+NotIn, DoesNotExist는 node anti-affinity 동작을 정의할 떄 허용된다. 이 대신 [node taints](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)를 사용할 수도 있다.
 
 > **Note**:  
 > - nodeSelector, nodeAffinity를 모두 사용한다면 스케줄링이 되기 위해 두 조건을 모두(AND) 만족해야 한다.
-> - nodeAffinity에 대해 nodeSelectorTerms를 여러개 사용할 경우 명시된 nodeSelectorTerms 중 하나(OR)를 만족하는 no에도 po가 스케줄링 될 수 있다.
-> - nodeSelectorTerms에 대해 matchExpressions를 여러개 사용하는 경우 모든(AND) matchExpressions를 만족하는 no에만 po가 스케줄링 될 수 있다.
+> - nodeAffinity의 nodeSelectorTerms을 여러개 사용할 경우 명시된 nodeSelectorTerms 중 하나(OR)를 만족하는 no에도 po가 스케줄링 될 수 있다.
+> - nodeSelectorTerms의 matchExpressions를 여러개 사용하는 경우 모든(AND) matchExpressions를 만족하는 no에만 po가 스케줄링 될 수 있다.
 
 #### Node affinity weight
 preferredDuringSchedulingIgnoredDuringExecution affinity 타입의 경우 weight 필드를 1~100 사이의 값으로 설정할 수 있다. scheduler가 모든 po 스케줄링 required 규칙을 만족하는 no를 찾으면 scheduler는 추가적으로 no가 만족하는 모든 preferred 규칙의 weight 값을 더한다.
@@ -183,13 +183,12 @@ topologyKey 필드를 사용해 topology domain(X)를 나타낼 수 있으며, �
 
 #### Types of inter-pod affinity and anti-affinity
 no affinity와 마찬가지로 po affinity, anti-affinity에는 다음의 2 종류가 있다:
-
 - `requiredDuringSchedulingIgnoredDuringExecution`
 - `preferredDuringSchedulingIgnoredDuringExecution`
 
 예를 들어, requiredDuringSchedulingIgnoredDuringExecution affinity를 사용하여 서로 통신을 많이 하는 두 po를 동일 cloud provider zone에 배치하도록 scheduler에게 지시할 수 있다. 비슷하게, preferredDuringSchedulingIgnoredDuringExecution anti-affinity를 사용해 po를 여러 cloud provider zone에 퍼뜨릴 수 있다.
 
-po사이의 affinity를 사용하려면, po에 `.spec.affinity.podAffinity` 필드를 사용한다. po간 anti-affinity를 사용하려면, po에 `.spec.affinity.podAntiAffinity` 필드를 사용한다.
+po 사이의 affinity를 사용하려면, po에 `.spec.affinity.podAffinity` 필드를 사용한다. po간 anti-affinity를 사용하려면, po에 `.spec.affinity.podAntiAffinity` 필드를 사용한다.
 
 #### Scheduling a group of pods with inter-pod affinity to themselves
 스케줄링 중인 po가 동일 affinity를 갖는 여러 po 중 첫 번째 po인 경우 다른 모든 affinity에 대한 검사를 통과하면 스케줄링이 허용된다. This is determined by verifying that no other pod in the cluster matches the namespace and selector of this pod, that the pod matches its own terms, and the chosen node matches all requested topologies. This ensures that there will not be a deadlock even if all the pods have inter-pod affinity specified.

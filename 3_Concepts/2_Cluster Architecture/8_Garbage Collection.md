@@ -53,20 +53,23 @@ kubelet은 사용되지 않는 image에 대한 gc를 2분, container에 대한 g
 
 ### Container image lifecycle
 k8s는 kubelet의 일부인 image manager가 cadvisor와 협동하여 모든 image의 lifecycle을 관리한다. kubelet은 gc 결정을 내릴 때 다음 디스크 사용량과 관련된 설정 값을 고려한다.
-- `imageGCHighThresholdPercent`
-- `imageGCLowThresholdPercent`
+- `.imageGCHighThresholdPercent`
+- `.imageGCLowThresholdPercent`
 
-`imageGCHighThresholdPercent` 값을 초과한 디스크 사용량은 마지막으로 사용된 시간을 기준으로 오래된 image 순서대로 삭제하는 gc를 트리거한다. kubelet은 디스크 사용량이 `imageGCHighThresholdPercent` 값에 도달할 때까지 image를 삭제한다.
+`.imageGCHighThresholdPercent` 값을 초과한 디스크 사용량은 마지막으로 사용된 시간을 기준으로 오래된 image 순서대로 삭제하는 gc를 트리거한다. kubelet은 디스크 사용량이 `.imageGCHighThresholdPercent` 값에 도달할 때까지 image를 삭제한다.
 
 ## Garbage collection for unused container images
 alpha 기능으로 디스크 사용량과 무관하게 로컬에 있는 사용되지 않는 image의 최대 시간을 설정할 수 있다. 이는 각 no의 kubelet에 대한 설정이다.
 
-이 기능을 사용하기 위해 kubelet의 ImageMaximumGCAge feature gate를 활성화하고 kubelet 설정 파일에서 `ImageMaximumGCAge` 필드를 사용하면 된다.
+이 기능을 사용하기 위해 kubelet의 `.ImageMaximumGCAge` feature gate를 활성화하고 kubelet 설정 파일에서 `.ImageMaximumGCAge` 필드를 사용하면 된다.
 
 값은 k8s에서 사용하는 duration 형태를 사용한다. 예를 들어 3일 12시간은 3d12h로 표현한다.
 
+> **Note**:  
+> kubelet이 재시작되면 계산 중이던 age는 초기화된다.
+
 ### Container garbage collection
-kubelet은 사용자가 정의할 수 있는 다음 변수들을 기반으로 사용되지 않는 container를 gc한다:
+kubelet은 사용자가 정의할 수 있는 다음 변수들을 기반으로 사용되지 않는 container를 gc한다.
 - MinAge: kubelet이 gc할 수 있는 container의 최소 나이. 0으로 설정해 비활성화할 수 있다.
 - MaxPerPodContainer: 각 po가 가질 수 있는 죽은 container의 최대 개수. 0으로 설정해 비활성화할 수 있다.
 - MaxContainers: 클러스터가 가질 수 있는 죽은 container의 최대 개수. 0으로 설정해 비활성화할 수 있다.

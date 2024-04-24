@@ -11,7 +11,6 @@ label은 object에 부착하는 key-value 쌍이다. label은 사용자에게 �
 label은 효율적인 쿼리와 모니터링을 가능하게 하며 UI, CLI에서 사용하기에 적합하다. 식별 정보가 아닌 정보는 annotation을 사용해 기록해야 한다.
 
 ## Motivation
-
 label 예시.
 - "release" : "stable", "release" : "canary"
 - "environment" : "dev", "environment" : "qa", "environment" : "production"

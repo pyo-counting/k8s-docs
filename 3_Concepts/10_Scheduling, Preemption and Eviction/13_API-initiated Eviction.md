@@ -8,7 +8,6 @@ API를 사용해 po에 대한 eviction object를 생성하는 것은 po에 대�
 
 ## Calling the Eviction API
 k9s POST API를 사용해 eviction object를 생성할 수 있다. 아래는 예시다.
-
 - policy/v1
     ``` json
     {

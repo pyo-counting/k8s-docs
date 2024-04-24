@@ -14,7 +14,7 @@ ns는 [resource quota](https://kubernetes.io/docs/concepts/policy/resource-quota
 k8s는 기본적으로 4개의 ns를 제공한다.
 - `default`: 사용자를 위한 기본 ns. 다른 어떤 ns에도 속하지 않을 경우 기본 ns
 - `kube-node-lease`: 각 no와 관련된 [lease](https://kubernetes.io/docs/concepts/architecture/leases/) object를 관리하는 ns. node lease를 사용해 kubelet은 heartbeat을 전송하고 control plane은 no의 failure를 감지할 수 있다.
-- `kube-public`: 이 ns는 모든 클라이언트(인증되지 않은 클라이언트 포함)가 read할 수 있다. 이 ns는 주로 cluster 사용을 위해 예약되며 클러스터 전체에서 일부 리소스를 공개적으로 볼 수 있고 읽을 수 있게 할 필요가 있는 경우에 사용된다. 이 ns의 공개적인 측면은 단순히 관례이며 필수 요구 사항은 아닙니다.
+- `kube-public`: 이 ns는 모든 클라이언트(인증되지 않은 클라이언트 포함)가 read할 수 있다. 이 ns는 주로 cluster 사용을 위해 예약되며 클러스터 전체에서 일부 리소스를 공개적으로 볼 수 있고 읽을 수 있게 할 필요가 있는 경우에 사용된다. 이 ns의 공개적인 측면은 단순히 관례이며 필수 요구 사항은 
 - `kube-system`: k8s system에 의해 생성되는 object의 ns
 
 ## Working with Namespaces

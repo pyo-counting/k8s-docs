@@ -28,3 +28,9 @@ rules:
 ```
 
 ## Metric lifecycle
+## Show hidden metrics
+## Component metrics
+### kube-controller-manager metrics
+### kube-scheduler metrics
+## Disabling metrics
+## Metric cardinality enforcement

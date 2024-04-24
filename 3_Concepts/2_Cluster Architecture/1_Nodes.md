@@ -2,7 +2,7 @@ k8s는 no에서 실행할 container를 po에 배치하여 workload를 실행한�
 
 일반적으로 cluster에는 여러 no가 존재한다. 테스트 환경에서는 1개의 no만 구성할 수도 있다.
 
-no의 구성 요소에는 kubelet, container runtime kube-proxy가 포함된다.
+모든 no의 공통 구성 요소는 `kubelet`, `container runtime`, `kube-proxy`가 있다.
 
 ## Management
 kube-apiserver에 no를 추가하기 위한 두 가지 방법이 있다.

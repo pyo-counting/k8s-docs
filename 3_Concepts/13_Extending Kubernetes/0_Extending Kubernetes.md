@@ -1,4 +1,4 @@
-k8s는 확장성이 좋다. 그렇기 때문에 사용자가 k8s 프로젝트 코드를 직접 fork하거나 patch 제안할 필요가 거의 없다.
+k8s는 확장성이 좋다. 그렇기 때문에 사용자가 k8s 프로젝트 코드를 직접 fork 하거나 patch 제안할 필요가 거의 없다.
 
 이 가이드는 k8s cluster customization 옵션에 대해 설명한다. 사용자의 요구 사항에 맞도록 k8s cluster를 조정하는 방법을 이해하길 원하는 운영자에게 도움이 될 수 있다. 플랫폼 개발자, k8s 프로젝트 contributor는 extension point, pattern에 대해 확인할 수 있다.
 
@@ -123,14 +123,12 @@ kubelet image credential provider는 kubelet의 플러그인으로 image registr
 
 플러그인 설정 세부 정보는 [Configure a kubelet image credential provider](https://kubernetes.io/docs/tasks/administer-cluster/kubelet-credential-provider/)을 참고한다..
 
-
 ## Scheduling extensions
 kube-scheduler는 po를 감시하고 po을 no에 할당하는 특별한 유형의 controller다. 기본 kube-scheduler는 완전히 대체할 수 있으며 다른 k8s 구성 요소를 계속 사용하거나 [multiple schedulers](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-multiple-schedulers/)를 동시에 실행할 수 있다.
 
 이는 매우 중요한 작업이며 거의 모든 k8s 사용자가 kube-scheduler를 수정할 필요가 없다.
 
-[scheduling plugins](https://kubernetes.io/docs/reference/scheduling/config/#scheduling-plugins)을 활성화하거나 서로 다른 이름의 [scheduler profiles](https://kubernetes.io/docs/reference/scheduling/config/#multiple-profiles)를 연결할 수도 있다. 그리고 kube-scheduler
-활성화되는 스케줄링 플러그인을 제어하거나 서로 다른 이름을 가진 scheduler 프로필에 플러그인 세트를 연결할 수 있습니다. 또한 하나 이상의 kube-scheduler의 extension point와 통합하는 자체 플러그인을 작성할 수도 있다.
+[scheduling plugins](https://kubernetes.io/docs/reference/scheduling/config/#scheduling-plugins)을 활성화하거나 서로 다른 이름의 [scheduler profiles](https://kubernetes.io/docs/reference/scheduling/config/#multiple-profiles)를 연결할 수도 있다. 그리고 하나 이상의 kube-scheduler의 [extension point](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/#extension-points)와 통합하는 자체 플러그인을 작성할 수도 있다.
 
 마지막으로 내장된 kube-scheduler 구성 요소는 원격 HTTP backend(scheduler extension)가 po에 대해 kube-scheduler가 선택한 no를 필터링하고/또는 우선 순위를 지정할 수 있도록 허용하는 [webhook](https://git.k8s.io/design-proposals-archive/scheduling/scheduler_extender.md)을 지원한다.
 

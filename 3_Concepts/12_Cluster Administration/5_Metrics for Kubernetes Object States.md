@@ -16,7 +16,7 @@ count(kube_pod_status_ready{condition="false"}) by (namespace, pod)
 kube-state-metrics이 생성한 metric을 사용해 alert을 구성할 수 있다.
 
 아래 prometheus의 alert rule language를 사용해 5분 이상 `Terminating` 상태의 po가 있을 경우 알람을 발생시킨다.
-```
+``` yaml
 groups:
 - name: Pod state
   rules:

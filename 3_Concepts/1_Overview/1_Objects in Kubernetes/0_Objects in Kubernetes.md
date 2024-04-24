@@ -51,7 +51,6 @@ kubectl apply -f https://k8s.io/examples/application/deployment.yaml
 
 ``` sh
 deployment.apps/nginx-deployment created
-
 ```
 
 ### Required fields

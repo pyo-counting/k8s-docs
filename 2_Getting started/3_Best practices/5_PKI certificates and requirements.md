@@ -35,7 +35,7 @@ kubeadm이 모든 certificate를 만드는 대신 직접 root CA를 생성하거
 | front-proxy-ca.crt,key | kubernetes-front-proxy-ca | For the front-end proxy        |
 
 > **Note**:  
-> 왜그러는지 모르겠는데 대부분의 블로그에서 kubernetes gerneral CA(ca.crt, ca.key)를 root CA라고 말한다. 아마도 k8s의 대부분의 경우에서 사용되는 CA라서 그런 것이 아닐까?
+> 왜그러는지 모르겠는데 대부분의 블로그에서 kubernetes general CA(ca.crt, ca.key)를 root CA라고 말한다. 아마도 k8s의 대부분의 구성요소에서 사용되는 CA라서 그런 것이 아닐까?
 
 위 CA 이외에 sa 관리를 위한 public, private key가 필요하다: `sa.key`, `sp.pub`. 아래는 key, certificate의 경로를 나타낸다.
 ``` sh

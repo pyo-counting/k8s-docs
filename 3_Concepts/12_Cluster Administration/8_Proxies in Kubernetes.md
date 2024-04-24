@@ -12,7 +12,7 @@ k8s를 사용하면서 마주칠 수 있는 몇 가지 다른 proxy가 있다.
     - kube-apiserver에 내장된 bastion이다.
     - cluster 외부 사용자가 cluster 내부에 접근할 수 있도록 cluster IP에 연결한다.
     - kube-apiserver 프로세스 내에서 실행된다.
-    - client는 proxy에 HTTPS(kube-apiserver가 HTTP를 사용하도록 설정해다면 HTTP)를 사용한다.
+    - client는 proxy에 HTTPS(kube-apiserver가 HTTP를 사용하도록 설정했다면 HTTP)를 사용한다.
     - proxy to target may use HTTP or HTTPS as chosen by proxy using available information
     - no, po, svc에 접근하기 위해 사용된다.
     - svc에 접근할 때 load balancing를 수행한다.
