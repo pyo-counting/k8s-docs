@@ -3,7 +3,7 @@ k8s에서 metrics API는 auto scaling과 유사한 케이스를 지원하기 위
 HorizontalPodAutoscaler(hpa), VerticalPodAutoscaler(vpa)는 사용자의 요구 사항을 만족하기 위해 replica와 리소스를 조정하는 데에 metrics API 정보를 이용한다.
 
 > **Note**:  
-> metrics API와 metrics API를 활성화하는 metric pipeline은 hpa, vpa를 위한 최소한의 metric 정보만 제공한다. 더 완벽한 metric을 제공하기 위해 custom metrics API를 사용하는 두 번째 metric pipeline을 배포해 보완할 수 있다.
+> metrics API과 metrics API를 활성화하는 metric pipeline은 hpa, vpa를 위한 최소한의 metric 정보만 제공한다. 더 완벽한 metric을 제공하기 위해 [custom metrics API](https://github.com/kubernetes/metrics?tab=readme-ov-file#custom-metrics-api)를 사용하는 두 번째 metric pipeline을 배포해 보완할 수 있다.
 
 kubectl top 명령어을 이용하여 리소스 metrics를 조회할 수도 있다.
 
@@ -26,7 +26,7 @@ metrics-server는 metrics API를 구현한다. 이 API는 클러스터 내 no, p
 
 metrics API는 [k8s.io/metrics](https://github.com/kubernetes/metrics) repository에 정의되어 있다. `metrics.k8s.io` API를 위해 [API aggregation layer](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/)를 활성화하고 [APIService](https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/api-service-v1/)를 활성화 해야 한다.
 
-metrics API에 대해서는 [resource metrics API design](https://github.com/kubernetes/design-proposals-archive/blob/main/instrumentation/resource-metrics-api.md), [metrics-server repository](https://github.com/kubernetes-sigs/metrics-server), [resource metrics API]https://github.com/kubernetes/metrics#resource-metrics-api)를 참고한다.
+metrics API에 대해서는 [resource metrics API design](https://github.com/kubernetes/design-proposals-archive/blob/main/instrumentation/resource-metrics-api.md), [metrics-server repository](https://github.com/kubernetes-sigs/metrics-server), [resource metrics API](https://github.com/kubernetes/metrics#resource-metrics-api)를 참고한다.
 
 > **Note**:  
 > metrics API에 접근하기 위해 metrics-server 또는 대체 adapter를 배포해야 한다.
