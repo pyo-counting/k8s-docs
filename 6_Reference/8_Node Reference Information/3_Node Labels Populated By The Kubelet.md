@@ -12,4 +12,4 @@ k8s가 기본적으로 no에 설정하는 표준 label은 다음과 같다(k8s �
 - `topology.kubernetes.io/zone` (if known to the kubelet – Kubernetes may not have this information to set the label)
 
 > **Note**:  
-> label 값은 cloud provider마다 다를 수 있으며 보장되지 않는다ㅏ. 예를 들어, `kubernetes.io/hostname` label의 값은 일부 환경에서 no 이름과 동일할 수 있고 다른 환경에서는 다른 값을 가질 수도 있다.
+> label 값은 cloud provider마다 다를 수 있으며 보장되지 않는다. 예를 들어, `kubernetes.io/hostname` label의 값은 일부 환경에서 no 이름과 동일할 수 있고 다른 환경에서는 다른 값을 가질 수도 있다.
