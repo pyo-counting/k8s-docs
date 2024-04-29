@@ -142,11 +142,73 @@ kubelet은 다음 파라미터를 사용하여 po eviction 순서를 결정한�
 #### With `imagefs`
 #### Without `imagefs`
 
-Minimum eviction reclaim
-Node out of memory behavior
-Good practices
-Schedulable resources and eviction policies
-DaemonSets and node-pressure eviction
-Known issues
-kubelet may not observe memory pressure right away
-active_file memory is not considered as available memory
+### Minimum eviction reclaim
+po eviction은 부족한 리소스에 대한 적은 양만 회수할 수도 있다. 이로 인해 kubelet이 eviction threshold에 반복적으로 도달하고 여러 번의 eviction을 트리거할 수 있다.
+
+kubelet은 `.evictionMinimumReclaim` 설정 값은 리소스에 대한 최소 회수 크기를 설정한다. kubelet은 리소스가 부족하다는 것을 알게되면 설정된 크기의 리소스를 회수한다.
+
+아래는 예시다.
+``` yaml
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+evictionHard:
+  memory.available: "500Mi"
+  nodefs.available: "1Gi"
+  imagefs.available: "100Gi"
+evictionMinimumReclaim:
+  memory.available: "0Mi"
+  nodefs.available: "500Mi"
+  imagefs.available: "2Gi"
+```
+
+`nodefs.available` signal이 eviction threshold를 넘으면 signal은 1GiB에 도달할 때까지 리소스를 회수한 다음 1.5GiB까지 회수하기 위해 추가적으로 500MiB를 추가 회수한다.
+
+`imagefs.available` signal에 대해서도 102GiB의 container image storage를 위해 회수한다. 만약 kubelet이 회수할 수 있는 storage의 크기가 2GiB보다 작으면 kubelet은 아무것도 하지 않는다.
+
+`.evictionMinimumReclaim` 기본 값은 0이다.
+
+## Node out of memory behavior
+kubelet이 메모리를 회수하기 전에 no에 OOM(out of memory)가 발생하면 노드는 [https://lwn.net/Articles/391222/](https://lwn.net/Articles/391222/)에 따라 동작한다.
+
+kubelet은 po의 QoS를 기반으로 각 container에 대해 oom_score_adj 값을 설정한다.
+| Quality of Service | oom_score_adj                                                                     |
+|--------------------|-----------------------------------------------------------------------------------|
+| Guaranteed         | -997                                                                              |
+| BestEffort         | 1000                                                                              |
+| Burstable          | min(max(2, 1000 - (1000 × memoryRequestBytes) / machineMemoryCapacityBytes), 999) |
+
+> **Note**:  
+> kubelet은 system-node-critical priority po의 container에 대해서도 oom_score_adj 값을 -997로 설정한다.
+
+노드가 OOM을 경험하기 전에 kubelet이 메모리를 회수할 수 없는 경우 `oom_killer`는 노드에서 사용하는 메모리의 백분율을 기반으로 `oom_score`를 계산한 다음 `oom_score_adj`를 추가해 각 container에 대해 유효한 `oom_score`를 계산한다. 그런 다음 가장 높은 점수의 container를 kill한다.
+
+즉 스케줄링 요청에 비해 많은 양희 메모리를 사용하는 낮은 QoS po의 container가 먼저 kill된다.
+
+po eviction과 별개로 container가 OOM kill되는 경우 kubelet은 restart policy를 기반으로 container를 재시작할 수 있다.
+
+## Good practices
+아래는 eviction 설정에 대한 best practice다.
+
+### Schedulable resources and eviction policies
+
+### DaemonSets and node-pressure eviction
+po priority는 eviction 결정에 중요한 요소다. kubelet이 ds에 속한 po를 eviction하지 못하게하기 위해 po에 높은 priority를 설정하면 된다. 그리고 낮은 priority, 또는 기본 값을 사용해 리소스가 충분할 때 ds의 po만 실행하도록 할 수 있다.
+
+## Known issues
+아래는 리소스 핸들링과 관련된 알려진 이슈다.
+
+### kubelet may not observe memory pressure right away
+기본적으로 kubelet은 cAdvisor를 일정한 간격으로 메모리 사용량을 폴링(poll) 및 수집한다. 일장한 간격(window) 내에서 메모리 사용량이 급격히 증가하면 kubelet이 `MemoryPressure`을 관찰하지 못할 수 있으며 노드의 OOM killer가 호출될 수 있다.
+
+kubelet에 `.kernelMemcgNotification` 설정을 사용해 threshold가 초과하면 알람을 받도록 설정할 수 있다.
+
+극한의 활용을 위한 것이 아니라 overcommit을 합리적으로 측정하는 경우 해결 방법은 `.kubeReserved`, `.systemReserved` 설정을 사용해 시스템에 대한 메모리를 할당하는 것이다.
+
+### active_file memory is not considered as available memory
+linux에서 kernel은 active LRU(least recently used) 목록에 있는 파일 백업 메모리 바이트 크기를 `active_file`로 추적한다. kubelet은 `active_file`는 회수할 수 없는 영역으로 취급한다. ephemeral local storage, block-backed local storage 집중적으로 사용하는 workload의 경우 파일, block data의 kernel 수준 cache는 최근에 접근한 많은 cache page가 `active_file`로 계산될 가능성이 있음을 의미한다. 이러한 kernel block buffer가 활성화된 LRU 목록에 충분히 있으면 kubelet은 높은 리소스 사용량으로 이를 관찰하고 메모리
+
+리눅스에서 커널은 활성화된 LRU(최소한 최근에 사용된) 목록에 있는 파일 백업 메모리의 바이트 수를 active_file 통계로 추적합니다. kubelet은 active_file 메모리 영역을 회수할 수 없는 것으로 취급합니다. 일시적 로컬 스토리지를 포함하여 블록 백업 로컬 스토리지를 집중적으로 사용하는 워크로드의 경우, 파일 및 블록 데이터의 커널 수준 캐시는 최근에 액세스한 많은 캐시 페이지가 active_file로 계산될 가능성이 있음을 의미합니다. If enough of these kernel block buffers are on the active LRU list, the kubelet is liable to observe this as high resource use and taint the node as experiencing memory pressure - triggering pod eviction.
+
+자세한 내용은 https://github.com/kubernetes/kubernetes/issues/43916을 참고한다.
+
+intensive I/O 작업을 수행할 가능성이 높은 container에 대해 memory request, limit을 동일하게 설정해 해당 동작을 해결할 수 있다.
