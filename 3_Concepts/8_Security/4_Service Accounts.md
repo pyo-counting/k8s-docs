@@ -78,12 +78,42 @@ k8s가 sa에 대한 credential을 자동으로 주입(inject)하지 못하도록
 1.22 이전 버전에서는 긴 수명의 static token을 secret으로 제공한다.
 
 #### Manually retrieve ServiceAccount credentials
-sa에 대한 credential을 기본 mount 위치하거나 kube-apiserver가 아닌 audience에 필요한 경우 아래 방법을 사용한다.
-- [TokenRequest API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-request-v1/): (권장) 
-- [Token Volume Projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#serviceaccount-token-volume-projection): (권장)
+sa에 대한 credential을 기본 mount 위치가 아니거나, kube-apiserver가 아닌 audience에 필요한 경우 아래 방법을 사용한다.
+- [TokenRequest API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-request-v1/): (권장) 애플리케이션 코드에서 짧은 수명의 sa token을 요청한다. token은 자동으로 만료되며 만료시 rotate할 수 있다. k8s를 모르는 legacy 애플리케이션의 경우 po 내 sidecar container를 이용해 token을 대신 발급 받을 수 있다.
+- [Token Volume Projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#serviceaccount-token-volume-projection): (권장) k8s v1.20부터 sa token을 po에 projected volume으로 추가한다. projected token은 자동으로 만료되고 kubelet은 만료되기 전에 token을 rotate한다.
 - [Service Account Token Secets](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#manually-create-an-api-token-for-a-serviceaccount): (권장하지 않음)
 
+> **Note**:  
+> k8s cluster 외부 애플리케이션을 위해 긴 수명의 sa token을 고려할 수도 있다. This allows authentication, but the Kubernetes project recommends you avoid this approach. Long-lived bearer tokens represent a security risk as, once disclosed, the token can be misused. Instead, consider using an alternative. For example, your external application can authenticate using a well-protected private key and a certificate, or using a custom mechanism such as an authentication webhook that you implement yourself.
+>
+> You can also use TokenRequest to obtain short-lived tokens for your external application.
+
 ### Restricting access to Secrets
+sa에 `kubernetes.io/enforce-mountable-secrets` annotation을 추가할 수 있다. 이 annotation이 적용되면 해당 sa을 사용할 때 특정 secret만 사용할 수 있다.
+
+아래는 예시다.
+``` yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+  name: my-serviceaccount
+  namespace: my-namespace
+imagePullSecrets:
+(...생략...)
+secrets:
+(...생략...)
+```
+
+해당 annotation이 true로 설정되면 k8s control plane은 sa의 secret에 대한 mount를 제한한다.
+1. po의 sa `.secrets` 필드에 나열된 secret만 po에서 mount할 수 있다.
+2. po의 sa `.secrets` 필드에 나열된 secret만 po의 `envFrom`에서 참조할 수 있다.
+3. po의 sa `.secrets` 필드에 나열된 secret만 po의 `imagePullSecrets`에서 참조할 수 있다.
+
+cluster 관리자는 이러한 restrinction을 이해하고 적용함으로써 보다 엄격한 보안을 유지할 수 있다.
+
 ## Authenticating service account credentials
+
 ### Authenticating service account credentials in your own code
 ### Alternatives
