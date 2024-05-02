@@ -36,7 +36,7 @@ spec:
 ### Spread constraint definition
 `.spec.topologySpreadConstraints`에 1개 이상의 목록을 정의해 kube-scheduler가 cluster에서 어떻게 po를 분배할지에 대해 정의한다. 필드는 다음과 같다.
 - `maxSkew`: po가 고르지 않게 분포될 수 있는 정도를 나타낸다. 이 필드는 필수이며 0 보다 큰 숫자를 사용해야 한다. 이 필드의 의미는 `whenUnsatisfiable` 필드 값에 따라 바뀐다.
-    - `whenUnsatisfiable: DoNotSchedule`: `maxSkew`는 대상 topology에 있는 po의 갯수와 global minimum(eligible domain에 매칭되는 po 수 또는 eligible domain가 `minDomains`보다 작으면 0) 사이의 최대 허용 차이를 정의한다. 예를 들어 2, 2, 1개의 po를 갖는 3개 zone이 있는 경우 `maxSkew`가 1이라면 global minimum은 1이다.
+    - `whenUnsatisfiable: DoNotSchedule`: `maxSkew`는 대상 topology에 있는 매칭 po의 갯수와 global minimum(eligible domain에 매칭되는 po 수 또는 eligible domain가 `minDomains`보다 작으면 0) 사이의 최대 허용 차이를 정의한다. 예를 들어 2, 2, 1개의 매칭 po를 갖는 3개 zone이 있는 경우 `maxSkew`가 1이라면 global minimum은 1이다.
     - `whenUnsatisfiable: ScheduleAnyway`: kube-scheduler는 skew를 줄이기 위해 도움이되는 topology에 더 높은 우선 순위를 부여한다.
 - `minDomains`: (optional) eligible domain의 최소 개수. topology의 각 instance를 domain이라고 부른다. no selector에 매칭되는 no를 eligible domain은 이라고 한다.
   - 값은 0보다 커야하며 `whenUnsatisfiable: DoNotSchedule`일 경우에만 사용할 수 있다.

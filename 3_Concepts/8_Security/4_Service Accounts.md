@@ -114,6 +114,55 @@ secrets:
 cluster 관리자는 이러한 restrinction을 이해하고 적용함으로써 보다 엄격한 보안을 유지할 수 있다.
 
 ## Authenticating service account credentials
+sa는 서명된 JWT(Json Web Token)을 사용해 kube-apiserver에 authentication한다. token이 발행된 방식에 따라 sa token은 expiry time, audience, token이 유효하기 시작한 시간 등의 정보를 추가적으로 갖는다(`TokenRequest API`을 사용한 경우). sa의 token을 사용해 kube-apiserver에 통신하기 위해 client는 HTTP request에 `Authorization: Bearer <token>` header를 사용해야 한다. kube-apiserver는 bearer token을 아래 단계를 거쳐 token의 유효성을 검증한다.
+1. token signature 확인
+2. token 만료 여부 확인
+3. token claim의 object 참조가 현재 유효한지 확인
+4. token이 현재 유효한지 확인
+5. audience claim 확인
+
+TokenRequest API는 sa의 bound token을 생성한다. 이 binding은 해당 sa로 동작하는 po와 같은 client의 lifetime과 연결된다. binding된 po sa token의 JWT schema, payload는 [Token Volume Projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#serviceaccount-token-volume-projection)을 참고한다.
+
+TokenRequest API를 사용해 발행된 token의 경우 kube-apiserver는 sa을 사용하는 특정 object 참조가 현재 유효한지 uid를 통해 확인한다. po에 secret으로 마운트되는 legacy token의 경우 kube-apiserver는 해당 token을 secret과 대조해 확인한다.
+
+아래는 po bound token의 payload 예시다.
+``` json
+{
+  "aud": [  # matches the requested audiences, or the API server's default audiences when none are explicitly requested
+    "https://kubernetes.default.svc"
+  ],
+  "exp": 1731613413,
+  "iat": 1700077413,
+  "iss": "https://kubernetes.default.svc",  # matches the first value passed to the --service-account-issuer flag
+  "jti": "ea28ed49-2e11-4280-9ec5-bc3d1d84661a",  # ServiceAccountTokenJTI feature must be enabled for the claim to be present
+  "kubernetes.io": {
+    "namespace": "kube-system",
+    "node": {  # ServiceAccountTokenPodNodeInfo feature must be enabled for the API server to add this node reference claim
+      "name": "127.0.0.1",
+      "uid": "58456cb0-dd00-45ed-b797-5578fdceaced"
+    },
+    "pod": {
+      "name": "coredns-69cbfb9798-jv9gn",
+      "uid": "778a530c-b3f4-47c0-9cd5-ab018fb64f33"
+    },
+    "serviceaccount": {
+      "name": "coredns",
+      "uid": "a087d5a0-e1dd-43ec-93ac-f13d89cd13af"
+    },
+    "warnafter": 1700081020
+  },
+  "nbf": 1700077413,
+  "sub": "system:serviceaccount:kube-system:coredns"
+}
+```
 
 ### Authenticating service account credentials in your own code
+k8s sa credential을 검증해야 하는 자체 서비스가 있는 경우 아래 방법을 사용할 수 있다.
+- [TokenReview API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/)(recommended)
+- OIDC discovery
+
+k8s는 TokenReview API를 권장한다. 왜냐하면 이방법은 secret, sa, po, no와 같은 API object가 삭제될 때 해당 object에 binding된 token을 무효화하기 때문이다. 예를 들어 projected sa token을 포함한 po를 삭제할 때 cluster는 즉시 token을 무효화하고 TokenReview API는 실패한다. 만약 OIDC 검증을 사용하면 token이 만료 시간에 도달할 때까지 client는 token을 계속 유효한 것으로 취급하게 된다.
+
+애플리케이션은 항상 token의 audience를 정의해야 하며 audience이 애플리케이션이 예상하는 값과 일치하는지 확인해야 한다. 이를 통해 token의 범위를 최소화하며 다른 곳에서 사용하지 못하도록 도와준다.
+
 ### Alternatives
