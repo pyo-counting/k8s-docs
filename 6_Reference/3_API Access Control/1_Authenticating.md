@@ -1,7 +1,7 @@
 ## Users in Kubernetes
-모든 k8s 클러스터에는 2가지 범주의 사용자가 있다: 1) k8s가 관리하는 서비스 계정과, 2) 일반 사용자.
+모든 k8s cluster에는 2가지 범주의 사용자가 있다: k8s가 관리하는 sa와, 일반 사용자
 
-k8s에는 일반 사용자 계정을 나타내는 resource가 따로 없다. 즉, 일반 사용자는 API 호출을 통해 k8s 클러스터에 추가할 수 없다. API 호출을 통해 일반 사용자를 추가할 수 없더라도 클러스터의 CA로 서명한 유효한 인증서를 제시하는 사용자는 인증된 것으로 간주된다. 이 떄 k8s 인증서의 'subject' 필드 내 'commonName' 필드(예를 들어 "/CN=bob")을 사용자 이름으로 사용한다. RBAC에서는 사용자가 resource에 대한 특정 행위(action)을 수행할 권한이 있는지 확인한다.
+k8s에는 일반 사용자 계정을 나타내는 resource가 따로 없다. 즉, 일반 사용자는 API 호출을 통해 k8s cluster에 추가할 수 없다. API 호출을 통해 일반 사용자를 추가할 수 없더라도 cluster의 CA로 서명한 유효한 인증서를 제시하는 사용자는 인증된 것으로 간주된다. 이 떄 k8s 인증서의 'subject' 필드 내 'commonName' 필드(예를 들어 "/CN=bob")을 사용자 이름으로 사용한다. RBAC에서는 사용자가 resource에 대한 특정 행위(action)을 수행할 권한이 있는지 확인한다.
 
 이와 반대로 서비스 계정은 k8s API에서 관리하는 사용자다. 이는 sa(ServiceAccount) resource로 관리된다. sa는 특정 ns에 바인딩되며 API 서버가 자동으로 생성하거나 API 서버 호출을 통해 생성 가능하다. sa는 Secret resource로 저장된 자격 증명 집합에 연결된다. Secret은 k8s API와 통신할 수 있도록 po에 마운트된다.
 
@@ -53,7 +53,7 @@ sa는 요청을 검증하기위해 서명된 bearer token을 사용하며 자동
 - --service-account-key-file: File containing PEM-encoded x509 RSA or ECDSA private or public keys, used to verify ServiceAccount tokens. The specified file can contain multiple keys, and the flag can be specified multiple times with different files. If unspecified, --tls-private-key-file is used.
 - --service-account-lookup: If enabled, tokens which are deleted from the API will be revoked.
 
-sa는 일반적으로 API server에서 자동으로 생성되며 sa admission controller를 통해 클러스터에서 실행되는 po와 연결된다. bearer token은 po 내 well-known 위치에 마운트되며 클러스터 내 프로세스가 API server와 통신할 수 있도록 한다. sa은 PodSpec의 serviceAccountName 필드를 사용해 명시적으로 po에서 사용할 sa를 지정할 수 있다.
+sa는 일반적으로 API server에서 자동으로 생성되며 sa admission controller를 통해 cluster에서 실행되는 po와 연결된다. bearer token은 po 내 well-known 위치에 마운트되며 cluster 내 프로세스가 API server와 통신할 수 있도록 한다. sa은 PodSpec의 serviceAccountName 필드를 사용해 명시적으로 po에서 사용할 sa를 지정할 수 있다.
 
 **Note**: serviceAccountName는 자동으로 설정되기 때문에 보통 생략한다.
 
@@ -75,7 +75,7 @@ spec:
         image: nginx:1.14.2
 ```
 
-sa bearer token은 클러스터 외부에서 사용할 수 있으며 k8s API server와 통신이 필요한 job에 대한 ID를 생성하는 데 사용할 수도 있다. sa를 직접 생성할 수 있다.
+sa bearer token은 cluster 외부에서 사용할 수 있으며 k8s API server와 통신이 필요한 job에 대한 ID를 생성하는 데 사용할 수도 있다. sa를 직접 생성할 수 있다.
 
 ``` bash
 kubectl create serviceaccount jenkins
@@ -116,7 +116,7 @@ type: kubernetes.io/service-account-token
 
 **Note**: secret은 항상 base64 인코딩됐음을 인식해야 한다.
 
-서명된 JWT는 지정된 sa으로 인증하기 위한 bearer token으로 사용할 수 있다. 일반적으로 이러한 secret은 API server에 대한 클러스터 내 접근을 위해 po에 마운트되지만 클러스터 외부에서도 사용할 수 있다.
+서명된 JWT는 지정된 sa으로 인증하기 위한 bearer token으로 사용할 수 있다. 일반적으로 이러한 secret은 API server에 대한 cluster 내 접근을 위해 po에 마운트되지만 cluster 외부에서도 사용할 수 있다.
 
 sa는 사용자 이름 `system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)`로 인증하고 `system:serviceaccounts`, `system:serviceaccounts:(NAMESPACE)` 그룹에 할당된다.
 
@@ -131,3 +131,4 @@ sa는 사용자 이름 `system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)`로 �
 ### Example use case
 ### Configuration
 ### Input and output formats
+## API access to authentication information for a client
