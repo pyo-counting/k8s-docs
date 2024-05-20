@@ -3,7 +3,7 @@
 
 각 no에서 po가 실행될 수 있도록 container runtime이 설치되어야 한다.
 
-k8s 1.29에서는 CRI(Container Runtime Interface)를 따르는 runtime을 사용해야 한다.
+k8s 1.30에서는 CRI(Container Runtime Interface)를 따르는 runtime을 사용해야 한다.
 
 이 페이지에서는 k8s에서 사용할 수 있는 몇몇 container runtime에 대해 설명한다.
 - containerd
