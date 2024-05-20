@@ -4,12 +4,13 @@
 ## configure cluster
 ### general
 - resource 마다 object naming 규칙에 대한 제약 사항이 더 많을 수도 있다. 가장 보수적으로 RFC 1035를 준수하는 것이 편하다. ([Object Names and IDs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names))
-- ns에 대해 'kube-' 접두사는 k8s 시스템을 위해 예약됐기 때문에 사용하지 않는다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/%2523working-with-namespaces))
+- ns에 대해 `kube-` 접두사는 k8s 시스템을 위해 예약됐기 때문에 사용하지 않는다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/%2523working-with-namespaces))
 - ns의 이름을 사용해 cluster 내에서 domain을 생성하기 때문에 제한된 사용자만 ns를 만들 수 있도록 제한한다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#namespaces-and-dns))
 
 ### node
 - no당 최대 po 실행 갯수는 110개 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/))
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
+- no 모니터링을 위한 node problem detector 설치 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
 - no의 graceful shutdown 설정 고려 ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#graceful-node-shutdown))
 - no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
 - no의 container runtime 설정 고려 ([Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/))
@@ -23,14 +24,15 @@
 - k8s object의 status를 노출하는 kube-state-metrics 설치 고려 ([Metrics for Kubernetes Object States](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/))
 
 ### control plane
+- control plane 구성 요소는 3개 이상의 서버에서 실행하는 것을 권장한다 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane))
 - kube-controller-manager
   - no의 non-graceful shutdown 처리를 위한 `NodeOutOfServiceVolumeDetach` feature gate 활성화 여부 확인. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#non-graceful-node-shutdown))
   - no의 non-graceful shutdown 처리 대신 po의 삭제가 6분동안 실패할 경우 강제로 volume mount를 해제하는 `disable-force-detach-on-timeout` 설정 확인. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#storage-force-detach-on-timeout))
 - kube-apiserver
   - kube-apiserver -> kubelet 통신 시, 기본적으로 kube-apiserver는 kubelet의 server certificate를 검증하지 않는다. 검증을 위해 `--kubelet-certificate-authority` flag에 kubelet의 ca certificate를 설정할 수 있다.
+  - authorization 설정을 위해`--authorization-mode` flag를 사용한다.
 
 ## 요약
-- [node-problem-detector](https://github.com/kubernetes/node-problem-detector)
 - k8s의 worker node 구성 요소 중 container 실행을 담당하는 kubelet은 container로 실행할 수 없다.
 - kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다.
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
