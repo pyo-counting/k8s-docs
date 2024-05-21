@@ -9,7 +9,7 @@ kube-apiserver에 no를 추가하기 위한 두 가지 방법이 있다.
 1. no의 kubelet이 control plane에 스스로 등록한다.
 2. 사람이 직접 no object를 추가한다.
 
-위 방법을 사용해 no를 등록하면 control plane은 새로운 no object가 유효한지 확인한다. 예를 들어 아래 JSON manifest를 통해 no를 생성할 경우.
+위 방법을 사용해 no를 등록하면 control plane은 새로운 no object가 유효한지 확인한다. 예를 들어 아래 JSON manifest를 통해 no를 생성할 경우
 ``` json
 {
   "kind": "Node",

@@ -11,7 +11,7 @@
 - no당 최대 po 실행 갯수는 110개 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/))
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
 - no 모니터링을 위한 node problem detector 설치 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
-- no의 graceful shutdown 설정 고려 ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#graceful-node-shutdown))
+- no의 graceful/non-graceful shutdown 설정 고려 ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#graceful-node-shutdown))
 - no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
 - no의 container runtime 설정 고려 ([Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/))
 - kubelet에서 container runtime에 접근하기 위한 endpoint 설정 고려 ([Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/#api))
