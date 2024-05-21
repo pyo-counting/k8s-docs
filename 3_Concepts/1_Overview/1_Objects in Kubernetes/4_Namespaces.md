@@ -3,6 +3,8 @@ k8s에서 ns는 단일 cluster 내에서 resource 집합에 대한 고립을 제
 ## When to Use Multiple Namespaces
 ns는 멀티 유저 환경에서 resource를 나눈다.
 
+Namespaces provide a scope for names. Names of resources need to be unique within a namespace, but not across namespaces. Namespaces cannot be nested inside one another and each Kubernetes resource can only be in one namespace.
+
 ns는 [resource quota](https://kubernetes.io/docs/concepts/policy/resource-quotas/)을 사용해 여러 사용자 간 cluster resource를 나누는 방법이다.
 
 동일한 소프트웨어의 버전과 같이 미세하게 다른 resource를 구분하는데 ns를 사용할 필요가 없다. 대신 label을 사용하면 된다.
@@ -41,7 +43,8 @@ svc를 생성할 때 svc는 관련 DNS entry를 생성한다. entry의 포맷은
 
 그렇기 때문에 모든 ns의 이름은 [RFC 1123 DNS labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names)을 지켜야 한다.
 
-> **Warning**: ns의 이름을 TLD(Top Level Domain)과 동일한 이름으로 생성하면 해당 ns의 svc는 public DNS 레코드를 덮어쓰는 짧은 이름의 DNS 이름을 가질 수 있다. "."으로 끝나지 않을 경우 DNS 룩업을 수행할 것이고 이는 public DNS보더 우선 순위가 높기 때문에 내부 svc ip정보를 응답한다.
+> **Warning**  
+> ns의 이름을 TLD(Top Level Domain)과 동일한 이름으로 생성하면 해당 ns의 svc는 public DNS 레코드를 덮어쓰는 짧은 이름의 DNS 이름을 가질 수 있다. "."으로 끝나지 않을 경우 DNS 룩업을 수행할 것이고 이는 public DNS보더 우선 순위가 높기 때문에 내부 svc ip정보를 응답한다.
 > 
 > 이러한 실수를 방지하기 위해 제한된 사용자만 ns를 만들 수 있도록 제한해야 한다. If required, you could additionally configure third-party security controls, such as [admission webhooks](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/), to block creating any namespace with the name of [public TLDs](https://data.iana.org/TLD/tlds-alpha-by-domain.txt).
 

@@ -12,13 +12,13 @@ controller는 적어도 1개의 k8s의 resource 타입을 추적한다. 이러�
 controller는 이를 위한 작업을 스스로 수행할 수 있다. 일반적으로 k8s에서는 controller가 kube-apiserver로 메시지를 전송한다. 관련된 내용은 아래에서 살펴본다.
 
 ### Control via API server
-job controller는 k8s에 내장된 controller다. 내장된 controller는 kube-apiserver와 상호작용함으로써 상태를 관리한다.
+job controller는 k8s에 내장된 controller다. 내장된 controller는 kube-apiserver와 상호 작용함으로써 상태를 관리한다.
 
 job은 po를 실행함으로써 작업을 수행하는 k8s resource다. 
 
 job controller는 새로운 job을 확인하면 cluster 내 no들의 kubelet에서 해당 작업을 수행하기 위한 po를 실행하게한다. job controller는 직접 po 또는 container를 실행하지는 않는다. 대신 job controller는 kube-apiserver에 po에 대한 생성 또는 삭제를 요청한다. 그러면 control plane의 다른 구성요소가 해당 요청에 대응해 작업을 완료시킨다.
 
-job resource objec의 desired state는 `.spec` 필드에 명시된 작업을 수행하는 것이다. job controller는 해당 작업을 수행함으로써 job resource의 current state를 desired state에 가까워지도록 유지하기위해 노력한다.
+job resource object의 desired state는 `.spec` 필드에 명시된 작업을 수행하는 것이다. job controller는 해당 작업을 수행함으로써 job resource의 current state를 desired state에 가까워지도록 유지하기위해 노력한다.
 
 뿐만 아니라 controller는 object의 설정을 업데이트 한다. 예를 들어 작업이 완료되면, job이 완료되었음을 나타내기 위해 `Finished`로 표시하도록 업데이트한다.
 
@@ -26,6 +26,10 @@ job resource objec의 desired state는 `.spec` 필드에 명시된 작업을 수
 일부 controller는 cluster 외부를 변경해야하는 경우도 있다.
 
 예를 들어 cluster 내에 충분한 no가 있을 수 있도록 유지하기 위한 controller를 사용하는 경우, 해당 controller는 필요할 떄 새로운 no를 설정할 수 있도록 cluster 외부의 무언가를 필요로한다.
+
+외부 state와 상호 작용하는 controller는 kube-apiserver에서 desired state를 찾은 후, 외부 시스템과 직접 통신해 current state를 desired state에 가깝게 하기 위해 노력한다.
+
+(There actually is a [controller](https://github.com/kubernetes/autoscaler/) that horizontally scales the nodes in your cluster.)
 
 여기서 중요한 점은 controller가 desired state를 만들기 위해 약간의 변화를 만들고, current state를 cluster의 kube-apiserver에 보고한다는 것이다. 다른 control loop는 보고된 데이터를 관찰하고 이에 따른 작업을 수행할 수도 있다.
 

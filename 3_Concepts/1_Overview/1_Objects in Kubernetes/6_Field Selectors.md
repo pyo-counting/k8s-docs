@@ -12,6 +12,8 @@ kubectl get pods --field-selector status.phase=Running
 ## Supported fields
 k8s resource 타입에 따라 지원 가능한 필드가 다양하다. 기본적으로 모든 resource 타입에 대해 `metadata.name`, `metadata.namespace` 필드를 지원한다. 
 
+### List of supported fields
+
 ## Supported operators
 =, ==, != 연산자를 지원한다. =, ==은 동일한 의미다.
 

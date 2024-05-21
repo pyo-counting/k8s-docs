@@ -12,7 +12,7 @@
 - 확장성(scale): 안정적인 요구 사항이 필요하다면 이에 맞도록 구축하면 된다. 하지만 예상된 요구 사항이 시간에 따라 변할 수 있기 때문에 control plane, worker node에 대한 확장성을 계획해야 한다.
 - 보안과 접근 제어(security and management): 테스트 환경에서는 k8s에 대한 관리자 권한을 사용하는 것이 일반적이다. 하지만 중요한 workload가 있는 공유 cluster에서는 각 사용자의 접근을 제어해야 한다. 이를 위해 rbac과 같은 보안 메커니즘을 사용해야 한다. [policy](https://kubernetes.io/docs/concepts/policy/), [container resource](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)를 사용해 사용자와 workload가 접근할 수 있는 resource을 제한할 수 있다.
 
-직접 k8s 운영 환경을 구축하기 전에 turnkey cloud solution의 도입을 고려한다. 이러한 솔루션은 아래와 같은 이점을 갖는다.
+직접 k8s 운영 환경을 구축하기 전에 [Turnkey Cloud Solutions](https://kubernetes.io/docs/setup/production-environment/turnkey-solutions/)의 도입을 고려한다. 이러한 솔루션은 아래와 같은 이점을 갖는다.
 - 서버리스(serverless): cluster를 관리하지 않고 사용자는 workload만 실행하면 된다. cpu, 메모리, 디스크 사용 요청에 대한 비용을 지불해야 한다.
 - 관리되는 control plane: provider가 cluster의 control plane의 확장, 가용성을 관리하고 패치, 업그레이드를 관리한다.
 - 관리되는 worker node: 필요에 맞게 node pool을 구성하면 provider가 해당 node를 사용할 수 있는지 확인하고 필요할 때 이용한다.
@@ -45,7 +45,7 @@ To learn about available options when you run control plane services, see kube-a
 - 유효한 node: k8s cluster에 참여(join)하기 위한 요구 사항을 충족했는지 확인하기 위한 정보는 [Valid node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/)를 참고한다.
 - cluster에 node 추가: cluster에 node를 추가하는 방법은 [Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/)를 참고한다.
 - scale node: [Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/)를 참고해 pod, container의 개수에 따른 node의 개수를 고려한다.
-- autoscale node: 대부분의 cloud provier는 unhealthy node 대체, node의 scale을 위한 [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler#readme)를 제공한다. [Frequently Asked Questions](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md)에서 autoscaler가 어떻게 동작하는지 확인할 수 있고, [Deployment](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler#deployment)에서 각 cloud provider가 제공하는 솔루션 목록을 확인할 수 있다. For on-premises, there are some virtualization platforms that can be scripted to spin up new nodes based on demand.
+- autoscale node: 대부분의 cloud provier는 unhealthy node 대체, node의 scale을 위한 [Cluster Autoscaling](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler#readme)를 제공한다. [Frequently Asked Questions](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md)에서 autoscaler가 어떻게 동작하는지 확인할 수 있고, [Deployment](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler#deployment)에서 각 cloud provider가 제공하는 솔루션 목록을 확인할 수 있다. For on-premises, there are some virtualization platforms that can be scripted to spin up new nodes based on demand.
 - node health check 설정: 중요 workload의 경우 node, pod가 정상적으로 실행 중인지 중요하다. [Node Problem Detector](https://kubernetes.io/docs/tasks/debug/debug-cluster/monitor-node-health/) daemon을 사용해, node가 정상인지 확인할 수 있다.
 
 ## Production user management
@@ -67,8 +67,6 @@ To learn about available options when you run control plane services, see kube-a
 workload는 k8s control plane 외부, 내부 모두에 영향을 줄 수 있다. cluster workload의 요구 사항에 맞게 아래 내용을 고려해야 한다.
 - ns의 제한 설정: memory, cpu와 같은 resource에 대해 ns 마다 quota 설정을 한다. 자세한 내용은 [Mnage Memory, Cpu, and API Resources](https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/)을 참고한다. 제한을 상속 받기 위해 [Hierarchical Namespaces](https://kubernetes.io/blog/2020/08/14/introducing-hierarchical-namespaces/)를 고려할 수 있다.
 - dns 요구 사항에 대한 준비: worklaod의 scale up에 대해서 DNS service 역시 scale up해야 한다. 자세한 내용은 [Autoscale the DNS service in a Cluster](https://kubernetes.io/docs/tasks/administer-cluster/dns-horizontal-autoscaling/)를 참고한다.
-- 추가적인 sa 생성: 사용자 계정은 사용자가 cluster에서 무엇을 할 수 있는지 결정하고 sa는 특정 ns에서 po의 접근을 정의한다. 기본적으로 po는 ns의 기본 sa를 사용한다. 자세한 내용은 [Managing Service Account](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/)를 참고한다.
+- 추가적인 sa 생성: sa는 사용자가 cluster에서 무엇을 할 수 있는지 결정하고 sa는 특정 ns에서 po의 접근을 정의한다. 기본적으로 po는 ns의 기본 sa를 사용한다. 자세한 내용은 [Managing Service Account](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/)를 참고한다.
     - 특정 container registry에서 image를 pull할 수 있도록 secret을 추가한다. 자세한 내용은 [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)를 참고한다.
     - sa에 RBAC을 할당한다. 자세한 내용은 [ServiceAccount permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#service-account-permissions)을 참고한다.
-
-## What's next

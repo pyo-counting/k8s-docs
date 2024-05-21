@@ -15,43 +15,24 @@ k8s 1.30에서는 CRI(Container Runtime Interface)를 따르는 runtime을 사�
 > Kubernetes releases before v1.24 included a direct integration with Docker Engine, using a component named dockershim. That special direct integration is no longer part of Kubernetes (this removal was announced as part of the v1.20 release). You can read Check whether Dockershim removal affects you to understand how this removal might affect you. To learn about migrating from using dockershim, see Migrating from dockershim.
 
 ## Install and configure prerequisites
-아래 각 단계는 lunux에서의 공통적인 k8s 설정이다.
+### Network configuration
+기본적으로 linux kernel은 IPv4 패킷이 network interface 간 라우팅되는 것을 허용하지 않는다. 대부분의 k8s cluster netwokring 구현은 필요한 경우 이 설정을 변경하지만 일부는 관리자가 직접 변경해야 한다(Some might also expect other sysctl parameters to be set, kernel modules to be loaded, etc; consult the documentation for your specific network implementation).
 
-필요하지 않은 경우 건너뛰어도 된다.
-
-자세한 내용은 사용할 container runtime의 문서, [Network Plugin Requirements](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/#network-plugin-requirements)를 참고한다.
-
-### Forwarding IPv4 and letting iptables see bridged traffic
+### Enable IPv4 packet forwarding
 아래 명령어를 실행한다.
 ``` sh
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-
-sudo modprobe overlay
-sudo modprobe br_netfilter
-
 # sysctl params required by setup, params persist across reboots
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
+net.ipv4.ip_forward = 1
 EOF
 
 # Apply sysctl params without reboot
 sudo sysctl --system
 ```
 
-아래 명령어를 사용해 `br_netfilter`, `overlay` 모듈이 로드됐는지 확인한다.
+아래 명령어를 사용해 net.ipv4.ip_forward가 1로 설정됐는지 확인한다.
 ``` sh
-lsmod | grep br_netfilter
-lsmod | grep overlay
-```
-
-아래 명령어를 사용해 `net.bridge.bridge-nf-call-iptables`, `net.bridge.bridge-nf-call-ip6tables`, `net.ipv4.ip_forward` 시스템 환경 변수가 sysctl 설정에 1로 설정됐는지 확인한다.
-``` sh
-sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+sysctl net.ipv4.ip_forward
 ```
 
 ## cgroup drivers

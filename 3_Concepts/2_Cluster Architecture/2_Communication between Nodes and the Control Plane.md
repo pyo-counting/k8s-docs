@@ -24,7 +24,7 @@ kube-apiserver가 kubelet과 통신하는 이유는 다음과 같다.
 
 또는 kube-apiserver와 kubelet 사이에 [SSH tunneling](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#ssh-tunnels)을 사용할 수 있다.
 
-또는 kubelet API를 보호하기 위해 [authentication and/or authorization](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/)을 참고한다.
+또는 kubelet API를 보호하기 위해 [Kubelet authentication and/or authorization](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/)을 참고한다.
 
 ### API server to nodes, pods, and services
 kube-apiserver에서 no, po, svc로의 연결은 기본적으로 일반 HTTP를 사용하며 안전하지 않다. API url에서 no, po, svc 이름 앞에 `https:`를 사용해 HTTPS 연결을 실행할 수 있지만 제공되는 certificate는 검증되지 않는다. 따라서 연결 자체는 암호화되지만 무결성에 대한 어떠한 보장도 제공하지는 않는다. 현재는 이러한 연결에 대해 신뢰할 수 없거나 공용 네트워크를 통해 실행하는 것으 안전하지 않다.
