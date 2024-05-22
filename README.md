@@ -27,6 +27,7 @@
 
 ### control plane
 - control plane 구성 요소는 3개 이상의 서버에서 실행하는 것을 권장한다 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane))
+- encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
 - kube-controller-manager
   - no의 non-graceful shutdown 처리를 위한 `NodeOutOfServiceVolumeDetach` feature gate 활성화 여부 확인. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#non-graceful-node-shutdown))
   - no의 non-graceful shutdown 처리 대신 po의 삭제가 6분동안 실패할 경우 강제로 volume mount를 해제하는 `disable-force-detach-on-timeout` 설정 확인. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#storage-force-detach-on-timeout))
