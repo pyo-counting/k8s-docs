@@ -29,7 +29,7 @@ k8s는 autehntication 플러그인을 통해 API 요청을 인증(authentication
 
 여러 authenticator 모듈이 활성화 됐을 때, 어떤 모듈에서 인증을 성공하면 다른 모듈에서의 추가 인증 절차는 필요하지 않으며 생략된다. kube-apiserver는 authenticator 실행에 대한 순서를 보장하지 않는다.
 
-`system:authenticated` 그룹은 모든 인증된 사용자의 그룹에 포함된다.
+`system:authenticated` 그룹은 모든 인증된 사용자가 속하는 그룹이다.
 
 Integrations with other authentication protocols (LDAP, SAML, Kerberos, alternate x509 schemes, etc) can be accomplished using an authenticating proxy or the authentication webhook.
 
@@ -206,9 +206,240 @@ kube-apiserver는 `X-Remote-User`와 같은 HTTP 요청 header 값을 사용해 
 - --requestheader-extra-headers-prefix 1.6+. Optional, case-insensitive. "X-Remote-Extra-" is suggested. Header prefixes to look for to determine extra information about the user (typically used by the configured authorization plugin). Any headers beginning with any of the specified prefixes have the prefix removed. The remainder of the header name is lowercased and percent-decoded and becomes the extra key, and the header value is the extra value.
 
 ## Anonymous requests
+해당 기능이 활성화되면, 다른 authentication에 의해 거절되지 않은 요청은 anonymous request로 간주되며 사용자 이름 `system:anonymous`, 그룹 `system:unauthenticated`에 속하게 된다.
+
+예를 들어, token authentication이 설정된 서버에서 anonymous access가 활성화된 경우, 잘못된 bearer token을 사용하는 요청은 401 Unauthorized 오류를 응답받게 된다. 하지만 bearere token을 사용하지 않는 요청은 anonymous request로 처리된다.
+
+1.5.1-1.5.x 버전에서는 anonymous access가 기본적으로 비활성화되어 있으며, kube-apiserver에 `--anonymous-auth=true` flag를 사용해 활성화할 수 있다.
+
+1.6 이상에서는 AlwaysAllow 이외의 authorization 모드를 사용하는 경우 기본적으로 anonymous access가 활성화되며, kube-apiserver에 `--anonymous-auth=false`를 사용해 비활성화할 수 있다. 1.6 버전부터 ABAC, RBAC authorizer는 `system:anonymous` 사용자 또는 `system:unauthenticated` 그룹에 대한 명시적 권한 부여를 요구하기 때문에 `*` 사용자, `*` 그룹에 접근 권한을 부여하는 기존 legacy 정책은 anonymous 사용자를 포함하지 않는다.
+
 ## User impersonation
+사용자는 impersonation header를 사용해 다른 사용자처럼 행동할 수 있다. 이를 통해 요청이 인증된 사용자 정보를 무시할 수 있다. 예를 들어, 관리자는 이 기능을 사용해 일시적으로 다른 사용자로 위장하고 요청이 거부되는지 확인해 권한 정책을 디버깅할 수 있다.
+
+impersonation request은 먼저 요청 사용자로 인증한 다음 impersonated user 사용자로 스위칭하게 된다.
+- 사용자가 자신의 credential과 impersonation header를 사용하여 API를 호출한다.
+- kube-apiserver는 사용자를 인증한다.
+- kube-apiserver는 인증된 사용자가 위장 권한(privilege)을 가지고 있는지 확인한다.
+- 요청 사용자 정보가 위장 값으로 대체된다.
+- 요청이 평가되며 인가는 위장된 사용자 정보에 적용된다.
+
+다음 HTTP header를 사용하여 위장 요청을 수행할 수 있다.
+- `Impersonate-User`: 위장할 사용자 이름
+- `Impersonate-Group`: (optional)위장할 그룹 이름. 여러 그룹을 명시하기 위해 여러번 header를 사용할 수 있다. `Impersonate-User`가 필요하다.
+- `Impersonate-Extra-( extra name )`: (optional)사용자와 추가 필드를 연결하는 dynamic header다. `Impersonate-User`가 필요. 일관되게 보존하기 위해 ( extra name )은 소문자를 사용하고 [legal in HTTP header labels](https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6)가 아닌 문자는 utf-8, [percent-encoded](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1)이어야 한다.
+- `Impersonate-Uid`: (optional)위장된 사용자를 나타내는 uid다. `Impersonate-User`가 필요합니다. k8s는 이 문자열에 대해 제약 사항을 갖지 않는다.
+
+> **Note**:  
+> Prior to 1.11.3 (and 1.10.7, 1.9.11), ( extra name ) could only contain characters which were [legal in HTTP header labels](https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6).
+
+> **Note**:  
+> `Impersonate-Uid`은 1.22 버전 이상부터 유효하다.
+
+아래는 특정 사용자, 그룹으로 위장하기 위한 HTTP 요청 header 예시다.
+```
+Impersonate-User: jane.doe@example.com
+Impersonate-Group: developers
+Impersonate-Group: admins
+```
+
+아래는 추가 기타 필드, uid를 설정하는 HTTP 요청 header 예시다.
+```
+Impersonate-User: jane.doe@example.com
+Impersonate-Extra-dn: cn=jane,ou=engineers,dc=example,dc=com
+Impersonate-Extra-acme.com%2Fproject: some-project
+Impersonate-Extra-scopes: view
+Impersonate-Extra-scopes: development
+Impersonate-Uid: 06f6ce97-e2c5-4ab8-7ba5-7654dd08d52b
+```
+
+kubectl에서 `Impersonate-User` header를 설정하기 위해 `--as` flag, `Impersonate-Group` header를 설장하기 위해 `--as-group` flag를 사용할 수 있다.
+``` sh
+kubectl drain mynode
+Error from server (Forbidden): User "clark" cannot get nodes at the cluster scope. (get nodes mynode)
+
+kubectl drain mynode --as=superman --as-group=system:masters
+node/mynode cordoned
+node/mynode drained
+```
+
+> **Note**:  
+> kubectl은 기타 필드, uid를 설정할 수 없다.
+
+사용자, 그룹, uid, 추가 필드를 위장하기 위해 사용자는 위장 대상 속성("user", "group", "uid" 등)에 대해 "impersonate" 동사를 수행할 수 있어야 . RBAC authorization 플러그인을 사용하는 경우, 다음 ClusterRole은 사용자, 그룹 위장 header를 설정하는 데 필요한 규칙을 포함한다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: impersonator
+rules:
+- apiGroups: [""]
+  resources: ["users", "groups", "serviceaccounts"]
+  verbs: ["impersonate"]
+```
+
+기타 필드, uid는 "authentication.k8s.io" apiGroups에 속한다. 기타 필드는 "userextras" resource의 sub-resource로 평가된다. 사용자가 기타 필드 "scopes", uid를 위장하기 위해 필요한 규칙은 다음과 같다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scopes-and-uid-impersonator
+rules:
+# Can set "Impersonate-Extra-scopes" header and the "Impersonate-Uid" header.
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["userextras/scopes", "uids"]
+  verbs: ["impersonate"]
+```
+
+위장 헤더의 값은 `resourceNames`를 사용해 제한할 수 있다.
+``` yaml
+kind: ClusterRole
+metadata:
+  name: limited-impersonator
+rules:
+# Can impersonate the user "jane.doe@example.com"
+- apiGroups: [""]
+  resources: ["users"]
+  verbs: ["impersonate"]
+  resourceNames: ["jane.doe@example.com"]
+
+# Can impersonate the groups "developers" and "admins"
+- apiGroups: [""]
+  resources: ["groups"]
+  verbs: ["impersonate"]
+  resourceNames: ["developers","admins"]
+
+# Can impersonate the extras field "scopes" with the values "view" and "development"
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["userextras/scopes"]
+  verbs: ["impersonate"]
+  resourceNames: ["view", "development"]
+
+# Can impersonate the uid "06f6ce97-e2c5-4ab8-7ba5-7654dd08d52b"
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["uids"]
+  verbs: ["impersonate"]
+  resourceNames: ["06f6ce97-e2c5-4ab8-7ba5-7654dd08d52b"]
+```
+
+> **Note**:  
+> 사용자 또는 그룹을 위장하면 해당 사용자 또는 그룹이 되는 것처럼 모든 작업을 수행할 수 있다. 이러한 이유로 위장은 ns에 제한되지 않는다. k8s RBAC를 사용하여 위장을 허용하려면 Role, RoleBinding이 아니라 ClusterRole, ClusterRoleBinding을 사용해야 한다.
+
 ## client-go credential plugins
 ### Example use case
 ### Configuration
 ### Input and output formats
+
 ## API access to authentication information for a client
+cluster에 API가 활성화되어 있다면 `SelfSubjectReview` API를 사용하여 k8s cluster가 인증 정보를 클라이언트로 식별하는 방법을 확인할 수 있다. 이 방법은 사용자(일반적으로 실제 사람을 나타냄) 또는 sa로 인증하는 경우에 모두 동작한다.
+
+`SelfSubjectReview` object에는 설정 가능한 필드가 없다. 요청을 받으면 kube-apiserver가 사용자 속성을 status에 채워 응답한다.
+
+아래는 요청 예시다.
+```
+POST /apis/authentication.k8s.io/v1/selfsubjectreviews
+
+{
+  "apiVersion": "authentication.k8s.io/v1",
+  "kind": "SelfSubjectReview"
+}
+```
+
+아래는 응답 예시다.
+```
+{
+  "apiVersion": "authentication.k8s.io/v1",
+  "kind": "SelfSubjectReview",
+  "status": {
+    "userInfo": {
+      "name": "jane.doe",
+      "uid": "b6c7cfd4-f166-11ec-8ea0-0242ac120002",
+      "groups": [
+        "viewers",
+        "editors",
+        "system:authenticated"
+      ],
+      "extra": {
+        "provider_id": ["token.company.example"]
+      }
+    }
+  }
+}
+```
+
+`kubectl auth whoami` 명령어를 사용할 수 있다. 아래는 출력 예시다.
+- 간단한 출력 예시
+  ``` sh
+  ATTRIBUTE         VALUE
+  Username          jane.doe
+  Groups            [system:authenticated]
+  ```
+- 추가 필드를 포함하는 출력 예싣
+  ``` sh
+  ATTRIBUTE         VALUE
+  Username          jane.doe
+  UID               b79dbf30-0c6a-11ed-861d-0242ac120002
+  Groups            [students teachers system:authenticated]
+  Extra: skills     [reading learning]
+  Extra: subjects   [math sports]
+  ```
+
+kubectl의 `--output` flag를 사용해 JSON, YAML 포맷의 데이터를 확인할 수도 있다.
+``` json
+  "apiVersion": "authentication.k8s.io/v1",
+  "kind": "SelfSubjectReview",
+  "status": {
+    "userInfo": {
+      "username": "jane.doe",
+      "uid": "b79dbf30-0c6a-11ed-861d-0242ac120002",
+      "groups": [
+        "students",
+        "teachers",
+        "system:authenticated"
+      ],
+      "extra": {
+        "skills": [
+          "reading",
+          "learning"
+        ],
+        "subjects": [
+          "math",
+          "sports"
+        ]
+      }
+    }
+  }
+}
+```
+
+``` yaml
+apiVersion: authentication.k8s.io/v1
+kind: SelfSubjectReview
+status:
+  userInfo:
+    username: jane.doe
+    uid: b79dbf30-0c6a-11ed-861d-0242ac120002
+    groups:
+    - students
+    - teachers
+    - system:authenticated
+    extra:
+      skills:
+      - reading
+      - learning
+      subjects:
+      - math
+      - sports
+```
+
+k8s에 webhook token authentication, authenticating proxy와 같은 복잡한 authentication을 사용하는 경우 유용하다.
+
+> **Note**:  
+> kube-apiserver는 위장을 포함한 모든 authentication을 적용한 후 userInfo를 채운다. 따라서 위장을 사용하는 경우 `SelfSubjectReview` API 요청은 위장된 사용자의 세부 정보를 확인할 수 있다.
+
+기본적으로 `APISelfSubjectReview` feature가 활성화된 경우 모든 인증된 사용자는 `SelfSubjectReview` object를 생성할 수 있다. 이는 `system:basic-user` cluster role에 의해 허용된다.
+
+> **Note**:  
+> 아래 경우에만 `SelfSubjectReview` 요청을 수행할 수 있다.
+> - APISelfSubjectReview feature gate가 활성화된 경우(k8s 1.30에서는 활성화 할 필요가 없다)
+> - (if you are running a version of Kubernetes older than v1.28) the API server for your cluster has the authentication.k8s.io/v1alpha1 or authentication.k8s.io/v1beta1 API group enabled.
