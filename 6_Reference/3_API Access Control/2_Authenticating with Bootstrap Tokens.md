@@ -78,7 +78,9 @@ cm 서명을 활성화하기 위해 kube-controller-manager의 bootstrapsigner c
 --controllers=*,bootstrapsigner
 ```
 
-서명된 cm은 kube-public ns의 cluster-info다. 전형적인 흐름은 클라이언트가 인증되지 않은 상태로 이 cm을 읽고 TLS 오류를 무시한다. 그런 다음 cm에 포함된 서명을 확인하여 cm의 페이로드를 유효성 검사를 수행한다.
+서명된 cm은 kube-public ns의 cluster-info다. 일반적인 흐름은 클라이언트가 인증되지 않은 상태로 이 cm을 읽고 TLS 오류를 무시한다. 그런 다음 cm에 포함된 서명을 확인하여 cm의 페이로드를 유효성 검사를 수행한다.
+
+kubeadm의 경우 위 cm을 사용해 bootstrap에 사용된다. kubelet은 해당 cm에 인증 없이 접근해 cluster, ca 정보를 얻을 수 있다.
 
 아래는 cluster-info cm 예시다.
 ``` yaml
@@ -102,6 +104,7 @@ data:
     preferences: {}
     users: []
 ```
+
 cm의 kubeconfig는 cluster 정보만 채워진 설정 파일이다. 여기서 주요한 정보는 `certificate-authority-data`다. This may be expanded in the future.
 
 서명은 "분리된(detached)" 모드를 사용하는 JWS 서명이다. 서명을 유효성 검사하려면 사용자는 kubeconfig 페이로드를 JWS 규칙에 따라 인코딩해야 한다(JWS 규칙에 따라 base64로 인코딩하면서 끝에 오는 =를 제외). 인코딩된 페이로드는 그런 다음 2 개의 점 사이에 삽입하여 전체 JWS를 형성하는 데 사용된다. 사용자는 공유 secret로 전체 token(e.g. 07401b.f395accd246ae52d)을 사용하여 HS256 체계(HMAC-SHA256)를 사용하여 JWS를 검증해야 한다. 사용자는 HS256가 사용되었는지 확인해야 한다.
