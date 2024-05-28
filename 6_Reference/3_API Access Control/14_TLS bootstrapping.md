@@ -172,11 +172,11 @@ kube-controller-manager에 대한 flag 설정은 다음과 같다.
 ```
 
 ### Approval
-csr을 승인하기 위해 올바른 그룹에 RBAC 권한을 부여하여 kube-controller-manager에게 승인할 수 있다고 알려주어야 한다.
+csr을 승인하기 위해 kube-controller-manager에게 해당 승인이 허용되는 것이라고 알려줘야 한다. 이를 위해 올바른 group에 RBAC 권한을 부여해야 한다.
 
 두 가지 구분된 권한 집합이 있다.
-- `nodeclient`: no를 위해 새로운 인증서를 생성하는 경우 아직 인증서가 존재하지 않는다. 위에서 설명한 token 중 하나를 사용해 인증되므로 `system:bootstrappers` 그룹의 일부다.
-- `selfnodeclient`: no가 인증서를 갱신하는 경우 이미 인증서가 존재한다. 이를 사용해 지속적으로 `system:nodes` 그룹의 일부로 인증된다.
+- `nodeclient`: no를 위해 새로운 인증서를 생성하는 경우 아직 인증서가 존재하지 않는다. 위에서 설명한 token 중 하나를 사용해 인증되므로 `system:bootstrappers` 그룹에 속하게된다.
+- `selfnodeclient`: no가 인증서를 갱신하는 경우 이미 인증서가 존재한다. 그렇기 때문에 `system:nodes` 그룹으로 인증된다.
 
 kubelet이 새 인증서를 요청하고 수신하기 위해 bootstrapping no가 속한 `system:bootstrappers` 그룹을 `system:certificates.k8s.io:certificatesigningrequests:nodeclient` ClusterRole과 바인딩하기 위한 ClusterRoleBinding을 생성한다.
 ``` yaml
