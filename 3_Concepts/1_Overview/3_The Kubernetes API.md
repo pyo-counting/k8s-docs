@@ -9,19 +9,17 @@ k8s API를 사용하면 k8s에서 API object의 state를 조회하고 수정할 
 - The Kubernetes OpenAPI Document provides (full) OpenAPI v2.0 and 3.0 schemas for all Kubernetes API endpoints. The OpenAPI v3 is the preferred method for accessing OpenAPI as it provides a more comprehensive and accurate view of the API. It includes all the available API paths, as well as all resources consumed and produced for every operations on every endpoints. It also includes any extensibility components that a cluster supports. The data is a complete specification and is significantly larger than that from the Discovery API.
 
 ## Discovery API
-Aggregated discovery
-Unaggregated discovery
-OpenAPI interface definition
-OpenAPI V2
-OpenAPI V3
-Protobuf serialization
-Persistence
-API Discovery
-Aggregated Discovery
-API groups and versioning
-API changes
+### Aggregated discovery
+### Unaggregated discovery
+## OpenAPI interface definition
+### OpenAPI V2
+### OpenAPI V3
+### Protobuf serialization
+## Persistence
+## API groups and versioning
+### API changes
 
 ## API Extension
-k8s API는 두 가지 방법을 통해 확장할 수 있다
+k8s API는 두 가지 방법을 통해 확장할 수 있다.
 1. [Custom resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)는 kube-apiserver가 resource API를 제공하는 방법을 선언적으로 정의할 수 있다.
 2. [aggregation layer](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/)을 사용해 k8s API을 구현할 수 있다.

@@ -13,7 +13,7 @@ k8s는 아래 동작을 위해 PKI가 필요하다.
 - kube-apiserver가 etcd에 인증하기 위한 client certificate
 - Client certificate/kubeconfig for the controller manager to talk to the API server
 - Client certificate/kubeconfig for the scheduler to talk to the API server.
-- [front-proxy](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/)를 위항 client, server certificate
+- [front-proxy](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/)를 위한 client, server certificate
 
 > **Note**:  
 > front-proxy certificate는 [an Extension API server](https://kubernetes.io/docs/tasks/extend-kubernetes/setup-extension-api-server/)를 사용할 경우에만 필요하다.
@@ -51,8 +51,43 @@ kubeadm이 모든 certificate를 만드는 대신 직접 root CA를 생성하거
 CA private key를 cluster에 복사하기 싫다면 직접 모든 certificate를 생성할 수 있다.
 
 필요 certificate 목록:
+|                               |                           |                |                |                                                              |
+|-------------------------------|---------------------------|----------------|----------------|--------------------------------------------------------------|
+| Default CN                    | Parent CA                 | O (in Subject) | kind           | hosts (SAN)                                                  |
+| kube-etcd                     | etcd-ca                   |                | server, client | &lt;hostname&gt;, &lt;Host_IP&gt;, localhost, 127.0.0.1      |
+| kube-etcd-peer                | etcd-ca                   |                | server, client | &lt;hostname&gt;, &lt;Host_IP&gt;, localhost, 127.0.0.1      |
+| kube-etcd-healthcheck-client  | etcd-ca                   |                | client         |                                                              |
+| kube-apiserver-etcd-client    | etcd-ca                   |                | client         |                                                              |
+| kube-apiserver                | kubernetes-ca             |                | server         | &lt;hostname&gt;, &lt;Host_IP&gt;, &lt;advertise_IP&gt;, [1] |
+| kube-apiserver-kubelet-client | kubernetes-ca             | system:masters | client         |                                                              |
+| front-proxy-client            | kubernetes-front-proxy-ca |                | client         |                                                              |
 
 ### Certificate paths
+
+``` sh
+/etc/kubernetes/pki/etcd/ca.key
+/etc/kubernetes/pki/etcd/ca.crt
+/etc/kubernetes/pki/apiserver-etcd-client.key
+/etc/kubernetes/pki/apiserver-etcd-client.crt
+/etc/kubernetes/pki/ca.key
+/etc/kubernetes/pki/ca.crt
+/etc/kubernetes/pki/apiserver.key
+/etc/kubernetes/pki/apiserver.crt
+/etc/kubernetes/pki/apiserver-kubelet-client.key
+/etc/kubernetes/pki/apiserver-kubelet-client.crt
+/etc/kubernetes/pki/front-proxy-ca.key
+/etc/kubernetes/pki/front-proxy-ca.crt
+/etc/kubernetes/pki/front-proxy-client.key
+/etc/kubernetes/pki/front-proxy-client.crt
+/etc/kubernetes/pki/etcd/server.key
+/etc/kubernetes/pki/etcd/server.crt
+/etc/kubernetes/pki/etcd/peer.key
+/etc/kubernetes/pki/etcd/peer.crt
+/etc/kubernetes/pki/etcd/healthcheck-client.key
+/etc/kubernetes/pki/etcd/healthcheck-client.crt
+/etc/kubernetes/pki/sa.key
+/etc/kubernetes/pki/sa.pub
+```
 
 ## Configure certificates for user accounts
 아래 관리자 계정, sa를 반드시 생성해야 한다.

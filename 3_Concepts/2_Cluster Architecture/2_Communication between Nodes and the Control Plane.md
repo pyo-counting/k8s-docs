@@ -12,7 +12,7 @@ control plane 구성 요소 역시 kube-apiserver와 안전한 포트를 사용�
 ## Control plane to node
 control plane(kube-apiserver)은 no와 통신하기 위해 두 가지 방식을 사용한다. 첫 번째는 kube-apiserver가 각 no의 kubelet과 통신한다. 두 번째는 kube-apiserver의 proxy 기능을 통해 모든 no, po, svc로 통신한다.
 
-### API server to kubelet
+### API server to kubelet (kubectl proxy)
 kube-apiserver가 kubelet과 통신하는 이유는 다음과 같다.
 - po의 로그를 가져온다.
 - 실행 중인 po에 대한 attach(주로 kubectl 명령어를 사용)
@@ -26,7 +26,7 @@ kube-apiserver가 kubelet과 통신하는 이유는 다음과 같다.
 
 또는 kubelet API를 보호하기 위해 [Kubelet authentication and/or authorization](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/)을 참고한다.
 
-### API server to nodes, pods, and services
+### API server to nodes, pods, and services (apiserver proxy)
 kube-apiserver에서 no, po, svc로의 연결은 기본적으로 일반 HTTP를 사용하며 안전하지 않다. API url에서 no, po, svc 이름 앞에 `https:`를 사용해 HTTPS 연결을 실행할 수 있지만 제공되는 certificate는 검증되지 않는다. 따라서 연결 자체는 암호화되지만 무결성에 대한 어떠한 보장도 제공하지는 않는다. 현재는 이러한 연결에 대해 신뢰할 수 없거나 공용 네트워크를 통해 실행하는 것으 안전하지 않다.
 
 kube-apiserver의 proxy는 [Proxies in Kubernetes](https://kubernetes.io/docs/concepts/cluster-administration/proxies/) 페이지를 참고한다.

@@ -45,7 +45,7 @@ kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설�
 - `.registerWithTaints`: no의 taints 목록(`<key>=<value>:<effect>`를 ,로 구분)
 - `--node-ip`: no의 IP 주소. no의 여러 ip주소를 사용할 수 있으며 dual-stack cluster의 경우 [configure IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#configure-ipv4-ipv6-dual-stack)를 참고한다. 이 flag를 명시하지 않으면 no의 기본 ipv4 주소를 사용하고 ipv4 주소가 없으면 ipv6 주소를 사용한다.
 - `--node-labels`: no의 label ([NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)에 의해 강제되는 label 규칙도 있다)
-- `.nodeStatusUpdateFrequency`: kubelet이 no의 상태를 kube-apiserver에 보고하는 주기. 자세한 내용은 아래를 참고한다.
+- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 kube-apiserver에 보고하는 주기. 자세한 내용은 아래를 참고한다.
 
 [Node authorization mode](https://kubernetes.io/docs/reference/access-authn-authz/node/), [NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)가 활성화된 경우, kubelet은 자체 no의 resource만 생성/수정할 수 있는 권한이 있다. 
 
