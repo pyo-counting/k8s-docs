@@ -19,7 +19,7 @@ cluster의 lifecycle과 독립적으로 실행 중인 cluster에 custom controll
 ### Declarative APIs
 
 ## Should I use a ConfigMap or a custom resource?
-아래 내용에 해당할 경우 cf를 사용한다.
+아래 내용에 해당할 경우 cm을 사용한다.
 - mysql.conf, pom.xml과 같이 파일 포맷이 문서화가 이미 잘 된 경우
 - cm에 전체 설정을 관리하길 원하는 경우
 - 설정 파일의 목적이 po 내 실행되는 프로그램일 경우
