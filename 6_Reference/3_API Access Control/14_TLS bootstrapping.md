@@ -33,6 +33,7 @@ bootstrap initialization 프로세스에서 다음과 같은 동작이 발생한
 2. kubelet이 `kubeconfig` 파일이 없음을 확인한다.
 3. kubelet이 `bootstrap-kubeconfig` 파일을 확인한다.
 4. kubelet은 `bootstrap-kubeconfig` 파일에서 kube-apiserver의 URL과 사용 제한이 있는 token(bootstrap token)을 발견한다.
+    - 해당 파일에는 kube-apiserver의 ca 정보도 포함할 수 있다. ca에 대한 정보가 파일에 없다면 kube-public ns의 cluster-info cm에서 정보를 가져오는 단계도 있을 것 같다. 정확하게 해당 프로세스가 어떻게 수행되는지는 kubeadm을 살펴봐야한다.
 5. kubelet은 token을 사용해 kube-apiserver에 인증한다.
 6. kubelet은 csr을 생성하고 검색할 수 있는 제한된 credential을 갖게된다.
 7. kubelet은 `.spec.signerName` 필드를 `kubernetes.io/kube-apiserver-client-kubelet`로 설정한 csr object를 생성한다.
@@ -44,7 +45,7 @@ bootstrap initialization 프로세스에서 다음과 같은 동작이 발생한
 11. kubelet은 certificate를 검색한다.
 12. kubelet은 key, 서명된 certificate를 사용해 적절한 `kubeconfig`를 생성한다.
 13. kubelet은 정상 동작을 수행한다.
-14. 옵션: 설정된 경우, certificate가 만료도기 진에 kubelet이 자동으로 갱신 요청을 수행한다.
+14. 옵션: 설정된 경우, certificate가 만료되기 진에 kubelet이 자동으로 갱신 요청을 수행한다.
 15. 갱신 certificate은 설정에 따라 자동 또는 수동으로 생성, 발급된다.
 
 아래에서는 TLS bootstrapping을 위한 필요 설정, 제한 사항을 설명한다.
@@ -98,7 +99,7 @@ bootstrap token은 k8s cluster에 secret로 저장되고 개별 kubelet에게 �
 1. `bootstrap.kubernetes.io/token` type의 secret을 생성한다.
 2. kubelet에 token을 발급한다.
 
-kubelet 관점에서 하나의 token은 다른 것과 마찬가지로 특별한 의미가 없다. 그러나 kube-apiserver의 관점에서는 bootstrap token이 특별하다. type, ns, 이름으로 kube-apiserver는 특별한 token으로 인식하고 token을 사용해 인증하는 사용자에게 특별한 bootstrap 권한을 부여한다. 사용자는 system:bootstrappers에 속한다. 이는 TLS bootstrapping의 기본 요구 사항을 만족한다.
+kubelet 관점에서 하나의 token은 다른 것과 마찬가지로 특별한 의미가 없다. 그러나 kube-apiserver의 관점에서는 bootstrap token이 특별하다. type, ns, 이름으로 kube-apiserver는 특별한 token으로 인식하고 token을 사용해 인증하는 사용자에게 특별한 bootstrap 권한을 부여한다. 사용자는 `system:bootstrappers`에 속한다. 이는 TLS bootstrapping의 기본 요구 사항을 만족한다.
 
 secret 생성 상세 과정은 [here](https://kubernetes.io/docs/reference/access-authn-authz/bootstrap-tokens/)을 참고한다.
 
@@ -172,7 +173,7 @@ kube-controller-manager에 대한 flag 설정은 다음과 같다.
 ```
 
 ### Approval
-csr을 승인하기 위해 kube-controller-manager에게 해당 승인이 허용되는 것이라고 알려줘야 한다. 이를 위해 올바른 group에 RBAC 권한을 부여해야 한다.
+csr을 승인하기 위해 kube-controller-manager에게 해당 승인이 허용되는 것이라고 알려줘야 한다. 이를 위해 올바른 group에 RBAC 권한을 부여해야 한다. 이를 통해 kube-controller-manager의 내장 signer는 자동 승인을 수행한다.
 
 두 가지 구분된 권한 집합이 있다.
 - `nodeclient`: no를 위해 새로운 인증서를 생성하는 경우 아직 인증서가 존재하지 않는다. 위에서 설명한 token 중 하나를 사용해 인증되므로 `system:bootstrappers` 그룹에 속하게된다.
@@ -212,7 +213,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-kube-controller-manager의 일부로 제공되는 기본 활성화된 `csrapproving` controller가 있다. 이 controller는 주어진 사용자가 csr을 요청할 권한이 있는지 여부를 결정하기 위해 SubjectAccessReview API를 사용하고 승인을 수행해야 한다. 다른 승인자와의 충돌을 방지하기 위해 내장된 승인자는 csr을 명시적으로 거부하지 않는다. 인가되지 않은 요청만 무시된다. 또한 controller는 gc의 일환으로 만료된 인증서를 정리한다.
+kube-controller-manager의 일부로 제공되는 기본 활성화된 `csrapproving` controller가 있다. 이 controller는 주어진 사용자가 csr을 요청할 권한이 있는지 여부를 결정하기 위해 SubjectAccessReview API를 사용하고 승인을 수행해야 한다. 다른 signer와의 충돌을 방지하기 위해 내장된 signer는 csr을 명시적으로 거부하지 않는다. 인가되지 않은 요청만 무시된다. 또한 controller는 gc의 일환으로 만료된 인증서를 정리한다.
 
 ## kubelet configuration
 kubelet을 bootstrap을 수행하기 위해 다음 요구사항이 필요하다.
@@ -308,6 +309,6 @@ kubelet과 마찬가지로 이러한 다른 구성 요소도 kube-apiserver에 �
 - DaemonSet: kubelet 자체가 각 no에 로드되며 기본 서비스를 시작하는 데 충분하므로, kube-proxy, 다른 no 별 서비스를 독립 프로세스로 실행하는 대신 kube-system ns에서 ds로 실행할 수 있다. cluster 내부에 있으므로 적절한 sa를 제공해 활동을 수행할 적절한 권한을 부여할 수 있다. 이는 이러한 서비스를 구성하는 가장 간단한 방법이다.
 
 ## kubectl approval
-csr은 kube-controller-manager에 내장된 승인 플로우 외부에서도 승인할 수 있다.
+csr은 kube-controller-manager에 내장된 승인 플로우가 아닌 외부에서 승인할 수 있다.
 
-서명 controller는 모든 인증서 요청을 즉시 서명하지 않는다. 대신 해당 요청이 적절한 권한을 가진 사용자에 의해 "승인" 상태로 표시될 때까지 기다린다. 이 플로우는 외부 승인 controller 또는 kube-controller-manager에 구현된 승인 컨트롤러에 의해 자동 승인이 가능하도록 의도됐다. 그러나 cluster 관리자는 kubectl을 사용하여 수동으로 인증서 요청을 승인할 수도 있다. 관리자는 `kubectl get csr`을 사용하여 csr을 나열하고 `kubectl decsribe csr <name>`을 사용하여 자세히 볼 수 있다. 관리자는 `kubectl certificate approve <name>`, `kubectl certificate deny <name>`을 사용하해 csr을 승인하거나 거부할 수 있다.
+서명 controller는 모든 인증서 요청을 즉시 서명하지 않는다. 대신 해당 요청이 적절한 권한을 가진 사용자에 의해 "approved" 상태로 표시될 때까지 기다린다. 이 플로우는 외부 승인 controller 또는 kube-controller-manager에 구현된 승인 컨트롤러에 의해 자동 승인이 가능하도록 의도됐다. 그러나 cluster 관리자는 kubectl을 사용하여 수동으로 인증서 요청을 승인할 수도 있다. 관리자는 `kubectl get csr`을 사용하여 csr을 나열하고 `kubectl decsribe csr <name>`을 사용하여 자세히 볼 수 있다. 관리자는 `kubectl certificate approve <name>`, `kubectl certificate deny <name>`을 사용하해 csr을 승인하거나 거부할 수 있다.

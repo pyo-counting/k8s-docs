@@ -1,10 +1,9 @@
-RBAC는 조직 내 개별 사용자의 역할에 따라 컴퓨터 또는 네트워크 리소스에 대한 접근을 규제하는 방법이다.
+rbac는 조직 내 개별 사용자의 역할에 따라 컴퓨터 또는 네트워크 리소스에 대한 접근을 규제하는 방법이다.
 
-RBAC 인가는 rbac.authorization.k8s.io API 그룹을 사용하여 인가 결정을 내리므로 k8s API를 통해 정책을 동적으로 설정할 수 있다.
+rbac 인가는 rbac.authorization.k8s.io API 그룹을 사용하여 인가 결정을 내리므로 k8s API를 통해 정책을 동적으로 설정할 수 있다.
 
-RBAC를 활성화하려면 --authorization-mode flag 목록에 RBAC를 포함해 API server를 시작한다. 예를 들어
-
-``` bash
+rbac를 활성화하려면 kube-apiserver의 `--authorization-mode` flag 목록에 `RBAC`를 포함한다. 예를 들어
+``` sh
 kube-apiserver --authorization-mode=Example,RBAC --other-options --more-options
 ```
 

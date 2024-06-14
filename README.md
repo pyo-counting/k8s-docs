@@ -92,6 +92,10 @@
 - `kubectl get ${RESOURCE} -l`: label selector
 - `kubectl get ${RESOURCE} -L`: 출력 column에 추가할 label
 - `kubectl get ${RESOURCE} --field-selector`: field selector
+- `kubectl get ${RESOURCE} --as ${USER} --as-group {GROUP}`: impersonation
+- `kubectl auth whoami`: 사용자 인증에 대한 정보 확인(selfsubjectreview resource)
+- `kubectl auth can-i`: 사용자의 동작에 대한 인가 정보 확인(selfsubjectaccessreview resource)
+- `kubectl certificate (approve|deny)`: csr에 대한 승인/거부
 - `kubectl delete ${RESOURCE}/${NAME} --cascade`: cascade deletion. 기본값은 background
 - `kubectl drain ${NODE}`: API-initiated eviction
 
