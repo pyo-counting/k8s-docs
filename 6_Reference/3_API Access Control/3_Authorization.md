@@ -1,7 +1,7 @@
 k8s에서는 사용자의 요청이 인가(authorization, 접근 권한 부여)되기 전에 사용자가 인증(authentication, 로그인)되어야 한다. 일부 상황에서는 anonymous request를 허용하기도 한다.
 
 ## Authorization verdicts
-인가는 kube-apiserver 내에서 이루어진다. kube-apiserver는 요청에 포함된 모든 속성을 모든 정책을 기준으로 평가하고, 필요에 따라 외부 서비스를 참고해 최종적으로 요청을 허용하거나 거부한다.
+인가는 kube-apiserver 내에서 이루어진다. kube-apiserver는 요청에 포함된 모든 속성을 모든 정책 기준으로 평가하고 필요에 따라 외부 서비스를 참고하며 최종적으로는 요청을 허용/거절한다.
 
 API 요청이 진행되기 위해서는 인가 메커니즘에 의해 허용돼야 한다. 즉, 기본적으로 접근은 거부된다.
 
@@ -14,17 +14,17 @@ API 요청이 진행되기 위해서는 인가 메커니즘에 의해 허용돼�
 
 ## Request attributes used in authorization
 k8s는 API 요청에 포함된 속성 중 아래 목록만 확인한다.
-- **user**: The user string provided during authentication.
-- **group**: The list of group names to which the authenticated user belongs.
-- **extra**: A map of arbitrary string keys to string values, provided by the authentication layer.
-- **API**: Indicates whether the request is for an API resource.
-- **Request path**: Path to miscellaneous non-resource endpoints like /api or /healthz.
-- **API request verb**: API verbs like get, list, create, update, patch, watch, delete, and deletecollection are used for resource requests. To determine the request verb for a resource API endpoint, see request verbs and authorization.
-- **HTTP request verb**: Lowercased HTTP methods like get, post, put, and delete are used for non-resource requests.
-- **Resource**: The ID or name of the resource that is being accessed (for resource requests only) -- For resource requests using get, update, patch, and delete verbs, you must provide the resource name.
-**Subresource**: The subresource that is being accessed (for resource requests only).
-**Namespace**: The namespace of the object that is being accessed (for namespaced resource requests only).
-**API group**: The API Group being accessed (for resource requests only). An empty string designates the core API group.
+- **user**: 인증 단계에서 제공되는 `user` 문자열
+- **group**: 인증된 사용자가 속한 그룹의 목록
+- **extra**: 인증 단계에서 제공되는 추가 문자열 key, value map
+- **API**: resource 요청인지 여부를 나타낸다.
+- **Request path**: non-reousrce endpoint(예를 들어 /api, /healthz)
+- **API request verb**: resource 요청에 사용되는 verb(get, list, create, update, patch, watch, delete, deletecollection)
+- **HTTP request verb**: non-resource 요청에 사용되는 소문자 HTTP method(get, post, put, delete)
+- **Resource**: (resource 요청일 경우에 해당) 접근 resource의 이름 또는 ID. get, update, delete verb를 사용하는 경우 반드시 resource 이름을 제공해야 한다.
+- **Subresource**: (resource 요청일 경우에 해당) 접근 subresource
+- **Namespace**: The namespace of the object that is being accessed (for namespaced resource requests only).
+- **API group**: The API Group being accessed (for resource requests only). An empty string designates the core API group.
 
 ### Request verbs and authorization
 #### Non-resource requests
