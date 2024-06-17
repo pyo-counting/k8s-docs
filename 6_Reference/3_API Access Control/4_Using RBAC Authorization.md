@@ -1,4 +1,4 @@
-rbac는 조직 내 개별 사용자의 역할에 따라 컴퓨터 또는 네트워크 리소스에 대한 접근을 규제하는 방법이다.
+rbac는 조직 내 개별 사용자의 역할에 따라 컴퓨터 또는 네트워크 resource에 대한 접근을 규제하는 방법이다.
 
 rbac 인가는 `rbac.authorization.k8s.io` API 그룹을 사용하여 인가 결정을 내리므로 k8s API를 통해 정책을 동적으로 설정할 수 있다.
 
@@ -142,3 +142,63 @@ roleRef:
 `kubectl auth reconcile` 명령어는 RBAC object를 포함하는 manifest 파일을 생성하거나 업데이트하며 바인딩이 참조하는 role이 변경되는 경우 삭제와 재생성을 수행한다.
 
 ### Referring to resources
+k8s API에서 대부분의 resource는 object 이름의 문자열 표현을 사용해 접근한다. 예를 들어 Pod는 `pods`로 표현된다. RBAC(Role-Based Access Control)는 해당 API endpoint의 URL에 나타나는 이름과 동일한 이름을 사용해 resource를 참조한다. 일부 k8s API는 subresource를 포함한다. 아래는 po의 subresource인 log를 요청하는 예시다.
+```
+GET /api/v1/namespaces/{namespace}/pods/{name}/log
+```
+
+아래 예시의 경우 pods는 po resource의 namespaced resource이며 log는 pods의 subresource다. subresource는 RBAC role에서 표현하기위해 resource와 subresource를 /로 구분해 표현한다. 어떤 subject가 pods를 읽고 각 po의 log subresource에 접근할 수 있도록 허용하기 위해 아래와 같이 작성한다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-and-pod-logs-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list"]
+```
+
+또한, 특정 요청에 대해 `.rules[*].resourceNames`을 통해 resource를 이름으로 참조할 수 있다. 이 경우 요청은 개별 resource 인스턴스로 제한된다. 다음은 subject가 my-configmap이라는 cm을 조회하거나 업데이트할 수 있도록 제한하는 예시다
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: configmap-updater
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing ConfigMap
+  # objects is "configmaps"
+  resources: ["configmaps"]
+  resourceNames: ["my-configmap"]
+  verbs: ["update", "get"]
+Note:
+```
+
+> **Note**:  
+> `.rules[*].resourceNames`을 사용해 `create` 또는 `deletecollection` 요청을 제한할 수 없다. create 요청의 경우, 새로운 object의 이름이 권한 부여 시점에 모를 수도 있기 때문이다(아직 생성지 않은 이름). `list`, `watch` 요청을 `.rules[*].resourceNames`으로 제한하면, 클라이언트는 `kubectl get configmaps --field-selector=metadata.name=my-configmap`와 같이 이름도 명시해서 요청해야 한다.
+
+각각의 `.rules[*].resources`, `.rules[*].apiGroups`, `.rules[*].verbs`를 참조하는 대신, 와일드카드 `*` 문자를 사용해 모든 object를 참조할 수 있다. `.rules[*].nonResourceURLs`의 경우, 와일드카드 *를 접미사 glob match로 사용할 수 있다. `.rules[*].resourceNames`가 비어 있으면 모든 것이 허용된다는 의미다. 아래는 example.com API group의 현재, 미래의 모든 resource에 대해 현재, 미래의 모든 작업을 수행할 수 있도록 허용하는 예시다. 이는 내장된 cluster-admin role과 유사하다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: example.com-superuser # DO NOT USE THIS ROLE, IT IS JUST AN EXAMPLE
+rules:
+- apiGroups: ["example.com"]
+  resources: ["*"]
+  verbs: ["*"]
+```
+
+> **Caution**:  
+> `.rules[*].resources`, `.rules[*].verbs`에 와일드카드를 사용하면 민감한 resource에 대해 과도한 접근 권한이 부여될 수 있다. 예를 들어 새로운 resource 타입이 추가되거나 새로운 subresource가 추가되거나 새로운 custom verb가 체크되는 경우 와일드카드는 자동으로 접근 권한을 부여하기 때문에 적절하지 않다. [principle of least privilege](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#least-privilege)을 적용해 특정 resource와 verb를 사용함으로써 워크로드가 올바르게 작동하는 데 필요한 권한만 부여되도록 해야한다.
+
+### Aggregated ClusterRoles
+
+#### Role examples
+
+### Referring to subjects
