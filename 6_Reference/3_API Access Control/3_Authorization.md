@@ -28,10 +28,10 @@ k8s는 API 요청에 포함된 속성 중 아래 목록만 확인한다.
 
 ### Request verbs and authorization
 #### Non-resource requests
-`/api/v1/...`, `/apis/<group>/<version>/...` endpoint가 아닌 요청은 non-resource 요청으로 간주되며 요청의 HTTP method 소문자를 verb로 사용한다. 예를 들어 `/api`, `healthz`와 같은 endpoint에 대한 HTTP GET 요청에 대해 get을 verb로 사용한다.
+`/api/v1/...`(core group), `/apis/<group>/<version>/...`(name group) endpoint가 아닌 요청은 non-resource 요청으로 간주되며 요청의 HTTP method 소문자를 verb로 사용한다. 예를 들어 `/api`, `healthz`와 같은 endpoint에 대한 HTTP GET 요청에 대해 get을 verb로 사용한다.
 
 #### Resource requests
-resource API endpoint에 대한 request verb를 결정하기 위해 k8s는 HTTP verb를 매핑하고 요청이 개별 resource 또는 resource collection에 적용되는지 여부를 고려한다.
+resource API endpoint에 대한 request verb를 결정하기 위해 k8s는 HTTP verb를 확인하고 요청이 개별 resource 또는 resource collection에 적용되는지 여부를 고려한다.
 | HTTP verb | request verb                                                                                                                                                  |
 |-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | POST      | create                                                                                                                                                        |

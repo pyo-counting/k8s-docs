@@ -64,7 +64,7 @@ rules:
 ```
 
 ### RoleBinding and ClusterRoleBinding
-RoleBinding은 Role에 정의된 권한을 사용자나 사용자 그룹, sa 등의 주체(subject)에게 부여한다. RoleBinding은 주체(subjects) 목록과 부여된 Role에 대한 참조 정보를 갖는다. RoleBinding은 특정 ns 내에서 권한을 부여하는 반면, ClusterRoleBinding은 클러스터 전역에서 해당 권한을 부여한다.
+RoleBinding은 Role에 정의된 권한을 사용자나 사용자 그룹, sa 등의 주체(subject)에게 부여한다. RoleBinding은 주체 목록과 부여된 Role에 대한 참조 정보를 갖는다. RoleBinding은 특정 ns 내에서 권한을 부여하는 반면, ClusterRoleBinding은 클러스터 전역에서 해당 권한을 부여한다.
 
 RoleBinding은 동일한 ns 내의 모든 Role을 참조할 수 있다. 또는 RoleBinding은 ClusterRole을 참조함으로써 ClusterRole을 RoleBinding의 ns에 바인딩할 수도 있다. cluster 내 모든 ns에 ClusterRole을 바인딩하려면 ClusterRoleBinding을 사용한다.
 
@@ -198,7 +198,252 @@ rules:
 > `.rules[*].resources`, `.rules[*].verbs`에 와일드카드를 사용하면 민감한 resource에 대해 과도한 접근 권한이 부여될 수 있다. 예를 들어 새로운 resource 타입이 추가되거나 새로운 subresource가 추가되거나 새로운 custom verb가 체크되는 경우 와일드카드는 자동으로 접근 권한을 부여하기 때문에 적절하지 않다. [principle of least privilege](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#least-privilege)을 적용해 특정 resource와 verb를 사용함으로써 워크로드가 올바르게 작동하는 데 필요한 권한만 부여되도록 해야한다.
 
 ### Aggregated ClusterRoles
+여러 ClusterRole을 하나의 집계된 ClusterRole을 생성할 수 있다. `.aggregationRule`에 label selector 정의해 참조할 ClusterRole을 선택할 수 있다. kube-controller-manager는 label selector에 매칭되는 ClusterRole을 참조해 `.rules` 필드를 자동으로 채운다.
+
+> **Caution**:  
+> control plane은 집계된 ClusterRole의 `.rules` 필드에 사용자가 명시한 값은 덮어쓴다. rule을 변경하거나 추가하기 위해서는 집계된 ClusterRole이 참조하는 ClusterRole을 변경해야 한다.
+
+아래는 집계된 ClusterRole 예시다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.example.com/aggregate-to-monitoring: "true"
+rules: [] # The control plane automatically fills in the rules
+```
+
+집계된 ClusterRole의 label selector에 매칭되는 새로운 ClusterRole을 생성하면 집계된 ClusterRole에도 새로운 rule이 추가된다. 아래는 위 집계된 ClusterRole의 label selector에 매칭되는 새로운 ClusterRole 예시다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring-endpoints
+  labels:
+    rbac.example.com/aggregate-to-monitoring: "true"
+# When you create the "monitoring-endpoints" ClusterRole,
+# the rules below will be added to the "monitoring" ClusterRole.
+rules:
+- apiGroups: [""]
+  resources: ["services", "endpointslices", "pods"]
+  verbs: ["get", "list", "watch"]
+```
+[default user-facing roles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles)는 ClusterRole 집계를 사용한다. 이를 통해 관리자는 crd 또는 kube-apiserver, aggregated API server에서 제공하는 cr와 같은 rule을 포함하해 기본 role을 확장할 수 있다.
+
+아래 ClusterRole은 "admin"과 "edit" role이 CronTab이라는 cr을 관리할 수 있도록 하며, "view" role은 CronTab resource에 대해 read 작업만 수행할 수 있다. CronTab resource kube-apiserver URL에서 "crontabs"로 표시된다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aggregate-cron-tabs-edit
+  labels:
+    # Add these permissions to the "admin" and "edit" default roles.
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+- apiGroups: ["stable.example.com"]
+  resources: ["crontabs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: aggregate-cron-tabs-view
+  labels:
+    # Add these permissions to the "view" default role.
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+- apiGroups: ["stable.example.com"]
+  resources: ["crontabs"]
+  verbs: ["get", "list", "watch"]
+```
 
 #### Role examples
+아래 예시들은 Role, ClusterRole의 `.rules` 필드만 나타낸다.
+
+core API group의 "pods" resource에 대한 read를 허용한다.
+``` yaml
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing Pod
+  # objects is "pods"
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+```
+
+"apps" API group의 "deployments" resource에 대한 read/write를 허용한다.
+``` yaml
+rules:
+- apiGroups: ["apps"]
+  #
+  # at the HTTP level, the name of the resource for accessing Deployment
+  # objects is "deployments"
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+```
+
+core API group의 "pods" resource에 대한 read, "batch" API group의 "jobs" resource에 대한 read를 허용한다.
+``` yaml
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing Pod
+  # objects is "pods"
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  #
+  # at the HTTP level, the name of the resource for accessing Job
+  # objects is "jobs"
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+```
+
+core API group의 "configmaps" resource 중 이름이 "my-config"에 대한 read를 허용한다.
+``` yaml
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing ConfigMap
+  # objects is "configmaps"
+  resources: ["configmaps"]
+  resourceNames: ["my-config"]
+  verbs: ["get"]
+```
+
+core API group의 "nodes" resource에 대한 read를 허용한다.
+``` yaml
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing Node
+  # objects is "nodes"
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+```
+
+non-resource endpoint인 "/healthz"와 하위 path에 대한 GET, POST 요청을 허용한다.
+``` yaml
+rules:
+- nonResourceURLs: ["/healthz", "/healthz/*"] # '*' in a nonResourceURL is a suffix glob match
+  verbs: ["get", "post"]
+```
 
 ### Referring to subjects
+RoleBinding 또는 ClusterRoleBinding은 Role 또는 CLusterRole을 주체(subject)와 연결한다. 주체는 그룹, 사용자, sa가 될 수 있다.
+
+k8s는 사용자 이름을 문자열로 나타낸다. 이름은 "alice"와 같은 일반 이름, "bob@example.com"과 같은 이메일 형식의 이름 또는 문자열로 표현된 숫자 사용자 ID일 수 있다. 관리자는 authenticator module을 구성하여 원하는 형식으로 사용자 이름을 생성하도록 해야한다.
+
+> **Caution**:  
+> 접두사 `system:`은 k8s가 시스템 용도로 예약되어 있으므로 `system:`으로 시작하는 이름을 가진 사용자나 그룹이 생기지 않도록 주의해야한다. 이 특별한 접두사를 제외하고, RBAC authorization 시스템은 사용자 이름에 대해 형식을 제한하지 않는다.
+
+k8s에서 authenticator module은 그룹 정보를 제공한다. 그룹은 사용자와 마찬가지로 문자열로 표현되며, 이 문자열도 형식 요구 사항이 없지만 `system:` 접두사는 예약되어 있다.
+
+sa는 `system:serviceaccount:` 접두사가 붙은 이름을 가지며, `system:serviceaccounts:` 접두사가 붙은 이름을 가진 그룹에 속한다.
+
+> **Note**:  
+> - `system:serviceaccount`: sa 사용자 이름의 접두사
+> - `system:serviceaccounts`: sa 그룹 이름의 접두사
+
+#### RoleBinding examples
+아래 예시들은 RoleBinding의 `.subjects` 필드만 나타낸다.
+
+사용자 이름이 `alice@example.com`
+``` yaml
+subjects:
+- kind: User
+  name: "alice@example.com"
+  apiGroup: rbac.authorization.k8s.io
+```
+
+그룹 이름이 `frontend-admins`
+``` yaml
+subjects:
+- kind: Group
+  name: "frontend-admins"
+  apiGroup: rbac.authorization.k8s.io
+```
+
+"kube-system" ns에 속한 default sa
+``` yaml
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: kube-system
+```
+
+"qa" ns에 속한 모든 sa
+``` yaml
+subjects:
+- kind: Group
+  name: system:serviceaccounts:qa
+  apiGroup: rbac.authorization.k8s.io
+```
+
+모든 ns에 속한 모든 sa
+``` yaml
+subjects:
+- kind: Group
+  name: system:serviceaccounts
+  apiGroup: rbac.authorization.k8s.io
+```
+
+모든 authenticated 사용자
+``` yaml
+subjects:
+- kind: Group
+  name: system:authenticated
+  apiGroup: rbac.authorization.k8s.io
+```
+
+모든 unauthenticated 사용자
+``` yaml
+subjects:
+- kind: Group
+  name: system:unauthenticated
+  apiGroup: rbac.authorization.k8s.io
+```
+
+모든 사용자
+``` yaml
+subjects:
+- kind: Group
+  name: system:authenticated
+  apiGroup: rbac.authorization.k8s.io
+- kind: Group
+  name: system:unauthenticated
+  apiGroup: rbac.authorization.k8s.io
+```
+
+## Default roles and role bindings
+kube-apiserver는 기본 ClusterRole, ClusterRoleBinding object를 생성한다. 대부분의 object는 `system:` 접두사 이름을 갖으며, 이는 해당 object가 control plane에 의해 관리됨을 의미한다. 모든 기본 ClusterRole,ClusterRoleBinding은 `kubernetes.io/bootstrapping=rbac-defaults` label을 갖고 있다.
+
+> **Caution**:  
+> `system:` 접두사가 붙은 ClusterRole, ClusterRoleBinding을 수정할 때는 주의해야 한다. 이러한 object를 수정했을 떄 cluster의 비저상적 행동을 유발할 수도 있다.
+
+### Auto-reconciliation
+kube-apiserver는 startup 시 기본 ClusterRole의 누락된 rule을 추가하고, ClusterRoleBinding에 누락된 주체를 추가한다. 이를 통해 cluster는 실수로 인한 수정 사항을 복구하고 새로운 k8s 릴리즈로 rule, 주체가 변경될 때 최신 상태로 유지할 수 있다.
+
+이 자동 조정을 사용하지 않기 위해 기본 ClusterRole의, ClusterRoleBinding에 `rbac.authorization.kubernetes.io/autoupdate` annotation을 false로 설정한다. 물론 기본 rule, 주체가 누락되면 cluster가 비정상적으로 동작할 수 있다는 점에 유의해야 한다.
+
+RBAC authorizer가 활성화되어 있는 경우 auto-reconciliation은 기본적으로 활성화된다.
+
+### API discovery roles
+기본 ClusterRoleBinding은 인증되지 않은 사용자와 인증된 사용자가 public 접근할 수 있는 것으로 간주되는 API 정보를 읽을 수 있도록 허용한다(crd 포함). anonymous unauthenticated 접근을 비활성화하기 위해 kube-apiserver에 --anonymous-auth=false를 추가한다.
+
+kubectl 명령어를 사용해 확인할 수 있다.
+``` sh
+kubectl get clusterroles system:discovery -o yaml
+```
+
+> **Note**:  
+> If you edit that ClusterRole, your changes will be overwritten on API server restart via auto-reconciliation. To avoid that overwriting, either do not manually edit the role, or disable auto-reconciliation.
+
+### User-facing roles
+### Core component roles
+### Other component roles
+### Roles for built-in controllers
