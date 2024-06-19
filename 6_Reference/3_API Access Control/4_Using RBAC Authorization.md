@@ -433,15 +433,47 @@ kube-apiserver는 startup 시 기본 ClusterRole의 누락된 rule을 추가하�
 RBAC authorizer가 활성화되어 있는 경우 auto-reconciliation은 기본적으로 활성화된다.
 
 ### API discovery roles
-기본 ClusterRoleBinding은 인증되지 않은 사용자와 인증된 사용자가 public 접근할 수 있는 것으로 간주되는 API 정보를 읽을 수 있도록 허용한다(crd 포함). anonymous unauthenticated 접근을 비활성화하기 위해 kube-apiserver에 --anonymous-auth=false를 추가한다.
+기본 ClusterRoleBinding은 인증되지 않은 사용자와 인증된 사용자가 public 접근할 수 있는 것으로 간주되는 API 정보를 읽을 수 있도록 허용한다(crd 포함). anonymous unauthenticated 접근을 비활성화하기 위해 kube-apiserver에 `--anonymous-auth=false`를 추가한다.
 
 kubectl 명령어를 사용해 확인할 수 있다.
 ``` sh
 kubectl get clusterroles system:discovery -o yaml
 ```
 
+아래는 출력 예시다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  creationTimestamp: "2024-03-24T00:49:45Z"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:discovery
+  resourceVersion: "70"
+  uid: 528663ed-9432-4b9f-883e-78aa66500c4d
+rules:
+- nonResourceURLs:
+  - /api
+  - /api/*
+  - /apis
+  - /apis/*
+  - /healthz
+  - /livez
+  - /openapi
+  - /openapi/*
+  - /readyz
+  - /version
+  - /version/
+  verbs:
+  - get
+```
+
 > **Note**:  
 > If you edit that ClusterRole, your changes will be overwritten on API server restart via auto-reconciliation. To avoid that overwriting, either do not manually edit the role, or disable auto-reconciliation.
+
+
 
 ### User-facing roles
 ### Core component roles

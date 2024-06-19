@@ -35,7 +35,7 @@ resource API endpoint에 대한 request verb를 결정하기 위해 k8s는 HTTP 
 | HTTP verb | request verb                                                                                                                                                  |
 |-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | POST      | create                                                                                                                                                        |
-| GET, HEAD | get (for individual resources), list (for collections, including full object content), watch (for watching an individual resource or collection of resources) |
+| GET, HEAD | get (개별 resource일 경우), list (for collections, including full object content), watch (for watching an individual resource or collection of resources) |
 | PUT       | update                                                                                                                                                        |
 | PATCH     | patch                                                                                                                                                         |
 | DELETE    | delete (for individual resources), deletecollection (for collections)                                                                                         |
