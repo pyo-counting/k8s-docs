@@ -473,9 +473,90 @@ rules:
 > **Note**:  
 > If you edit that ClusterRole, your changes will be overwritten on API server restart via auto-reconciliation. To avoid that overwriting, either do not manually edit the role, or disable auto-reconciliation.
 
-
+아래 표는 기본 제공되는 ClusterRole과 ClusterRole에 바인딩 된 subject에 대한 정보를 나타낸다. ClusterRoleBinding의 이름은 표에 없지만 직접 확인해보면 ClusterRole과 동일한 이름을 가진 것을 확인할 수 있다.
+| Default ClusterRole<br>(ClusterRole) | Default ClusterRoleBinding<br>(ClusterRole에 바인딩된 subject 목록) | Description                                                                                                                                                                      |
+|--------------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| system:basic-user                    | system:authenticated group                                                 | Allows a user read-only access to basic information about themselves. Prior to v1.14, this role was also bound to system:unauthenticated by default.                             |
+| system:discovery                     | system:authenticated group                                                 | Allows read-only access to API discovery endpoints needed to discover and negotiate an API level. Prior to v1.14, this role was also bound to system:unauthenticated by default. |
+| system:public-info-viewer            | system:authenticated and system:unauthenticated groups                     | Allows read-only access to non-sensitive information about the cluster. Introduced in Kubernetes v1.14.                                                                          |
 
 ### User-facing roles
+기본 ClusterRole 중 일부는 사용를 위한 role을 나타내기 위해 `system` 접두사를 갖지 않는 경우도 있다. `cluster-admin`은 ClusterRoleBinding과 사용해 cluster 전역에 대한 role, `admin`, `edit`, `view`는 RoleBinding과 사용해 특정 ns에 대한 role을 위한 것이다.
+
+user-facing rule은 관리자가 cr에 대한 rule을 포함할 수 있도록 하기 위해 ClusterRole aggregation을 허용한다. `admin`, `edit`, `view` ClusterRole에 rule을 추가하기 위해 아래와 같은 label을 갖는 ClusterRole을 생성하면된다.
+``` yaml
+metadata:
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+```
+
+아래 표는 기본 제공되는 ClusterRole과 ClusterRole에 바인딩 된 subject에 대한 정보를 나타낸다. ClusterRoleBinding의 이름은 표에 없지만 직접 확인해보면 ClusterRole과 동일한 이름을 가진 것을 확인할 수 있다.
+| Default ClusterRole<br>(ClusterRole) | Default ClusterRoleBinding<br>(ClusterRole에 바인딩된 subject 목록) | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|--------------------------------------|---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cluster-admin                        | system:masters group                                                | Allows super-user access to perform any action on any resource. When used in a ClusterRoleBinding, it gives full control over every resource in the cluster and in all namespaces. When used in a RoleBinding, it gives full control over every resource in the role binding's namespace, including the namespace itself.                                                                                                                                                                                                                                            |
+| admin                                | None                                                                | Allows admin access, intended to be granted within a namespace using a RoleBinding.<br>If used in a RoleBinding, allows read/write access to most resources in a namespace, including the ability to create roles and role bindings within the namespace. This role does not allow write access to resource quota or to the namespace itself. This role also does not allow write access to EndpointSlices (or Endpoints) in clusters created using Kubernetes v1.22+. More information is available in the "Write Access for EndpointSlices and Endpoints" section. |
+| edit                                 | None                                                                | Allows read/write access to most objects in a namespace.<br>This role does not allow viewing or modifying roles or role bindings. However, this role allows accessing Secrets and running Pods as any ServiceAccount in the namespace, so it can be used to gain the API access levels of any ServiceAccount in the namespace. This role also does not allow write access to EndpointSlices (or Endpoints) in clusters created using Kubernetes v1.22+. More information is available in the "Write Access for EndpointSlices and Endpoints" section.                |
+| view                                 | None                                                                | Allows read-only access to see most objects in a namespace. It does not allow viewing roles or role bindings.<br>This role does not allow viewing Secrets, since reading the contents of Secrets enables access to ServiceAccount credentials in the namespace, which would allow API access as any ServiceAccount in the namespace (a form of privilege escalation).                                                                                                                                                                                                |
+
 ### Core component roles
+아래 표는 기본 제공되는 ClusterRole과 ClusterRole에 바인딩 된 subject에 대한 정보를 나타낸다. ClusterRoleBinding의 이름은 표에 없지만 직접 확인해보면 ClusterRole과 동일한 이름을 가진 것을 확인할 수 있다.
+| Default ClusterRole<br>(ClusterRole) | Default ClusterRoleBinding<br>(ClusterRole에 바인딩된 subject 목록) | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|--------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| system:kube-scheduler                | system:kube-scheduler user                                          | Allows access to the resources required by the scheduler component.                                                                                                                                                                                                                                                                                                                                                                                          |
+| system:volume-scheduler              | system:kube-scheduler user                                          | Allows access to the volume resources required by the kube-scheduler component.                                                                                                                                                                                                                                                                                                                                                                              |
+| system:kube-controller-manager       | system:kube-controller-manager user                                 | Allows access to the resources required by the controller manager component. The permissions required by individual controllers are detailed in the controller roles.                                                                                                                                                                                                                                                                                        |
+| system:node                          | None                                                                | Allows access to resources required by the kubelet, including read access to all secrets, and write access to all pod status objects.<br>You should use the Node authorizer and NodeRestriction admission plugin instead of the system:node role, and allow granting API access to kubelets based on the Pods scheduled to run on them.<br>The system:node role only exists for compatibility with Kubernetes clusters upgraded from versions prior to v1.8. |
+| system:node-proxier                  | system:kube-proxy user                                              | Allows access to the resources required by the kube-proxy component.                                                                                                                                                                                                                                                                                                                                                                                         |
 ### Other component roles
+아래 표는 기본 제공되는 ClusterRole과 ClusterRole에 바인딩 된 subject에 대한 정보를 나타낸다. ClusterRoleBinding의 이름은 표에 없지만 직접 확인해보면 ClusterRole과 동일한 이름을 가진 것을 확인할 수 있다.
+| Default ClusterRole<br>(ClusterRole) | Default ClusterRoleBinding<br>(ClusterRole에 바인딩된 subject 목록) | Description                                                                                                                                                                                                                                                                                                                               |
+|--------------------------------------|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| system:auth-delegator                | None                                                                | Allows delegated authentication and authorization checks. This is commonly used by add-on API servers for unified authentication and authorization.                                                                                                                                                                                       |
+| system:heapster                      | None                                                                | Role for the Heapster component (deprecated).                                                                                                                                                                                                                                                                                             |
+| system:kube-aggregator               | None                                                                | Role for the kube-aggregator component.                                                                                                                                                                                                                                                                                                   |
+| system:kube-dns                      | kube-dns service account in the kube-system namespace               | Role for the kube-dns component.                                                                                                                                                                                                                                                                                                          |
+| system:kubelet-api-admin             | None                                                                | Allows full access to the kubelet API.                                                                                                                                                                                                                                                                                                    |
+| system:node-bootstrapper             | None                                                                | Allows access to the resources required to perform kubelet TLS bootstrapping.                                                                                                                                                                                                                                                             |
+| system:node-problem-detector         | None                                                                | Role for the node-problem-detector component.                                                                                                                                                                                                                                                                                             |
+| system:persistent-volume-provisioner | None                                                                | Allows access to the resources required by most dynamic volume provisioners.                                                                                                                                                                                                                                                              |
+| system:monitoring                    | system:monitoring group                                             | Allows read access to control-plane monitoring endpoints (i.e. kube-apiserver liveness and readiness endpoints (/healthz, /livez, /readyz), the individual health-check endpoints (/healthz/*, /livez/*, /readyz/*), and /metrics). Note that individual health check endpoints and the metric endpoint may expose sensitive information. |
+
 ### Roles for built-in controllers
+kube-controller-manager에 `--use-service-account-credentials` flag를 사용하면 각 controller는 별도의 sa를 사용한다. 각 내장 contaoller에 대응하는 role은 `system:controller` 접두사를 갖는다. 만약 위 flag 없이 kube-controller-manager를 시작하면 모든 control loop는 자신의 credential을 사용하기 때문에 관련된 모든 role을 부여해야 한다. 아래는 role 목록이다.
+
+아래는 ClusterRole 목록이며 ClusterRoleBinding의 이름은 표에 없지만 직접 확인해보면 ClusterRole과 동일한 이름을 가진 것을 확인할 수 있다. sa의 이름은 ClusterRoleBinding을 조회해 확인할 수 있다.
+
+- `system:controller:attachdetach-controller`
+- `system:controller:certificate-controller`
+- `system:controller:clusterrole-aggregation-controller`
+- `system:controller:cronjob-controller`
+- `system:controller:daemon-set-controller`
+- `system:controller:deployment-controller`
+- `system:controller:disruption-controller`
+- `system:controller:endpoint-controller`
+- `system:controller:expand-controller`
+- `system:controller:generic-garbage-collector`
+- `system:controller:horizontal-pod-autoscaler`
+- `system:controller:job-controller`
+- `system:controller:namespace-controller`
+- `system:controller:node-controller`
+- `system:controller:persistent-volume-binder`
+- `system:controller:pod-garbage-collector`
+- `system:controller:pv-protection-controller`
+- `system:controller:pvc-protection-controller`
+- `system:controller:replicaset-controller`
+- `system:controller:replication-controller`
+- `system:controller:resourcequota-controller`
+- `system:controller:root-ca-cert-publisher`
+- `system:controller:route-controller`
+- `system:controller:service-account-controller`
+- `system:controller:service-controller`
+- `system:controller:statefulset-controller`
+- `system:controller:ttl-controller`
+
+## Privilege escalation prevention and bootstrapping
+### Restrictions on role creation or update
+### Restrictions on role binding creation or update
+## Command-line utilities
