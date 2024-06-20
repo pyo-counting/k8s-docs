@@ -564,11 +564,55 @@ RBAC API는 사용자가 Role, ClusterRole, RoleBinding, ClusterRoleBinding을 �
 2. `rbac.authorization.k8s.io` API 그룹 내 `roles`, `clusterroles` 리소스에 대한 `escalate` verb를 수행할 수 있는 권한이 명시적으로 있는 경우
 
 예를 들어 `user-1`이 cluster 전역에 대한 secret을 나열할 권한이 없는 경우 해당 권한을 갖는 ClusterRole을 생성할 수 없다. 이를 가능하게 하기 위해
-1. Role, ClusterRole을 생성. 업데이트할 수 있는 권한을 준다.
+1. Role, ClusterRole을 생성, 업데이트할 수 있는 권한을 준다.
 2. 생성 할 Role, ClusterRole에 포함될 권한을 사용자에게 준다.
     - 포함될 권한을 사용자에게 준다.
     - 또는 명시적으로, `rbac.authorization.k8s.io` API 그룹 내 `roles`, `clusterroles` 리소스에 대한 `escalate` verb를 수행할 수 있는 권한을 준다
 
 ### Restrictions on role binding creation or update
+참조된 Role, ClusterRole에 포함된 모든 권한을 이미 보유하고 있거나, 참조된 Role, ClusterRole 에 대해 `bind` verb를 수행할 수 있는 권한이 있는 경우에만 RoleBinding, ClusterRoleBinding을 생성, 업데이트할 수 있다. 예를 들어, `user-1`이 cluster 전역에 대한 secret을 나열할 수 있는 권한이 없다면, `user-1`은 해당 권한을 부여하는 role에 대한 ClusterRoleBinding을 생성할 수 없다. 사용자가 RoleBinding, ClusterRoleBinding을 생성, 업데이트하기 위해
+1. RoleBinding, ClusterRoleBinding을 를 생성, 업데이트할 수 있는 role을 부여한다.
+2. 특정 role을 바인딩하는 데 필요한 권한을 부여한다.
+   - 해당 role에 포함된 권한을 모두 부여한다.
+   - 또는 명시적으로 특정 Role(또는 ClusterRole)에 대해 `bind` verb를 수행할 수 있는 권한을 부여한다.
+
+예를 들어, 아래 ClusterRole, RoleBinding은 `user-1-namespace` ns에서 `user-1`이 다른 사용자에게 `admin`, `edit`, `view` role을 부여할 수 있는 권한을 준다.
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: role-grantor
+rules:
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings"]
+  verbs: ["create"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles"]
+  verbs: ["bind"]
+  # omit resourceNames to allow binding any ClusterRole
+  resourceNames: ["admin","edit","view"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: role-grantor-binding
+  namespace: user-1-namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: role-grantor
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: user-1
+```
+
+cluster 초기에 위와 같은 작업을 처음 수행할 때는 "cluster-admin" super-user role에 binding된 "system:masters" group을 이용한다.
 
 ## Command-line utilities
+
+## ServiceAccount permissions
+
+## Write access for EndpointSlices and Endpoints
+
+## Upgrading from ABAC
