@@ -527,7 +527,6 @@ metadata:
 kube-controller-manager에 `--use-service-account-credentials` flag를 사용하면 각 controller는 별도의 sa를 사용한다. 각 내장 contaoller에 대응하는 role은 `system:controller` 접두사를 갖는다. 만약 위 flag 없이 kube-controller-manager를 시작하면 모든 control loop는 자신의 credential을 사용하기 때문에 관련된 모든 role을 부여해야 한다. 아래는 role 목록이다.
 
 아래는 ClusterRole 목록이며 ClusterRoleBinding의 이름은 표에 없지만 직접 확인해보면 ClusterRole과 동일한 이름을 가진 것을 확인할 수 있다. sa의 이름은 ClusterRoleBinding을 조회해 확인할 수 있다.
-
 - `system:controller:attachdetach-controller`
 - `system:controller:certificate-controller`
 - `system:controller:clusterrole-aggregation-controller`
@@ -557,6 +556,19 @@ kube-controller-manager에 `--use-service-account-credentials` flag를 사용하
 - `system:controller:ttl-controller`
 
 ## Privilege escalation prevention and bootstrapping
+RBAC API는 사용자가 Role, ClusterRole, RoleBinding, ClusterRoleBinding을 편집해 권한을 상승시키는 것을 허용하지 않는다. 이는 API 레벨에서 강제되는 것이기 때문에 RBAC authorizor를 사용하지 않더라도 적용된다.
+
 ### Restrictions on role creation or update
+아래 한가지 내용을 만족하면 role을 생성, 업데이트할 수 있다.
+1. role에 포함된 권한을 사용자가 가지고 있는 경우
+2. `rbac.authorization.k8s.io` API 그룹 내 `roles`, `clusterroles` 리소스에 대한 `escalate` verb를 수행할 수 있는 권한이 명시적으로 있는 경우
+
+예를 들어 `user-1`이 cluster 전역에 대한 secret을 나열할 권한이 없는 경우 해당 권한을 갖는 ClusterRole을 생성할 수 없다. 이를 가능하게 하기 위해
+1. Role, ClusterRole을 생성. 업데이트할 수 있는 권한을 준다.
+2. 생성 할 Role, ClusterRole에 포함될 권한을 사용자에게 준다.
+    - 포함될 권한을 사용자에게 준다.
+    - 또는 명시적으로, `rbac.authorization.k8s.io` API 그룹 내 `roles`, `clusterroles` 리소스에 대한 `escalate` verb를 수행할 수 있는 권한을 준다
+
 ### Restrictions on role binding creation or update
+
 ## Command-line utilities
