@@ -111,6 +111,12 @@ k8s는 아래와 같은 내장 `signerName`을 제공한다.
   - Expiration/certificate lifetime: 해당 signer에 대한 kube-controller-manager의 구현은 `--cluster-signing-duration` flag 값을 사용하며 `.spec.expirationSeconds`가 지정된 경우에는 두 값 중 최소 값을 사용한다.
   - CA bit allowed/disallowed: 허용되지 않음
 - `kubernetes.io/kube-apiserver-client-kubelet`: signs client certificates that will be honored as client certificates by the API server. May be auto-approved by kube-controller-manager. 
+  - Trust distribution: signed certificates must be honored as client certificates by the API server. The CA bundle is not distributed by any other means.
+  - Permitted subjects - organizations are exactly ["system:nodes"], common name starts with "system:node:".
+  - Permitted x509 extensions - honors key usage extensions, forbids subjectAltName extensions and drops other extensions.
+  - Permitted key usages - ["key encipherment", "digital signature", "client auth"] or ["digital signature", "client auth"].
+  - Expiration/certificate lifetime - for the kube-controller-manager implementation of this signer, set to the minimum of the --cluster-signing-duration option or, if specified, the spec.expirationSeconds field of the CSR object.
+  - CA bit allowed/disallowed - not allowed.
 - `kubernetes.io/kubelet-serving`: signs serving certificates that are honored as a valid kubelet serving certificate by the API server, but has no other guarantees. Never auto-approved by kube-controller-manager.
 - `kubernetes.io/legacy-unknown`: has no guarantees for trust at all. Some third-party distributions of Kubernetes may honor client certificates signed by it. The stable CertificateSigningRequest API (version certificates.k8s.io/v1 and later) does not allow to set the signerName as kubernetes.io/legacy-unknown. Never auto-approved by kube-controller-manager.
 

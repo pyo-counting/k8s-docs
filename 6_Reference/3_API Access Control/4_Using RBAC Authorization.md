@@ -610,9 +610,108 @@ subjects:
 cluster 초기에 위와 같은 작업을 처음 수행할 때는 "cluster-admin" super-user role에 binding된 "system:masters" group을 이용한다.
 
 ## Command-line utilities
+### kubectl create role
+### kubectl create clusterrole
+### kubectl create rolebinding
+### kubectl create clusterrolebinding
+
+### kubectl auth reconcile
+manifest 파일의 `rbac.authorization.k8s.io/v1` API object를 생성, 업데이트한다.
+
+없는 object는 생성한다. 필요하다면 namespaced object를 위해 ns도 생성한다.
+
+이미 존재하는 role은 manifest 파일의 권한을 포함하도록 업데이트된다. 그리고 `--remove-extra-permissions` flag를 명시하면 다른 권한은 삭제한다.
+
+이미 존재하는 binding은 manifest 파일의 주체를 포함하도록 업데이트된다. 그리고 `--remove-extra-subjects` flag를 명시하면 다른 권한은 삭제한다.
+
+아래는 예시다.
+- manifest 파일을 반영함으로써 변경될 사항을 확인한다.
+  ``` sh
+  kubectl auth reconcile -f my-rbac-rules.yaml --dry-run=client
+  ```
+- manifest 파일을 반영한다. 기타 권한과 주체는 삭제하지 않든다.
+  ``` sh
+  kubectl auth reconcile -f my-rbac-rules.yaml
+  ```
+- manifest 파일을 반영한다. 기타 권한과 주체는 삭제한다.
+  ``` sh
+  kubectl auth reconcile -f my-rbac-rules.yaml --remove-extra-subjects --remove-extra-permissions
+  ```
 
 ## ServiceAccount permissions
+기본 RBAC 정책은 control plane의 구성 요소, no, 그리고 controller에 대한 범위가 지정된 권한을 부여한다. 그리고 API discovery roles에 의해 부여된 권한을 제외하고는 `kube-system` ns 외부의 sa에는 권한을 부여하지 않는다.
+
+사용자는 필요에 따라 sa에 권한을 부여할 수 있다. 세분화된 정책은 보안성이 뛰어나지만 관리의 노력이 더 많이 필요하다. 반대로 많은 권한의 부여는 sa에 불필요한 API을 제공하기 때문에 잠재적 위험이 있지만 관리는 쉽다.
+
+아래는 보안 레벨에 따른 sa 사용 방법 예시다.
+1. (best practice) 애플리케이션을 위한 sa를 생성하고 권한을 부여한다. 이를 위해 po의 `.spec.serviceAccountName` 필드를 통해 sa를 할당한다. 아래는 "my-sa" sa를 "my-namespace" ns에서의 read-only 권한만 부여하기 위한 RoleBinding 생성 예시다.
+    ``` sh
+    kubectl create rolebinding my-sa-view \
+    --clusterrole=view \
+    --serviceaccount=my-namespace:my-sa \
+    --namespace=my-namespace
+    ```
+2. "default" sa에 ns에 제한된 권한을 부여한다. po에 `.spec.serviceAccountName`을 명시하지 않으면 "default" sa를 사용한다. 아래는 "my-namespace" ns의 "default" sa에 read-only 권한을 부여한다.
+    ``` sh
+    kubectl create rolebinding default-view \
+    --clusterrole=view \
+    --serviceaccount=my-namespace:default \
+    --namespace=my-namespace
+    ```
+    많은 [add-ons](https://kubernetes.io/docs/concepts/cluster-administration/addons/)이 `kube-system` ns의 "default" sa를 사용한다. 아래는 `kube-system` ns의 "default" sa에 super-user 권한을 부여하는 예시다.
+    ``` sh
+    kubectl create clusterrolebinding add-on-cluster-admin \
+    --clusterrole=cluster-admin \
+    --serviceaccount=kube-system:default
+    ```
+3. sa에 ns에 제한된 권한을 부여한다. ns 내 모든 애플리케이션이 어떤 sa를 사용하는지 여부와 관계없이 동일한 권한을 사용하기 위해 해당 ns에 속한 sa group에 권한을 부여한다. 아래는 "my-namespace" ns의 모든 sa에 read-only 권한을 부여한다.
+    ``` sh
+    kubectl create rolebinding serviceaccounts-view \
+    --clusterrole=view \
+    --group=system:serviceaccounts:my-namespace \
+    --namespace=my-namespace
+    ```
+4. (discouraged) 모든 sa에 제한된 role을 ClusterRoleBinding을 사용해 부여한다. ns 별로 권한을 관리하지 않기 위해 모든 sa에 ClusterRoleBinding을 사용해 role을 부여한다. 아래는 cluster 내 모든 sa에 read-only 권한을 부여한다.
+    ``` sh
+    kubectl create clusterrolebinding serviceaccounts-view \
+    --clusterrole=view \
+    --group=system:serviceaccounts
+    ```
+5. (strongly discouraged) 모든 sa에 super-user role을 ClusterRoleBinding을 사용해 부여한다. 권한 분리에 신경쓰지 않는다면 모든 sa에 super-user role을 부여한다.
+    ``` sh
+    kubectl create clusterrolebinding serviceaccounts-cluster-admin \
+    --clusterrole=cluster-admin \
+    --group=system:serviceaccounts
+    ```
 
 ## Write access for EndpointSlices and Endpoints
+k8s v1.22 이전에는 aggregated "edit", "admin" ClusterRole에 ep, endpointslice에 대한 write 권한을 포함했다. 하지만 [CVE-2021-25740](https://github.com/kubernetes/kubernetes/issues/103675)에 따라 k8s v1.22부터는 해당 권한이 없다.
+
+Existing clusters that have been upgraded to Kubernetes v1.22 will not be subject to this change. The [CVE announcement](https://github.com/kubernetes/kubernetes/issues/103675) includes guidance for restricting this access in existing clusters.
+
+If you want new clusters to retain this level of access in the aggregated roles, you can create the following ClusterRole:
+``` yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubernetes.io/description: |-
+      Add endpoints write permissions to the edit and admin roles. This was
+      removed by default in 1.22 because of CVE-2021-25740. See
+      https://issue.k8s.io/103675. This can allow writers to direct LoadBalancer
+      or Ingress implementations to expose backend IPs that would not otherwise
+      be accessible, and can circumvent network policies or security controls
+      intended to prevent/isolate access to those backends.
+      EndpointSlices were never included in the edit or admin roles, so there
+      is nothing to restore for the EndpointSlice API.      
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+  name: custom:aggregate-to-edit:endpoints # you can change this if you wish
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["create", "delete", "deletecollection", "patch", "update"]
+```
+
 
 ## Upgrading from ABAC
