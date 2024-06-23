@@ -90,7 +90,7 @@ CA private key를 cluster에 복사하기 싫다면 직접 모든 certificate를
 ```
 
 ## Configure certificates for user accounts
-아래 관리자 계정, sa를 반드시 생성해야 한다.
+아래 관리자 계정, sa를 반드시 설정해야 한다.
 | filename                | credential name            | Default CN                         | O (in Subject) |
 |-------------------------|----------------------------|------------------------------------|----------------|
 | admin.conf              | default-admin              | kubernetes-admin                   | \<admin-group> |
