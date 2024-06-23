@@ -63,7 +63,7 @@ systemd는 cgroup과 통합되어 있으며 systemd 당 cgroup을 할당한다. 
 
 이러한 불안정성을 완화하기 위해 systemd가 init systemd일 경우 container runtime, kubelet이 cgroup driver로 systemd를 사용하도록 설정을 변경하면 시스템이 안정화된다.
 
-systemd를 group driver로 사용하기 위해 [KubeletConfiguration](https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/)를 설정한다.
+systemd를 cgroup driver로 사용하기 위해 [KubeletConfiguration](https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/)를 설정한다.
 ``` yaml
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
@@ -91,7 +91,7 @@ kubeadm을 사용해 cluster를 관리하는 경우 systemd cgroup driver로 마
 ## CRI version support
 container runtime은 최소 v1alpha2 CRI를 지원해야 한다.
 
-k8s 1.26는 기본적으로 CRI API의 v1을 사용한다. 이전 버전은 기본적으로 v1 버전이지만 container runtime이 v1 API를 지원하지 않는다면 kubelet은 대신 v1alpha2(deprecated) API를 사용한다.
+k8s 1.26는 기본적으로 CRI API의 v1만 사용한다. 이전 버전은 기본적으로 v1 버전이지만 container runtime이 v1 API를 지원하지 않는다면 kubelet은 대신 v1alpha2(deprecated) API를 사용한다.
 
 ## Container runtimes
 

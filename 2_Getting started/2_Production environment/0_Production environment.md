@@ -14,14 +14,14 @@
 
 직접 k8s 운영 환경을 구축하기 전에 [Turnkey Cloud Solutions](https://kubernetes.io/docs/setup/production-environment/turnkey-solutions/)의 도입을 고려한다. 이러한 솔루션은 아래와 같은 이점을 갖는다.
 - 서버리스(serverless): cluster를 관리하지 않고 사용자는 workload만 실행하면 된다. cpu, 메모리, 디스크 사용 요청에 대한 비용을 지불해야 한다.
-- 관리되는 control plane: provider가 cluster의 control plane의 확장, 가용성을 관리하고 패치, 업그레이드를 관리한다.
-- 관리되는 worker node: 필요에 맞게 node pool을 구성하면 provider가 해당 node를 사용할 수 있는지 확인하고 필요할 때 이용한다.
+- managed control plane: provider가 cluster의 control plane의 확장, 가용성을 관리하고 패치, 업그레이드를 관리한다.
+- managed worker node: 필요에 맞게 node pool을 구성하면 provider가 해당 node를 사용할 수 있는지 확인하고 필요할 때 이용한다.
 - integration: storage, container registry, auhentication과 같이 k8s 운영에 필요한 서비스를 통합한 provier도 존재한다.
 
 Whether you build a production Kubernetes cluster yourself or work with partners, review the following sections to evaluate your needs as they relate to your cluster’s control plane, worker nodes, user access, and workload resources.
 
 ## Production cluster setup
-control plane은 여러 work node에서 실행되는 각기 다른 workload를 관리한다. 물론 worker node는 k8s의 pod를 실행하기 위한 단일 개체를 나타낼 뿐이다.
+control plane은 여러 work node에서 실행되는 각기 다른 workload를 관리한다. 물론 worker node는 k8s의 pod를 실행하기 위한 single entity   를 나타낼 뿐이다.
 
 ### Production control plane
 가장 간단한 k8s cluster는 모든 control plane, worker node를 동일 서버에서 실행한다. [Kubernetes Components](https://kubernetes.io/docs/concepts/overview/components/)에 표현된 것 같이 worker node를 추가해서 cluster를 확장할 수 있다.
@@ -39,7 +39,7 @@ To learn about available options when you run control plane services, see kube-a
 
 ### Production worker nodes
 운영 환경에 알맞는 품질의 workload는 탄력적(resilient)이어야 하며, workload가 의존하는 모든 것(예를 들어 CoreDNS)들도 탄력적이어야 한다. control plane은 cloud provider가 관리할 수 있지만 worker node는 여전히 직접 관리가 필요하다.
-- node 설정: node는 물리적/가상 머신일 수 있다. 직접 node를 설치 및 관리하기 위해서는 적절한 [Node services](https://kubernetes.io/docs/concepts/overview/components/#node-components) 설치해야 한다.
+- node 구성: node는 물리적/가상 머신일 수 있다. 직접 node를 설치 및 관리하기 위해서는 적절한 [Node services](https://kubernetes.io/docs/concepts/overview/components/#node-components) 설치해야 한다.
     - 적절한 memory, cpu, disk 속도, storage 용량 고려 필요
     - Whether generic computer systems will do or you have workloads that need GPU processors, Windows nodes, or VM isolation.
 - 유효한 node: k8s cluster에 참여(join)하기 위한 요구 사항을 충족했는지 확인하기 위한 정보는 [Valid node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/)를 참고한다.

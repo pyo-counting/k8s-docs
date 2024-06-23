@@ -14,7 +14,7 @@
 ### control plane
 - control plane 구성 요소는 3개 이상(raft 알고리즘을 위해)의 failure zone에서 실행하는 것을 권장한다 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane))
 - control plane 구성 요소(예를 들어 kube-scheduler, kube-controller-manager)의 여러 replica는 kube-node-lease ns에 저장된 lease object를 사용해 reader를 관리한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#leader-election))
-- kube-apiserver는 kube-nodelease ns에 저장된 lease object를 통해 k8s 전체 시스템에 kube-apiserver에 대한 정보를 제공한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#api-server-identity))
+- kube-apiserver는 kube-node-lease ns에 저장된 lease object를 통해 k8s 전체 시스템에 kube-apiserver에 대한 정보를 제공한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#api-server-identity))
 - encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
 - kube-controller-manager
   - no의 non-graceful shutdown 처리를 위한 `NodeOutOfServiceVolumeDetach` feature gate 활성화 여부 확인. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#non-graceful-node-shutdown))
@@ -28,9 +28,9 @@
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
 - no 모니터링을 위한 node problem detector 설치 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
-- no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
-- kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다.
 - kublet과 container runtime 모두 control group을 통해 po, container에 대한 리소스 관리를 수행한다. control group은 cgroup driver를 통해 사용하며 kubelet과 container runtime이 동일한 cgroup driver를 사용하는 것이 중요하다 ([Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cgroup-drivers))
+- no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
+- kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다. control plane 구성 요소의 경우 아직은 flag를 이용한 설정을 사용하는 것 같다.
 - kubelet에서 container runtime에 접근하기 위한 endpoint 설정 고려 ([Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/#api))
 - kubelet에서 image 용량에 따른 gc 설정 고려 ([Garbage Collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/#container-image-lifecycle))
 - kubelet에서 image age에 따른 gc 설정 고려 ([Garbage Collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/#image-maximum-age-gc))
