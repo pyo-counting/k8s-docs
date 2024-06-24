@@ -346,7 +346,7 @@ POST /apis/authentication.k8s.io/v1/selfsubjectreviews
 ```
 
 아래는 응답 예시다.
-```
+``` json
 {
   "apiVersion": "authentication.k8s.io/v1",
   "kind": "SelfSubjectReview",
