@@ -14,6 +14,13 @@
 - 각 ns에 존재하는 default sa는 사용자가 삭제하더라도 control plane이 재생성한다. ([Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/#default-service-accounts))
 -  k8s v1.22부터는 기본적으로 `TokenRequest` API를 사용해 짧은 수명의 automatically rotating token을 얻고 token을 projected volume으로 mount한다. token이 만료되면 kubelet은 token을 재발급 받는다. ([Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/#assign-to-pod))
 - sa에 `kubernetes.io/enforce-mountable-secrets` annotation을 추가해 sa에서 사용할 수 있는 secret 목록을 제어할 수 있다. ([Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/#enforce-mountable-secrets))
+- 사용자를 `system:masters` group에 추가하지 않는다. 이 그룹의 구성원은 모든 RBAC 권한 검사를 우회하고 언제나 슈퍼유저 접근 권한을 가지며 RoleBindings나 ClusterRoleBindings를 제거해도 권한을 철회할 수 없다. ([Role Based Access Control Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#general-good-practice))
+- authentication을 정상적으로 통과하면 `system:authenticated` group에 속하게 된다. anonymous request authentication이 활성화된 경우 모든 authentication mode에 의해 거절되지 않는다면 사용자는 `system:anonymous` 이름을 갖고 `system:unauthenticated` 그룹에 속하게 된다.
+- sa는 사용자 이름 `system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)`로 인증하고 `system:serviceaccounts`, `system:serviceaccounts:(NAMESPACE)` 그룹에 할당된다.
+- bootstrap token authentication mode를 통해 인증된 사용자는 `system:bootstrap:<Token ID>` 이름을 갖고 `system:bootstrappers` 그룹에 속하게 된다.
+- `system:unauthenticated` 그룹에 대한 binding을 검토하고 가능한 경우 제거한다. 이는 네트워크 레벨에서 kube-apiserver에 접속할 수 있는 모든 사람에게 접근을 제공하기 때문이다. ([Role Based Access Control Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#hardening))
+- k8s non-resource에 대한 API와 resource에 대한 API(core group(`/api/v1`), name graoup(`/apis/${group}/${version}`))로 나뉜다. non-resource API는 HTTP 소문자 method를 사용해 authorization를 수행하며 resource API는 HTTP 소문자 method, 요청 resource 종류에 따라 request verb를 매핑하고 authorization을 수행한다. ([API Overview](https://kubernetes.io/docs/reference/using-api/), [Kubernetes API Concepts](https://kubernetes.io/docs/reference/using-api/api-concepts/), [Authorization](https://kubernetes.io/docs/reference/access-authn-authz/authorization/#determine-the-request-verb))
+- kubelet, 사용자가 사용하는 kubeconfig 파일은 kubectl 명령어를 사용해 생성할 수 있다.
 
 ### control plane
 - control plane 구성 요소는 3개 이상(raft 알고리즘을 위해)의 failure zone에서 실행하는 것을 권장한다 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane))
@@ -31,10 +38,12 @@
     - client certificate authentication mode 활성화는 `--client-ca-file` flag를 사용한다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#x509-client-certificates))
     - static token authentication mode 활성화는 `--token-auth-file` flag를 사용한다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#static-token-file))
     - bootstrap token authentication mode 활성화는 `--enable-bootstrap-token-auth` flag를 사용한다. 이때 bootstrap token gc를 위해 kube-controller-manager에 tokencleaner controller를 활성화 해야한다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#bootstrap-tokens))
+    - bootstrap token을 사용해 kubelet이 client certificate를 발급받아야한다. 이 때 k8s에 내장된 `kubernetes.io/kube-apiserver-client-kubelet` signer에 의해 자동 승인 및 서명되기 위해서는 kube-controller-manager에 `--cluster-signing-cert-file` flag, `--cluster-signing-key-file` flag를 사용해야한다. 이 내장 signer는 csr을 요청한 credential의 승인에 대한 권한 유무(SubjectAccessReview API를 사용해 확인)에 따라 승인을 수행함으로써 자동 승인을 구현한다. ([TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#access-to-key-and-certificate), [Certificates and Certificate Signing Requests](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/#approval-rejection-control-plane))
     - sa token authentication mode 활성화는 `--service-account-key-file` flag를 사용한다. kube-controller-manager에는 `--service-account-private-key-file` flag를 통해 개인키 파일을 설정한다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#service-account-tokens), [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/#certificate-paths))
-    - oidc token, webhook token, authentication proxy authentication mode 활성화는 [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#openid-connect-tokens)을 참고
+    - oidc token, webhook token, authentication proxy authentication mode 활성화는 [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#openid-connect-tokens) 참고
     - anonymous request authentication mode 활성화는 `--anonymous-auth` flag를 사용한다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-requests))
   - authorization mode 활성화는 `--authorization-mode` flag를 사용한다. 나열된 순서대로 authorization을 진행한다. ([Authorization](https://kubernetes.io/docs/reference/access-authn-authz/authorization/#authorization-modules))
+    - node authorizor에 의해 인증되기 위해 kubelet은 system `system:node:<nodeName>` 사용자, `system:nodes` 그룹에 대한 credentials을 사용해야 한다. 해당 사용자, 그룹 형식은 [kubelet TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)을 통해 생성된 kubelet의 identity와 일치한다. ([Using Node Authorization](https://kubernetes.io/docs/reference/access-authn-authz/node/))
 
 ### node
 - no당 최대 po 실행 갯수는 110개 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/))
@@ -50,6 +59,7 @@
 - kubelet이 특정 label을 마음대로 수정할 수 없도록 NodeRestriction admission plugin 설정 고려 ([Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-isolation-restriction))
 - kubelet이 image credential provider을 사용해 동적으로 credential을 얻도록 사용 고려([Extending Kubernetes](https://kubernetes.io/docs/concepts/extend-kubernetes/#kubelet-image-credential-provider-plugins))
 - kubelet의 authentication, authorization 설정 고려([Kubelet authentication/authorization](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/))
+- kubelet의 client certificate rotation은 `.rotateCertificates` 필드, server certificate 요청 및 rotation은 `.serverTLSBootstrap` 필드 사용([TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#certificate-rotation))
 
 ### addon
 - addon의 기본 limit은 일반적으로 작은 크기의 cluster에서의 경험을 통해 수집한 데이터를 기반으로 하기 때문에 조정 필요 ([Addon resources](https://kubernetes.io/docs/setup/best-practices/cluster-large/#addon-resources))
