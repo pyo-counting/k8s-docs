@@ -197,7 +197,10 @@ contexts:
   name: webhook
 ```
 
-사용자가 kube-apiserver에 bearer token을 사용해 인증을 시도하면, authentication webhook은 remote service에 token을 포함하는 JSON-serialized TokenReview object을 POST 요청한다.
+사용자가 kube-apiserver에 bearer token을 사용해 인증을 시도하면, authentication webhook은 remote service에 token을 포함하는 JSON-serialized `TokenReview` object을 POST 요청한다.
+
+webhoo API object는 다른 k8s API object와 동일하게 [versioning compativility rules](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)이 적용된다. webhook을 구현할 때 요청의 올바른 deserialization를 보장하기 위해 요청의 apiVersion 필드를 확인해야 하며 요청과 동일한 버전의 `TokenReview` object로 응답해야 한다.
+
 
 ### Authenticating Proxy
 kube-apiserver는 `X-Remote-User`와 같은 HTTP 요청 header 값을 사용해 사용자를 식별할 수 있도록 설정할 수 있다. 이는 요청 header 값을 설정하는 authenticating proxy을 사용할 때 유용하다.
@@ -326,9 +329,190 @@ rules:
 > 사용자 또는 그룹을 위장하면 해당 사용자 또는 그룹이 되는 것처럼 모든 작업을 수행할 수 있다. 이러한 이유로 위장은 ns에 제한되지 않는다. k8s RBAC를 사용하여 위장을 허용하려면 Role, RoleBinding이 아니라 ClusterRole, ClusterRoleBinding을 사용해야 한다.
 
 ## client-go credential plugins
+`k8s.io/client-go`를 사용하면 외부 외부 명령어를 실행해 사용자 credential을 얻을 수 있다(예를 들어 kubectl, kubelet이 사용).
+ 
+이러한 기능은 `k8s.io/client-go`에서 내장 지원하지 않는 인증 프로토콜(LDAP, Kerberos, OAuth2, SAML 등)과의 통합이 목적이다 플러그인은 각 프로토콜의 로직을 구현하며 결과적으로 opaque credential을 반환한다. Almost all credential plugin use cases require a server side component with support for the webhook token authenticator to interpret the credential format produced by the client plugin.
+
+> **Note**:
+> 이전에 kubectl은 AKS, GKE에 대한 인증을 내장 지원했으나 지금은 그렇지 않다.
+
 ### Example use case
+예를 들어, 어떤 조직이 LDAP 사용자 credential을 signed token으로 교환하는 외부 서비스를 운영한다. 이 서비스는 token을 검증하기 위해 [webhook token authenticator](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication) 역할도 수행할 수 있다(즉, kube-apiserver의 `TokenReview` 요청을 처리할 수 있다). 이 경우 사용자는 로컬 환경에 credential plugin을 설치해야 한다.
+
+인증을 위한 절차는 다음과 같다.
+1. 사용자는 `kubectl` 명령을 실행한다.
+2. `kubectl`이 사용하는 client-go는 credential plugin에게 `ExecCredential` object을 입력 변수로 사용해 외부 명령어 실행을 요청한다.
+2. (필요할 경우) credential plugin은 프롬프트를 통해 사용자의 LDAP credential 입력을 요청하고, 입력된 credential을 사용해 외부 서비스에 signed token을 얻는다.
+3. credential plugin은 `ExecCredential` object의 `.status` 필드를 사용해 `client-go`에 signed token을 반환하며 `client-go`는 signed token을 bearer token으로 사용해 kube-apiserver에 요청을 수행한다.
+4. kube-apiserver는 webhook token authenticator로 등록된 외부 서비스에 `TokenReview` API를 요청한다.
+5. 외부 서비스는 token의 서명을 검증하고, 결과로 사용자 이름과 그룹을 반환한다.
+
 ### Configuration
+[kubectl config file](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)에서 credential plugin은 `.users[*].user.exec` 필드를 통해 구현된다(`.users[*].name.exec.apiVersion` 필드는 client-go가 credential plugin 호출 시, 사용할 ExecCredential object의 api version에 대한 설정이다).
+- client.authentication.k8s.io/v1
+  ``` yaml
+  apiVersion: v1
+  kind: Config
+  users:
+  - name: my-user
+    user:
+      exec:
+        # Command to execute. Required.
+        command: "example-client-go-exec-plugin"
+
+        # API version to use when decoding the ExecCredentials resource. Required.
+        #
+        # The API version returned by the plugin MUST match the version listed here.
+        #
+        # To integrate with tools that support multiple versions (such as client.authentication.k8s.io/v1beta1),
+        # set an environment variable, pass an argument to the tool that indicates which version the exec plugin expects,
+        # or read the version from the ExecCredential object in the KUBERNETES_EXEC_INFO environment variable.
+        apiVersion: "client.authentication.k8s.io/v1"
+
+        # Environment variables to set when executing the plugin. Optional.
+        env:
+        - name: "FOO"
+          value: "bar"
+
+        # Arguments to pass when executing the plugin. Optional.
+        args:
+        - "arg1"
+        - "arg2"
+
+        # Text shown to the user when the executable doesn't seem to be present. Optional.
+        installHint: |
+          example-client-go-exec-plugin is required to authenticate
+          to the current cluster.  It can be installed:
+
+          On macOS: brew install example-client-go-exec-plugin
+
+          On Ubuntu: apt-get install example-client-go-exec-plugin
+
+          On Fedora: dnf install example-client-go-exec-plugin
+
+          ...        
+
+        # Whether or not to provide cluster information, which could potentially contain
+        # very large CA data, to this exec plugin as a part of the KUBERNETES_EXEC_INFO
+        # environment variable.
+        provideClusterInfo: true
+
+        # The contract between the exec plugin and the standard input I/O stream. If the
+        # contract cannot be satisfied, this plugin will not be run and an error will be
+        # returned. Valid values are "Never" (this exec plugin never uses standard input),
+        # "IfAvailable" (this exec plugin wants to use standard input if it is available),
+        # or "Always" (this exec plugin requires standard input to function). Required.
+        interactiveMode: Never
+  clusters:
+  - name: my-cluster
+    cluster:
+      server: "https://172.17.4.100:6443"
+      certificate-authority: "/etc/kubernetes/ca.pem"
+      extensions:
+      - name: client.authentication.k8s.io/exec # reserved extension name for per cluster exec config
+        extension:
+          arbitrary: config
+          this: can be provided via the KUBERNETES_EXEC_INFO environment variable upon setting provideClusterInfo
+          you: ["can", "put", "anything", "here"]
+  contexts:
+  - name: my-cluster
+    context:
+      cluster: my-cluster
+      user: my-user
+  current-context: my-cluster
+  ```
+- client.authentication.k8s.io/v1beta1
+  ``` yaml
+  apiVersion: v1
+  kind: Config
+  users:
+  - name: my-user
+    user:
+      exec:
+        # Command to execute. Required.
+        command: "example-client-go-exec-plugin"
+
+        # API version to use when decoding the ExecCredentials resource. Required.
+        #
+        # The API version returned by the plugin MUST match the version listed here.
+        #
+        # To integrate with tools that support multiple versions (such as client.authentication.k8s.io/v1),
+        # set an environment variable, pass an argument to the tool that indicates which version the exec plugin expects,
+        # or read the version from the ExecCredential object in the KUBERNETES_EXEC_INFO environment variable.
+        apiVersion: "client.authentication.k8s.io/v1beta1"
+
+        # Environment variables to set when executing the plugin. Optional.
+        env:
+        - name: "FOO"
+          value: "bar"
+
+        # Arguments to pass when executing the plugin. Optional.
+        args:
+        - "arg1"
+        - "arg2"
+
+        # Text shown to the user when the executable doesn't seem to be present. Optional.
+        installHint: |
+          example-client-go-exec-plugin is required to authenticate
+          to the current cluster.  It can be installed:
+
+          On macOS: brew install example-client-go-exec-plugin
+
+          On Ubuntu: apt-get install example-client-go-exec-plugin
+
+          On Fedora: dnf install example-client-go-exec-plugin
+
+          ...        
+
+        # Whether or not to provide cluster information, which could potentially contain
+        # very large CA data, to this exec plugin as a part of the KUBERNETES_EXEC_INFO
+        # environment variable.
+        provideClusterInfo: true
+
+        # The contract between the exec plugin and the standard input I/O stream. If the
+        # contract cannot be satisfied, this plugin will not be run and an error will be
+        # returned. Valid values are "Never" (this exec plugin never uses standard input),
+        # "IfAvailable" (this exec plugin wants to use standard input if it is available),
+        # or "Always" (this exec plugin requires standard input to function). Optional.
+        # Defaults to "IfAvailable".
+        interactiveMode: Never
+  clusters:
+  - name: my-cluster
+    cluster:
+      server: "https://172.17.4.100:6443"
+      certificate-authority: "/etc/kubernetes/ca.pem"
+      extensions:
+      - name: client.authentication.k8s.io/exec # reserved extension name for per cluster exec config
+        extension:
+          arbitrary: config
+          this: can be provided via the KUBERNETES_EXEC_INFO environment variable upon setting provideClusterInfo
+          you: ["can", "put", "anything", "here"]
+  contexts:
+  - name: my-cluster
+    context:
+      cluster: my-cluster
+      user: my-user
+  current-context: my-cluster
+  ```
+
+상대 경로로 표현된 명령어는 kubeconfig 파일의 디렉토리 기준으로 계산된다. If KUBECONFIG is set to /home/jane/kubeconfig and the exec command is ./bin/example-client-go-exec-plugin, the binary /home/jane/bin/example-client-go-exec-plugin is executed.
+``` yaml
+- name: my-user
+  user:
+    exec:
+      # Path relative to the directory of the kubeconfig
+      command: "./bin/example-client-go-exec-plugin"
+      apiVersion: "client.authentication.k8s.io/v1"
+      interactiveMode: Never
+```
+
+아래는 eks에 대한 예시다.
+1. 
+
 ### Input and output formats
+외부 명령어는 ExecCredential object를 stdout에 출력한다. `k8s.io/client-go`는 반환된 credential의 `.status` 필드를 참고해 kube-aoiserver에 인증한다. 실행된 외부 명령어는 `KUBERNETES_EXEC_INFO` 환경 변수를 통해 ExecCredential object를 입력 값으로 받는다. 이 입력에는 반환될 ExecCredential object의 예상 API 버전, 플러그인이 사용자와 상호 작용하기 위해 stdin을 사용할 수 있는지 여부와 같은 유용한 정보가 포함되어 있다.
+
+대화형 세션(즉, 터미널)에서 실행될 때 stdin은 플러그인에 직접 노출될 수 있다. 플러그인은 `KUBERNETES_EXEC_INFO` 환경 변수에서 가져온 입력 ExecCredential object의 `spec.interactive` 필드를 사용해 stdin이 제공되었는지 확인해야 한다. 플러그인의 stdin 요구 사항(optional, required, never)은 kubeconfig의 `user.exec.interactiveMode` 필드를 통해 설정된니다. `user.exec.interactiveMode` 필드는 `client.authentication.k8s.io/v1beta1`에서는 선택 사항이고 `client.authentication.k8s.io/v1`에서는 필수다.
 
 ## API access to authentication information for a client
 cluster에 API가 활성화되어 있다면 `SelfSubjectReview` API를 사용하여 k8s cluster가 인증 정보를 클라이언트로 식별하는 방법을 확인할 수 있다. 이 방법은 사용자(일반적으로 실제 사람을 나타냄) 또는 sa로 인증하는 경우에 모두 동작한다.
