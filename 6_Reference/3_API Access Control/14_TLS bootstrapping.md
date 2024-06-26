@@ -36,7 +36,7 @@ bootstrap initialization 프로세스에서 다음과 같은 동작이 발생한
     - 해당 파일에는 kube-apiserver의 ca 정보도 포함할 수 있다. ca에 대한 정보가 파일에 없다면 kube-public ns의 cluster-info cm에서 정보를 가져오는 단계도 있을 것 같다. 정확하게 해당 프로세스가 어떻게 수행되는지는 kubeadm을 살펴봐야한다.
 5. kubelet은 token을 사용해 kube-apiserver에 인증한다.
 6. kubelet은 csr을 생성하고 검색할 수 있는 제한된 credential을 갖게된다.
-7. kubelet은 `.spec.signerName` 필드를 `kubernetes.io/kube-apiserver-client-kubelet`로 설정한 csr object를 생성한다.
+7. kubelet은 `.spec.signerName` 필드를 `kubernetes.io/kube-apiserver-client-kubelet`로 설정한 csr object를 생성한다. 이 때 kubelet은 인증서에 CN은 `system:node:<hostname>`, org는 `system:nodes`를 사용한다.
 8. csr은 아래 중 한 가지 방법을 통해 승인된다.
     - 설정된 경우, kube-controller-manager가 csr을 자동 승인한다.
     - 설정된 경우, k8s API, kubectl을 사용해 csr을 수동 승인한다.
@@ -283,12 +283,12 @@ TLS bootstrapping에 의해 제공된 클라이언트 인증서는 기본적으�
 ### Certificate rotation
 k8s v1.8 이상의 kubelet은 클라이언트, serving 인증서의 rotation 기능을 구현한다. 참고로, serving 인증서의 rotation은 베타 기능이며 kubelet에 RotateKubeletServerCertificate feature flag가 있어야 한다.(kubelet에서 기본적으로 활성화됨).
 
-존재하는 credential이 만료될 때 새로운 csr을 생성해 클라이언트 인증서를 rotation할 수 있도록 kubelet을 설정할 수 있다. 이 기능을 활성화하려면 kubelet 설정 파일의 rotateCertificates 필드를 사용하거나 kubelet에 다름 flag를 설정한다(deprecated).
+존재하는 credential이 만료될 때 새로운 csr을 생성해 클라이언트 인증서를 rotation할 수 있도록 kubelet을 설정할 수 있다. 이 기능을 활성화하려면 kubelet 설정 파일의 `.rotateCertificates` 필드를 사용하거나 kubelet에 다름 flag를 설정한다(deprecated).
 ``` sh
 --rotate-certificates
 ```
 
-RotateKubeletServerCertificate를 활성화하면 kubelet은 클라이언트 credential을 bootstrapping한 후 serving 인증서를 요청하고 해당 인증서를 rotation한다. 이 동작을 활성화하려면 kubelet 설정 파일의 serverTLSBootstrap 필드를 사용하거나 kubelet에 다름 flag를 설정한다(deprecated).
+RotateKubeletServerCertificate를 활성화하면 kubelet은 클라이언트 credential을 bootstrapping한 후 serving 인증서를 요청하고 해당 인증서를 rotation한다. 이 동작을 활성화하려면 kubelet 설정 파일의 `.serverTLSBootstrap` 필드를 사용하거나 kubelet에 다름 flag를 설정한다(deprecated).
 ``` sh
 --rotate-server-certificates
 ```

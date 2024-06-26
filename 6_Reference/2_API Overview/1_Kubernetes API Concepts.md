@@ -20,9 +20,9 @@ API를 통해 생성할 수 있는 모든 object는 유일한 이름을 가지�
 ### API verbs
 거의 모든 object resource 타입은 표준 HTTP method(GET, POST, PUT, PATCH, DELETE)를 지원한다. k8s는 HTTP method와 구별하기 위해 종종 소문자로 표기되는 자체 method를 사용한다.
 
-k8s는 resource [collection](https://kubernetes.io/docs/reference/using-api/api-concepts/#collections)을 반환하는 것을 list라고 하여, 단일 resource를 조회하는 get과 구분한다. HTTP GET 요청에 `?watch` query parameter를 포함하면 k8s는 이를 get이 아닌 watch라고 인식한다(자세한 내용은 [Efficient detection of changes](https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes) 참고).
+k8s는 resource [collection](https://kubernetes.io/docs/reference/using-api/api-concepts/#collections)을 반환하는 것을 **list**라고 하여, 단일 resource를 조회하는 **get**과 구분한다. HTTP GET 요청에 `?watch` query parameter를 포함하면 k8s는 이를 get이 아닌 **watch**라고 인식한다(자세한 내용은 [Efficient detection of changes](https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes) 참고).
 
-PUT 요청의 경우, k8s는 기존 object의 상태에 따라 이를 생성(create) 또는 업데이트(update)로 분류한다. update는 patch와 다르다.
+PUT 요청의 경우, k8s는 기존 object의 상태에 따라 이를 **create** 또는 **update**로 분류한다.
 
 ## Resource URIs
 모든 resource 타입은 cluster 범위(`/apis/GROUP/VERSION/*`) 또는 ns 범위(`/apis/GROUP/VERSION/namespaces/NAMESPACE/*`)로 구분된다. ns 범위의 resource 타입은 해당 ns가 삭제될 때 함께 삭제되며 해당 resource 타입에 대한 접근은 ns 범위의 권한 검사를 통해 제어된다.
