@@ -506,8 +506,49 @@ rules:
       interactiveMode: Never
 ```
 
-아래는 eks에 대한 예시다.
-1. 
+아래는 aws eks에 대한 예시다.
+1. kubectl 명령어 사용을 위한 kubeconfig 파일 업데이트
+    ``` sh
+    aws eks update-kubeconfig --name ${EKS_CLUSTER} --alias ${EKS_CLUSTER} --profile ${AWS_PROFILE} --user-alias ${EKS_CLUSTER}
+    ```
+2. 아래는 kubeconfig 파일의 일부 내용이다.
+    ``` yaml
+    (...생략...)
+    users:
+      - name: ${EKS_CLUSTER}
+        user:
+          exec:
+            apiVersion: client.authentication.k8s.io/v1beta1
+            args:
+              - --region
+              - ap-northeast-2
+              - eks
+              - get-token
+              - --cluster-name
+              - ${EKS_CLUSTER}
+              - --output
+              - json
+            command: aws
+            env:
+              - name: AWS_PROFILE
+                value: ${AWS_PROFILE}
+            interactiveMode: IfAvailable
+            provideClusterInfo: false
+    (...생략...)
+    ```
+3. kubectl 명령어는 kubeconfig 파일에 설정된 client-go credential plugin 정보를 사용해 외부 명령어(aws eks get-token)를 실행하고 token을 얻는다.
+4. kubectl은 해당 token을 사용해 kube-apiserver에 요청을 보낸다.
+5. kube-apiserver은 aws-iam-authenticator(webhook token authenticator)에 TokenReview API를 요청하고 사용자 이름, 그룹에 대한 정보를 반환받는다.
+6. 이후 kube-apiserver는 authorization, admission controller 단계를 거쳐 요청에 대한 응답을 수행한다.
+
+아래는 eks cluster에 대해 token을 직접 발급받고 요청을 수행하는 예시다.
+``` sh
+# kubectl
+kubectl get ns --context ${EKS_CLUSTER} --token=$(aws eks get-token --cluster-name ${EKS_CLUSTER} --profile ${AWS_PROFILE} --query 'status.token' --output text)
+
+# curl
+curl -H "Authorization: Bearer $(aws eks get-token --cluster-name ${EKS_CLUSTER} --profile ${AWS_PROFILE} --query 'status.token' --output text)" -k ${EKS_APISERVER_ENDPOINT}/api/v1/namespaces
+```
 
 ### Input and output formats
 외부 명령어는 ExecCredential object를 stdout에 출력한다. `k8s.io/client-go`는 반환된 credential의 `.status` 필드를 참고해 kube-aoiserver에 인증한다. 실행된 외부 명령어는 `KUBERNETES_EXEC_INFO` 환경 변수를 통해 ExecCredential object를 입력 값으로 받는다. 이 입력에는 반환될 ExecCredential object의 예상 API 버전, 플러그인이 사용자와 상호 작용하기 위해 stdin을 사용할 수 있는지 여부와 같은 유용한 정보가 포함되어 있다.
