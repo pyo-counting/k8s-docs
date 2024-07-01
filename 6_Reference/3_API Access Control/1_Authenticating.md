@@ -611,6 +611,7 @@ POST /apis/authentication.k8s.io/v1/selfsubjectreviews
 
 kubectl의 `--output` flag를 사용해 JSON, YAML 포맷의 데이터를 확인할 수도 있다.
 ``` json
+{
   "apiVersion": "authentication.k8s.io/v1",
   "kind": "SelfSubjectReview",
   "status": {
