@@ -536,10 +536,10 @@ rules:
             provideClusterInfo: false
     (...생략...)
     ```
-3. kubectl 명령어는 kubeconfig 파일에 설정된 client-go credential plugin 정보를 사용해 외부 명령어(aws eks get-token)를 실행하고 token을 얻는다.
+3. kubectl 명령어는 kubeconfig 파일에 설정된 client-go credential plugin 정보를 사용해 외부 명령어(`aws eks get-token`)를 실행하고 token을 얻는다. 이는 실제로 aws sts에 대한 token 발급 요청이다.
 4. kubectl은 해당 token을 사용해 kube-apiserver에 요청을 보낸다.
-5. kube-apiserver은 aws-iam-authenticator(webhook token authenticator)에 TokenReview API를 요청하고 사용자 이름, 그룹에 대한 정보를 반환받는다.
-6. 이후 kube-apiserver는 authorization, admission controller 단계를 거쳐 요청에 대한 응답을 수행한다.
+5. kube-apiserver은 aws-iam-authenticator(webhook token authenticator)에 TokenReview API를 요청한다. aws-iam-authenticator는 token에 대한 사용자 정보 확인을 위해 aws sts에 GetCallerIdentity를 요청한다. 이후 응답받은 aws 사용자 정보 기준으로 매핑된 k8s 사용자 정보를 확인한다(예를 들어 access entry를 통해).
+6. kube-apiserver는 k8s 사용자 정보를 기준으로 authorization, admission controller 단계를 거쳐 요청에 대한 응답을 수행한다.
 
 아래는 eks cluster에 대해 token을 직접 발급받고 요청을 수행하는 예시다.
 ``` sh
