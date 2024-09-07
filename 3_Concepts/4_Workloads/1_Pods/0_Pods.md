@@ -16,8 +16,9 @@ k8s cluster에서 po는 두 가지 주요 목적을 위해 사용한다.
 - Pods that run a single container: "one-container-per-Pod" 모델은 k8s에서 가장 일반적으로 사용한다. 이 케이스에서는 po를 단일 containwr에 대한 wrapper라고 생각할 수 있다. k8s는 container를 직접 관리하기 보다는 po를 관리한다.
 - Pods that run multiple containers that need to work together: po는 단단히 결합되어 있고 리소스를 공유해야 하는 여러 [multiple co-located containers](https://kubernetes.io/docs/concepts/workloads/pods/#how-pods-manage-multiple-containers)로 구성된 애프리케이션을 캡슐화할 수 있다. These co-located containers form a single cohesive unit.
 
-일반적인 패턴은 아니며 container 간 결합성이 높은 경우에만 사용해야 한다.
-You don't need to run multiple containers to provide replication (for resilience or capacity); if you need multiple replicas, see [Workload management](https://kubernetes.io/docs/concepts/workloads/controllers/).
+  일반적인 패턴은 아니며 container 간 결합성이 높은 경우에만 사용해야 한다.
+  
+  You don't need to run multiple containers to provide replication (for resilience or capacity); if you need multiple replicas, see [Workload management](https://kubernetes.io/docs/concepts/workloads/controllers/).
 
 ## Using Pods
 보통 po는 직접 생성하지 않고 workload resource를 사용한다.
@@ -26,6 +27,8 @@ You don't need to run multiple containers to provide replication (for resilience
 보통 po는 싱글톤이더라도 직접 생성 및 관리하지 않는다. 대신 deploy, job 또는 po가 상태를 추적해야할 경우 sts를 사용해 생성 및 관리한다.
 
 각 po는 애플리케이션의 단일 인스턴스를 실행한다. 만약 애플리케이션을 수평 확장하길 원하는 경우 여러 po를 실행해야 한다. k8s에서는 이를 replication이라고 부른다. replicated po는 보통 workload resource, controller가 그룹 단위로 생성, 관리한다.
+
+기본적으로 po는 po를 구성하는 container에 두 종류의 공유 리소스(netwokring, storage)를 제공한다.
 
 ## Working with Pods
 k8s 환경에서는 싱글톤 po라도 직접 생성할 일은 거의 없다. 이는 po가 일시적이고 일회용의 목적으로 설계되었기 때문이다.
