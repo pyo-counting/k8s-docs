@@ -1,9 +1,8 @@
 ephemeral volume은 po의 라이프사이클과 동일하다. 그렇기 때문에 pv의 이용 가능성 여부와 상관없이 po는 중지, 실행될 수 있다. ephemeral volume는 po의 .spec에서 inline으로 정의된다.
 
 ## Types of ephemeral volumes
-k8s는 다양한 목적을 위해 여러 ephemeral volume을 지원한다:
-
-- emptyDir: po가 시작될 때 빈 상태로 시작되며 로컬 kubelet base 디렉토리(보통 루트 디스크) 또는 메모리로 제공된다.
+k8s는 다양한 목적을 위해 여러 ephemeral volume을 지원한다.
+- emptyDir: po가 시작될 때 빈 상태로 시작되며 로컬 kubelet base 디렉토리(보통 root 디스크) 또는 메모리로 제공된다.
 - configMap, downwardAPI, secret: k8s의 각 resource의 데이터를 po에 주입한다.
 - CSI ephemeral volume: 위 설명된 volume 들과 비슷하지만. 이를 지원하는 CSI 드라이버에 의해서만 제공될 수 있다.
 - generic ephemeral volume: pv를 지원하는 모든 스토리지 드라이버가 제공할 수 있다(po의 .spec.volumes[*]에서 pvc를 명시해서 사용).

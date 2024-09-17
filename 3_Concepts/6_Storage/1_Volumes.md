@@ -5,7 +5,7 @@ k8s는 다양한 유형의 volume 타입 지원한다. po는 여러 volume 타�
 
 volume의 핵심은 데이터를 포함하는 디렉토리로써 po 내 container에서 접근할 수 있다는 것이다. How that directory comes to be, the medium that backs it, and the contents of it are determined by the particular volume type used.
 
-po를 위해 사용할 volume은 .spec.volumes에 정의하며 container에 volume을 mount하기위해 .spec.containers[*].volumeMounts를 설정한다. container 내 프로세스는 container image의 내용과 container에 마운트된 volume으로 구성된 파일시스템 뷰를 본다. volume은 image 내 지정된 경로에 마운트된다. po 내에 정의된 각 container마다 container가 사용하는 volume의 마운트 위치를 각각 지정해야 한다.
+po를 위해 사용할 volume은 `.spec.volumes`에 정의하며 container에 volume을 mount하기위해 `.spec.containers[*].volumeMounts`를 설정한다. container 내 프로세스는 container image의 내용과 container에 마운트된 volume으로 구성된 파일시스템 뷰를 본다. volume은 image 내 지정된 경로에 마운트된다. po 내에 정의된 각 container마다 container가 사용하는 volume의 마운트 위치를 각각 지정해야 한다.
 
 volume은 다른 volume 내에 마운트될 수 없다. 또한 volume은 다른 volume 내 content에 대한 hard link를 포함할 수 없다.
 
@@ -18,15 +18,14 @@ k8s는 몇 가지 종류의 volume 타입을 지원한다.
 
 ### azureFile (deprecated)
 
-### cephfs
+### cephfs (deprecated)
 
 ### cinder (deprecated)
 
 ### configMap
-cm은 설정과 관련된 데이터를 po내 주입(inject)하는 방법을 제공한다. cm에 저장된 데이터는 configMap 타입의 volume에서 참조되고 po내 실행되는 container에서 접근할 수 있다.
+cm은 설정과 관련된 데이터를 po내 주입(inject)하는 방법을 제공한다(`.spec.volumes[*].configMap`). cm에 저장된 데이터는 configMap 타입의 volume에서 참조되고 po내 실행되는 container에서 접근할 수 있다.
 
 아래는 예시다:
-
 ``` yaml
 apiVersion: v1
 kind: Pod
@@ -50,26 +49,33 @@ spec:
 
 위에서 log-config cm의 log_level key를 갖는 데이터가 test container 내 /etc/config 위치에 config-vol 파일로 마운트된다.
 
-**Note**:
-- volume 사용 이전에 cm을 먼저 생성해야 한다.
-- cm을 subPath volume으로 사용할 때 cm에 대한 업데이트가 반영되지 않는다.
-- 텍스트 데이터는 UTF-8 인코딩을 사용한 파일로 저장된다. 다른 문자 인코딩의 경우 binaryData를 이용해야 한다.
+> **Note**:  
+> - volume 사용 이전에 cm을 먼저 생성해야 한다.
+> - cm은 항상 `readOnly`로 마운트된다.
+> - cm을 subPath volume(`.spec.containers[*].volumeMounts[*].subPath`)으로 사용할 때 cm에 대한 업데이트가 반영되지 않는다.
+> - 텍스트 데이터는 UTF-8 인코딩을 사용한 파일로 저장된다. 다른 문자 인코딩의 경우 `.binaryData` 필드를 이용해야 한다.
 
 ### downwardAPI
 downwardAPI volume을 사용하면 downwardAPI 데이터를 애플리케이션에서 사용할 수 있다. volume에 노출된 데이터를 일반 텍스트 형식의 읽기 전용 파일로 사용할 수 있다.
 
-**Note**: downward API를 subpath volume으로 사용할 때 업데이트가 반영되지 않는다.
+> **Note**:  
+> downward API를 subpath volume으로 사용할 때 업데이트가 반영되지 않는다.
 
 ### emptyDir
-emptyDir volume은 po가 no에 할당될 때 처음 생성되며, po가 실행되는 동안에만 존재한다. emptyDir volume은 초기에 비어있다. po의 모든 container는 emptyDir volume을 마운트해 해당 volume에 존재하는 파일에 대해 모두 읽기/쓰기가 가능하다. po가 해당 no에서 삭제된다면 데이터 역시 모두 삭제된다.
+emptyDir volume은 po가 no에 할당될 때 처음 생성되며, po가 실행되는 동안에만 존재한다(`.spec.volumes[*].emptyDir`). emptyDir volume은 초기에 비어있다. po의 모든 container는 emptyDir volume을 마운트해 해당 volume에 존재하는 파일에 대해 모두 읽기/쓰기가 가능하다. po가 해당 no에서 삭제된다면 데이터 역시 모두 삭제된다.
 
-**Note**: container가 crash 될 때 po는 no에서 삭제되지 않는다. 그렇기 때문에 container crash로부터 emptyDir volume의 데이터는 안전하다.
+> **Note**:  
+> container가 crash 될 때 po는 no에서 삭제되지 않는다. 그렇기 때문에 container crash로부터 emptyDir volume의 데이터는 안전하다.
 
-emptyDir.medium 필드를 통해 emptyDir volume이 저장될 위치를 지정한다. 기본적으로 no의 환경에 따라 디스크, SSD, 네트워크 스토리지 등이 될 수 있다. emptyDir.medium 필드를 "Memory"로 설정하면 k8s는 tmpfs(RAM 기반 파일시스템)를 사용한다. tmpfs는 매우 빠르지만 디스크와 달리 no 재부팅 시 지워지고 쓰기 파일은 container memory limit에 영향을 받는다.
+`.spec.volumes[*].emptyDir.medium` 필드를 통해 emptyDir volume이 저장될 위치를 지정한다. 기본적으로 no의 환경에 따라 디스크, SSD, 네트워크 스토리지 등이 될 수 있다. 사용자가 필드를 명시해 "Memory"로 값을 사용할 경우 k8s는 tmpfs(RAM 기반 파일시스템)를 사용한다. tmpfs는 매우 빠르지만 디스크와 달리 no 재부팅 시 지워지고 쓰기 파일은 container memory limit에 영향을 받는다.
 
-기본 medium에 대해서는 크기를 제한해 emptyDir volume의 용량을 제한할 수 있다. 만약 다른 소스(예를 들어 로그 파일)에 의해 용량이 채워지면 emptyDir의 크기 제한 이전에 용량이 부족해질 수도 있다.
+기본 medium에 대해서는 크기를 제한해 emptyDir volume의 용량을 제한할 수 있다. 용량은 [node ephemeral stsorage](https://v1-30.docs.kubernetes.io/docs/concepts/configuration/manage-resources-containers/#setting-requests-and-limits-for-local-ephemeral-storage)로부터 할당받는다. 만약 다른 소스(예를 들어 로그 파일)에 의해 용량이 채워지면 emptyDir의 크기 제한 이전에 용량이 부족해질 수도 있다.
 
-**Note**: SizeMemoryBackedVolumes feature gate가 활성화되면 memory 기반 volume에 대해 크기를 지정할 수 있다. 크기를 지정하지 않으면 리눅스 호스트 메모리의 50%로 조정된다.
+> **Note**:  
+> SizeMemoryBackedVolumes feature gate가 활성화(k8s 1.22부터 기본 활성화)되면 memory 기반 volume에 대해 크기를 지정할 수 있다. 크기를 지정하지 않으면 no allocatable 메모리 크기가 사용된다.
+
+> **Caution**:  
+> 메모리 emptyDir 사용과 관련해 [Considerations for memory backed emptyDir volumes](https://v1-30.docs.kubernetes.io/docs/concepts/storage/volumes/#downwardapi)을 참고한다.
 
 ``` yaml
 apiVersion: v1
@@ -98,19 +104,25 @@ spec:
 ### glusterfs (removed)
 
 ### hostPath
-**Warning**: hostPath volume에는 많은 보안 결함이 있기 때문에 가능하면 사용하지 않는 것이 좋다. hostPath volume을 사용해야 하는 경우 ReadOnly로 마운트하는 것을 권장한다.
+hostPath volume은 no의 파일시스템에 존재하는 파일 또는 디렉토리를 po에 마운트한다(`.spec.volumes[*].hostpath`). 대부분의 po에서는 필요하지 않지만 일부 애플리케이션에 대해 powerful escape hatch를 제공할 수 있다.
 
-AdmissionPolicy를 사용해 특정 디렉토리의 hostPath 접근을 제한하는 경우, readOnly 마운트를 사용하는 정책이 유효하기 위해 volumeMounts 필드가 반드시 지정되어야 한다.
-
-hostPath volume은 no의 파일시스템에 존재하는 파일 또는 디렉토리를 po에 마운트한다. 대부분의 po에서는 필요하지 않지만 일부 애플리케이션에 대해 powerful escape hatch를 제공할 수 있다.
+> **Warning**:  
+> hostPath volume에는 많은 보안 결함이 있기 때문에 가능하면 사용하지 않는 것이 좋다. 대신 [local PersistentVolume](https://v1-30.docs.kubernetes.io/docs/concepts/storage/volumes/#local)을 사용하는 것을 권장한다.
+> 
+> If you are restricting access to specific directories on the node using admission-time validation, that restriction is only effective when you additionally require that any mounts of that hostPath volume are read only. If you allow a read-write mount of any host path by an untrusted Pod, the containers in that Pod may be able to subvert the read-write host mount.
+> 
+> Take care when using hostPath volumes, whether these are mounted as read-only or as read-write, because:
+> 
+> - Access to the host filesystem can expose privileged system credentials (such as for the kubelet) or privileged APIs (such as the container runtime socket), that can be used for container escape or to attack other parts of the cluster.
+> - Pods with identical configuration (such as created from a PodTemplate) may behave differently on different nodes due to different files on the nodes.
+> - hostPath volume usage is not treated as ephemeral storage usage. You need to monitor the disk usage by yourself because excessive hostPath disk usage will lead to disk pressure on the node.
 
 아래는 예시다:
+- running a container that needs access to node-level system components (such as a container that transfers system logs to a central location, accessing those logs using a read-only mount of /var/log)
+- making a configuration file stored on the host system available read-only to a static pod; unlike normal Pods, static Pods cannot access ConfigMaps
 
-- Docker에 대한 접근이 필요한 경우 no의 /var/lib/docker를 마운트
-- cAdvisor를 실행하기 위해 no의 /sys를 마운트
 
-path 필드외 type 필드를 지정할 수 있다. type 필드에 대해 가능한 값은 아래와 같다:
-
+type 필드를 지정할 수 있다. type 필드에 대해 가능한 값은 아래와 같다.
 | Value             | Behavior                                                                                                                                                               |   |   |   |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|---|
 |                   | Empty string (default) is for backward compatibility, which means that no checks will be performed before mounting the hostPath volume.                                |   |   |   |

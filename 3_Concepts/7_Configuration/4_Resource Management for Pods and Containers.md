@@ -10,8 +10,7 @@ Limits can be implemented either reactively (the system intervenes once it sees 
 **Note**: 리소스에 대한 `request`를 지정하지 않고 `limit`만 지정하는 경우, 리소스에 대한 `request` 기본 값을 설정하는 admission이 없는 경우 k8s는 `limit` 값을 `request` 값으로 사용한다.
 
 ## Resource types
-CPU, 메모리는 각각의 리소스 타입이다. 리소스 타입은 기본 단위룰 갖는다. 
-리눅스의 경우 huge page 리소스를 명시할 수 있다. huge page는 kernel이 기본 page 크기 보다 훨씬 큰 메모리 블록을 할당하는 리눅스 관련 기능이다.
+CPU, 메모리는 각각의 리소스 타입이다. 리소스 타입은 기본 단위룰 갖는다. 리눅스의 경우 huge page 리소스를 명시할 수 있다. huge page는 kernel이 기본 page 크기 보다 훨씬 큰 메모리 블록을 할당하는 리눅스 관련 기능이다.
 
 예를 들어, 기본 page 크기가 4KiB인 시스템에서, `hugepages-2Mi: 80Mi` 제한을 설정할 수 있다. container가 40개를 초과하는 2MiB huge page(총 80BiM)를 할당하려고 하면 해당 할당은 실패한다.
 

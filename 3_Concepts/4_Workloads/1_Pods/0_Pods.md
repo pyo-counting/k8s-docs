@@ -41,7 +41,7 @@ po의 이름은 [DNS subdomanin](https://kubernetes.io/docs/concepts/overview/wo
 ### Pod OS
 po가 실행될 OS를 지정하기 위해 po의 `.spec.os.name` 필드를 `windows` 또는 `linux`를 설정해야 한다. 현재는 두 값만 지원한다.
 
-k8s v1.30에서 이 값은 po의 스케줄링에 영향을 미치지는 않는다. Setting the .spec.os.name helps to identify the pod OS authoritatively and is used for validation. kubelet이 실행 중인 no의 OS와 동일하지 않는 값일 경우 kubelet은 po 실행을 거부한다. 그리고 [Pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)도 관련 없는 OS에 대한 policy를 제한하는 것을 피한다.
+k8s v1.30에서 이 값은 po의 스케줄링에 영향을 미치지는 않는다. In any cluster where there is more than one operating system for running nodes, you should set the kubernetes.io/os label correctly on each node, and define pods with a nodeSelector based on the operating system label. The kube-scheduler assigns your pod to a node based on other criteria and may or may not succeed in picking a suitable node placement where the node OS is right for the containers in that Pod. The Pod security standards also use this field to avoid enforcing policies that aren't relevant to the operating system.
 
 ### Pods and controllers
 여러 po 생성 및 관리를 위해 workload resource를 사용할 수 있다. resource의 controller는 po의 replication, roll out, 실패 상황에서의 치유를 처리한다. 예를 들어 no가 실패되면 controller가 해당 no의 po 동작이 멈춤을 인지하고 대체 po를 생성한다. 그리고 scheduler는 정상 no에 대체 po를 스케쥴링한다.
@@ -98,16 +98,15 @@ po에 shared storage volume을 명시할 수 있다. po의 모든 container는 s
 
 container의 hostname은 po의 이름으로 설정된다.
 
-## Privileged mode for containers
-> **Note**:  
-> container runtime에서 privileged container 개념을 지원해야 한다.
+## Pod security settings 
+po, container에 보안을 위한 제한 사항을 설정하기 위해 `.spec.securityContext`, `.spec.containers[].securityContext` 필드를 사용할 수 있다. 예를 들어
+- Drop specific Linux capabilities to avoid the impact of a CVE.
+- Force all processes in the Pod to run as a non-root user or as a specific user or group ID.
+- Set a specific seccomp profile.
+- Set Windows security options, such as whether containers run as HostProcess.
 
-linux, windows 환경에서 container에 privileged 옵션을 사용해 privileged mode를 사용할 수 있다.
-
-### Linux privileged containers
-linux에서 po 내 container는 [security context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) 내 `privileged` flag를 사용해 privileged mode를 활성화 할 수 있다. 이는 하드웨어 장치, network stack에 대한 조작과 같은 OS 관리 기능을 사용하려는 container에 유용하다.
-
-### Windows privileged containers
+> **Caution**:  
+> You can also use the Pod securityContext to enable privileged mode in Linux containers. Privileged mode overrides many of the other security settings in the securityContext. Avoid using this setting unless you can't grant the equivalent permissions by using other fields in the securityContext. In Kubernetes 1.26 and later, you can run Windows containers in a similarly privileged mode by setting the windowsOptions.hostProcess flag on the security context of the Pod spec. For details and instructions, see Create a Windows HostProcess Pod.
 
 ## Static Pods
 static po는 kube-apiserver의 관찰 없이 특정 no의 kubelet daemon에 의해 관리된다. deploy와 같이 대부분의 po는 control plane에 의해 관리되는 반면 static po는 kubelet이 직접 관리한다.
@@ -117,7 +116,7 @@ static po는 항상 특정 node의 kubelet에 한정된다. static po의 주된 
 kubelet은 각 static po에 대해 kube-apiserver에 mirror po(kubelet에 의해 관리되는 static po를 추적하는 object)를 자동으로 생성한다. 이는 no에 실행되는 po가 kube-apiserver에서 볼 수 있음을 의미하지만 kube-apiserver를 통해 제어는 하지 못한다. 자세한 내용은 [Create static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)를 참고한다.
 
 > **Note**:  
-> static po의 .spec에서는 다른 API object를 참조할 수 없다(예를 들어 sa, cm, secret 등).
+> static po의 `.spec`에서는 다른 API object를 참조할 수 없다(예를 들어 sa, cm, secret 등).
 
 ## Pods with multiple containers
 po는 여러 container를 지원하도록 설계됐다. po 내 container는 cluster의 동일 no에 스케줄링된다. po 내 container는 리소스, 종속성을 공유하고 서로 통신할 수 있다.
@@ -130,9 +129,9 @@ Pods in a Kubernetes cluster are used in two main ways:
 
 ![](https://kubernetes.io/images/docs/pod.svg)
 
-Some Pods have init containers as well as app containers. By default, init containers run and complete before the app containers are started.
+일부 po는 애플리케이션 container 뿐만 아니라 init container를 갖는다. 기본적으로 init container는 애플리케이션 container가 시작되기 전에 실행이 완료된다.
 
-You can also have sidecar containers that provide auxiliary services to the main application Pod (for example: a service mesh).
+뿐만 아니라 보조 역할을 수행하는 [sidecar container](https://v1-30.docs.kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)를 가질 수도 있다.
 
 Enabled by default, the SidecarContainers feature gate allows you to specify restartPolicy: Always for init containers. Setting the Always restart policy ensures that the containers where you set it are treated as sidecars that are kept running during the entire lifetime of the Pod. Containers that you explicitly define as sidecar containers start up before the main application Pod and remain running until the Pod is shut down.
 

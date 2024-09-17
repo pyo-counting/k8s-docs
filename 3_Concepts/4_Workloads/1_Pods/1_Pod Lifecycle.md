@@ -85,7 +85,12 @@ container는 세 가지 state를 갖는다.
 ## Container restart policy
 po의 spec에는 restartPolicy 필드가 있다. Always, OnFailure, Never 값을 가질 수 있으며 기본값은 Always다.
 
-restartPolicy는 po 내 모든 container에 적용된다. container가 종료된 후 exponential back-off 지연(10s, 20s, 40s, ...최대 5분)을 갖고 재시작된다. container가 실행된 후 10분 간 문제가 없으면 kubelet은 container에 대한 restart backoff timer를 초기화한다.
+`.spec.restartPolicy`는 po 내 애플리케이션 container, init container에 적용된다. sidecar container는 po 레벨의 restartPolicy 필드를 무시한다. sidecar container는 init container 중 `.spec.initContainers[*].restartPolicy`가 Always인 container다. init container가 성공 종료하지 못한다면 po의 `.spec.restartPolicy`가 OnFailure, Always일 경우에만 재실행한다.
+- Always: Automatically restarts the container after any termination.
+- OnFailure: Only restarts the container if it exits with an error (non-zero exit status).
+- Never: Does not automatically restart the terminated container.
+
+container가 종료된 후 exponential back-off 지연(10s, 20s, 40s, ...최대 5분)을 갖고 재시작된다. container가 실행된 후 10분 간 문제가 없으면 kubelet은 container에 대한 restart backoff timer를 초기화한다.
 
 ### Pod conditions
 po는 PodStatus 오브젝트를 가지며 po의 통과 여부를 나타내는 .status.conditions[*] 필드(PodConditions 배열)를 가진다.
