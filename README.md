@@ -1,9 +1,10 @@
 ## about docs
-- v1.30 버전 기준 작성
+- v1.31 버전 기준 작성
 
 ## configure cluster
 ### general
-- k8s의 모든 구성 요소를 container로 관리하는 것을 권장한다. 하지만 container 실행을 담당하는 kubelet은 container로 실행할 수 없다. ([Getting started](https://kubernetes.io/docs/setup/))
+- k8s의 모든 구성 요소를 k8s cluster 내에서 container로 관리하는 것을 권장한다. 하지만 container 실행을 담당하는 kubelet은 container로 실행할 수 없다. ([Getting started](https://kubernetes.io/docs/setup/))
+- k8s의 control plane은 linux에서 실행되도록 디자인됐다. 물론 cluster 내에서 애플리케이션은 windows를 포함한 다른 os에서 실행할 수도 있다. ([Getting started](https://kubernetes.io/docs/setup/#what-s-next))
 - resource 마다 object naming 규칙에 대한 제약 사항이 더 많을 수도 있다. 가장 보수적으로 RFC 1035를 준수하는 것이 편하다. ([Object Names and IDs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names))
 - ns에 대해 `kube-` 접두사는 k8s 시스템을 위해 예약됐기 때문에 사용하지 않는다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/%2523working-with-namespaces))
 - ns의 이름을 사용해 cluster 내에서 domain을 생성하기 때문에 제한된 사용자만 ns를 만들 수 있도록 제한한다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#namespaces-and-dns))
@@ -23,7 +24,7 @@
 - kubelet, 사용자가 사용하는 kubeconfig 파일은 kubectl 명령어를 사용해 생성할 수 있다.
 
 ### control plane
-- control plane 구성 요소는 3개 이상(raft 알고리즘을 위해)의 failure zone에서 실행하는 것을 권장한다 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane))
+- control plane의 구성 요소 etcd는 3개 이상(raft 알고리즘을 위해)의 failure zone에서 실행하는 것을 권장한다. 이외 kube-controller-manager, cloud-controller-manager는 고가용성은 유지하지만 작업 충돌 방지를 위해 leader election 메커니즘을 사용한다. kube-apiserver는 load balancer 뒤에서 다중 운영이 가능하다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane))
 - control plane 구성 요소(예를 들어 kube-scheduler, kube-controller-manager)의 여러 replica는 kube-system ns에 저장된 lease object를 사용해 reader를 관리한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#leader-election))
 - kube-apiserver는 kube-system ns에 저장된 lease object를 통해 k8s 전체 시스템에 kube-apiserver에 대한 정보를 제공한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#api-server-identity))
 - encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
@@ -51,6 +52,7 @@
 - no당 최대 po 실행 갯수는 110개 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/))
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
 - no 모니터링을 위한 node problem detector 설치 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
+- dns 서비스 오토스케일링 고려 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
 - kublet과 container runtime 모두 control group을 통해 po, container에 대한 리소스 관리를 수행한다. control group은 cgroup driver를 통해 사용하며 kubelet과 container runtime이 동일한 cgroup driver를 사용하는 것이 중요하다 ([Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cgroup-drivers))
 - no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))

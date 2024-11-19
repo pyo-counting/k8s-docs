@@ -7,3 +7,6 @@ kube-apiserver, kube-proxy와 같은 일부 [Kubernetes components](https://kube
 ## Learning environment
 
 ## Production environment
+
+## What's next
+k8s의 control plane은 linux에서 실행되도록 디자인됐다. 물론 cluster 내에서 애플리케이션은 windows를 포함한 다른 os에서 실행할 수도 있다.
