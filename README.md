@@ -5,10 +5,11 @@
 ### general
 - k8s의 모든 구성 요소를 k8s cluster 내에서 container로 관리하는 것을 권장한다. 하지만 container 실행을 담당하는 kubelet은 container로 실행할 수 없다. ([Getting started](https://kubernetes.io/docs/setup/))
 - k8s의 control plane은 linux에서 실행되도록 디자인됐다. 물론 cluster 내에서 애플리케이션은 windows를 포함한 다른 os에서 실행할 수도 있다. ([Getting started](https://kubernetes.io/docs/setup/#what-s-next))
+- ns의 limit, hierarchical limit을 고려한다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#set-limits-on-workload-resources))
+
 - resource 마다 object naming 규칙에 대한 제약 사항이 더 많을 수도 있다. 가장 보수적으로 RFC 1035를 준수하는 것이 편하다. ([Object Names and IDs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names))
 - ns에 대해 `kube-` 접두사는 k8s 시스템을 위해 예약됐기 때문에 사용하지 않는다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/%2523working-with-namespaces))
 - ns의 이름을 사용해 cluster 내에서 domain을 생성하기 때문에 제한된 사용자만 ns를 만들 수 있도록 제한한다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#namespaces-and-dns))
-- ns의 limit, hierarchical limit을 고려한다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#set-limits-on-workload-resources))
 - `kubernetes.io/`, `k8s.io/` 접두사는 k8s core system에서 사용되도록 예약됐다. ([Annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set))
 - owner reference는 k8s resource 간의 종속 관계를 나타낸다. k8s는 object 삭제 시 label이 아닌 owner reference를 사용해 종속 관계에 대한 cascading deletion(background 또는 foreground)을 수행한다 ([Owners and Dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/))
 - default ns의 kubernetes svc는 kube-apiserver의 HTTPS 엔드포인트로 redirect(kube-proxy가 수행)되는 virtual ip로 구성되어 있다. ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#node-to-control-plane))
@@ -24,7 +25,10 @@
 - kubelet, 사용자가 사용하는 kubeconfig 파일은 kubectl 명령어를 사용해 생성할 수 있다.
 
 ### control plane
-- control plane의 구성 요소 etcd는 3개 이상(raft 알고리즘을 위해)의 failure zone에서 실행하는 것을 권장한다. 이외 kube-controller-manager, cloud-controller-manager는 고가용성은 유지하지만 작업 충돌 방지를 위해 leader election 메커니즘을 사용한다. kube-apiserver는 load balancer 뒤에서 다중 운영이 가능하다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane))
+- control plane의 구성 요소 etcd는 3개 이상(raft 알고리즘을 위해)의 failure zone에서 실행하는 것을 권장한다. 이외 kube-controller-manager, cloud-controller-manager, kube-scheduler는 고가용성은 유지하지만 작업 충돌 방지를 위해 leader election 메커니즘을 사용하며 동일하게 3개 이상의 failure zone에서 실행하는 것은 권장한다. kube-apiserver는 load balancer 뒤에서 다중 운영이 가능하다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane), [Running in multiple zones](https://kubernetes.io/docs/setup/best-practices/multiple-zones/#control-plane-behavior))
+- 대규모 cluster의 경우 Event object 저장을 위한 별도의 etcd를 운영을 고려한다. ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/#etcd-storage))
+- 
+
 - control plane 구성 요소(예를 들어 kube-scheduler, kube-controller-manager)의 여러 replica는 kube-system ns에 저장된 lease object를 사용해 reader를 관리한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#leader-election))
 - kube-apiserver는 kube-system ns에 저장된 lease object를 통해 k8s 전체 시스템에 kube-apiserver에 대한 정보를 제공한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#api-server-identity))
 - encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
@@ -49,12 +53,14 @@
     - node authorizor에 의해 인증되기 위해 kubelet은 system `system:node:<nodeName>` 사용자, `system:nodes` 그룹에 대한 credentials을 사용해야 한다. 해당 사용자, 그룹 형식은 [kubelet TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)을 통해 생성된 kubelet의 identity와 일치한다. ([Using Node Authorization](https://kubernetes.io/docs/reference/access-authn-authz/node/))
 
 ### node
+- no 모니터링을 위한 node problem detector 설치 고려 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
+- 리눅스에서 프로세스에 할당된 리소스를 제한하기 위해 control groups를 사용한다. kublet과 container runtime 모두 control group을 통해 po, container에 대한 리소스 관리를 수행하고 cpu/memory request, limit을 설정한다. control group을 사용하기 위해 kublet과 container runtime은 cgroup driver를 사용해야 한다. kublet과 container runtime이 동일한 cgroup driver를 사용하고 동일하게 구성되는 것이 중요하다. ([Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cgroup-drivers))
+- container runtime으로 containerd를 사용하는 경우 설정 파일에서 sandbox image를 변경할 수 있다. ([Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#override-pause-image-containerd))
 - no당 최대 po 실행 갯수는 110개 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/))
+- no가 시작되면 각 no의 kubelet은 no object에 zone과 관련된 label(`topology.kubernetes.io/region`, `topology.kubernetes.io/zone`)을 추가한다.
+
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
-- no 모니터링을 위한 node problem detector 설치 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
-- dns 서비스 오토스케일링 고려 ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-worker-nodes))
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
-- kublet과 container runtime 모두 control group을 통해 po, container에 대한 리소스 관리를 수행한다. control group은 cgroup driver를 통해 사용하며 kubelet과 container runtime이 동일한 cgroup driver를 사용하는 것이 중요하다 ([Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cgroup-drivers))
 - no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
 - kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다. control plane 구성 요소의 경우 아직은 flag를 이용한 설정을 사용하는 것 같다.
 - kubelet에서 container runtime에 접근하기 위한 endpoint 설정 고려 ([Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/#api))
@@ -66,8 +72,9 @@
 - kubelet의 client certificate rotation은 `.rotateCertificates` 필드, server certificate 요청 및 rotation은 `.serverTLSBootstrap` 필드 사용([TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#certificate-rotation))
 
 ### addon
-- addon의 기본 limit은 일반적으로 작은 크기의 cluster에서의 경험을 통해 수집한 데이터를 기반으로 하기 때문에 조정 필요 ([Addon resources](https://kubernetes.io/docs/setup/best-practices/cluster-large/#addon-resources))
-- cluster의 사이즈가 커짐에 따라 자동으로 addon의 스케일링을 위해 addon resizer 고려 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/#what-s-next))
+- addon의 기본 limit은 일반적으로 작은 크기의 cluster에서의 경험을 통해 수집한 데이터를 기반으로 하기 때문에 조정 필요 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/#addon-resources))
+- cluster의 사이즈가 커짐에 po의 resource 증량이 필요할 수 있으며, vpa의 recommender mode를 이용해 리소스의 제안 용량을 확인한다. ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/#addon-resources))
+
 - k8s object의 status를 노출하는 kube-state-metrics 설치 고려 ([Metrics for Kubernetes Object States](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/))
 
 ## 요약

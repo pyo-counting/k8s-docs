@@ -1,4 +1,4 @@
-클러스터는 k8s agent를 실행하는 no 집합이며 control plane이 관리한다. k8s v1.29는 최대 5,000개의 no로 구성된 cluster를 지원한다. 상세하게 k8s는 아래 규모를 지원한다.
+클러스터는 k8s agent를 실행하는 no 집합이며 control plane이 관리한다. k8s v1.31는 최대 5,000개의 no로 구성된 cluster를 지원한다. 상세하게 k8s는 아래 규모를 지원한다.
 - no 당 최대 110 po
 - 총 no의 수는 5,000개
 - 총 po의 수는 150,000개
@@ -32,7 +32,7 @@ fault-tolerance을 제공하기 위해 failure zone 별로 적어도 하나의 i
 대규모 cluster의 성능을 향상시키기 위해 Event object를 별도의 etcd 전용 instance에 저장할 수 있다.
 
 cluster를 생성할 때 custom을 수행하면된다.
-- 추가 etcd instancen을 실행 및 설정
+- 추가 etcd instance을 실행 및 설정
 - kube-apiserver가 해당 etcd에 event object를 저장할 수 있도록 설정
 
 추가 내용은 [Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/), [Set up a High Availability etcd cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/setup-ha-etcd-with-kubeadm/)을 참고한다.

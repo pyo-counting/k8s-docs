@@ -3,7 +3,7 @@
 
 각 no에서 po가 실행될 수 있도록 container runtime이 설치되어야 한다.
 
-k8s 1.30에서는 CRI(Container Runtime Interface)를 따르는 runtime을 사용해야 한다.
+k8s 1.31에서는 CRI(Container Runtime Interface)를 따르는 runtime을 사용해야 한다.
 
 이 페이지에서는 k8s에서 사용할 수 있는 몇몇 container runtime에 대해 설명한다.
 - containerd
@@ -74,11 +74,11 @@ cgroupDriver: systemd
 > **Note**:  
 > Starting with v1.22 and later, when creating a cluster with kubeadm, if the user does not set the cgroupDriver field under KubeletConfiguration, kubeadm defaults it to systemd.
 
-k8s v1.28에서 KubeletCgroupDriverFromCRI feature gate가 활성화되고 RuntimeConfig CRI RPC를 지원하는 container runtime에 대해서는 kubelet이 적절한 cgroupDriver를 자동으로 감지하고 설정 파일 내 값을 무시한다.
-
 kubelet에 대해 systemd를 cgroup driver로 설정한 경우 container runtime에 대해서도 cgroup driver를 systemd를 사용하도록 설정해야 한다. 자세한 내용은 아래를 참고한다.
 - containerd
 - CRI-O
+
+k8s v1.31에서 KubeletCgroupDriverFromCRI feature gate가 활성화되고 RuntimeConfig CRI RPC를 지원하는 container runtime에 대해서는 kubelet이 적절한 cgroupDriver를 자동으로 감지하고 설정 파일 내 값을 무시한다.
 
 > **Caution**:  
 > Changing the cgroup driver of a Node that has joined a cluster is a sensitive operation. If the kubelet has created Pods using the semantics of one cgroup driver, changing the container runtime to another cgroup driver can cause errors when trying to re-create the Pod sandbox for such existing Pods. Restarting the kubelet may not solve such errors.
