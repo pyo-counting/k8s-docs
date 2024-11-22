@@ -6,7 +6,7 @@
 - k8s의 모든 구성 요소를 k8s cluster 내에서 container로 관리하는 것을 권장한다. 하지만 container 실행을 담당하는 kubelet은 container로 실행할 수 없다. ([Getting started](https://kubernetes.io/docs/setup/))
 - k8s의 control plane은 linux에서 실행되도록 디자인됐다. 물론 cluster 내에서 애플리케이션은 windows를 포함한 다른 os에서 실행할 수도 있다. ([Getting started](https://kubernetes.io/docs/setup/#what-s-next))
 - ns의 limit, hierarchical limit을 고려한다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#set-limits-on-workload-resources))
-
+- k8s는 내부적으로 유저 인증 정보를 저장하지 않는다. 대부분의 웹 서비스나 인증 서버들은 사용자 정보를 내부적으로 저장하여 사용자로부터 인증 정보를 전달 받았을 때 저장된 정보를 바탕으로 인증을 처리한(예를 들어 웹 사이트에서 계정과 비밀번호를 입력 받아 유저DB를 조회하여 사용자 인증을 처리). k8s는 이와 다르게 따로 인증 정보를 저장하지 않고 외부 인증 시스템에서 제공해주는 신원 확인 기능들을 활용하여 사용자 인증을 하고 유저를 인식(identify)한다. 이러한 특징으로 인해 k8s에서는 쉽게 인증체계를 확장할 수 있다. k8s 내부 인증체계에 종속되는 부분이 거의 없기 때문이다. k8s는 사용자 인증체계를 전부 외부 시스템 (혹은 메커니즘)에 의존한다고 볼 수 있다. (X.509, HTTP Auth, Proxy Authentication 등) ([PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/))
 - resource 마다 object naming 규칙에 대한 제약 사항이 더 많을 수도 있다. 가장 보수적으로 RFC 1035를 준수하는 것이 편하다. ([Object Names and IDs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names))
 - ns에 대해 `kube-` 접두사는 k8s 시스템을 위해 예약됐기 때문에 사용하지 않는다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/%2523working-with-namespaces))
 - ns의 이름을 사용해 cluster 내에서 domain을 생성하기 때문에 제한된 사용자만 ns를 만들 수 있도록 제한한다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#namespaces-and-dns))
