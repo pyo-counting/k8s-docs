@@ -76,4 +76,4 @@ kubectl 도구는 --validate flag를 사용해 field validation level을 설정�
 - Warn: field validation가 수행되지만 오류는 요청 실패 대신 경고로 표시됨
 - Ignore: 서버 측 field validation가 수행되지 않음
 
-kubectl이 field validation를 지원하는 kube-apiserver에 연결할 수 없는 경우 클라이언트 측 field validation를 사용한다 k8s 1.27 이상 버전은 항상 field validation를 제공한다. 이전 k8s 버전은 제공하지 않을 수 있다. cluster가 v1.27보다 오래된 경우 해당 k8s 버전 문서를 확인한다.
+kubectl이 field validation를 지원하는 kube-apiserver에 연결할 수 없는 경우 클라이언트 측 field validation를 대신 사용한다. k8s 1.27 이상 버전은 항상 field validation를 제공한다. 이전 k8s 버전은 제공하지 않을 수 있다. cluster가 v1.27보다 오래된 경우 해당 k8s 버전 문서를 확인한다.

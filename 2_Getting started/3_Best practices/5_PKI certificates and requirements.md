@@ -5,27 +5,42 @@ k8s는 TLS를 통한 인증을 위해 PKI(Public Key Infrastructure) certificate
 
 ## How certificates are used by your cluster
 k8s는 아래 동작을 위해 PKI가 필요하다.
-- kubelet이 kube-apiserver에 인증하기 위한 client certificate
-- kube-apiserver가 kubelet에 인증하기 위한 kubelet server certificate
-- kube-apiserver의 endpoint를 위한 server certificate
-- cluster의 관리자가 kube-apiserver에 인증하기 위한 client certificate
-- kube-apiserver가 kubelet에 인증하기 위한 client certificate
-- kube-apiserver가 etcd에 인증하기 위한 client certificate
-- Client certificate/kubeconfig for the controller manager to talk to the API server
-- Client certificate/kubeconfig for the scheduler to talk to the API server.
-- [front-proxy](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/)를 위한 client, server certificate
+
+### Server certificates
+- kube-apiserver가 제공하는 API를 위한 server certificate
+- etcd server를 위한 server certificate
+- kubelet을 위한 [server certificate](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#client-and-serving-certificates)
+- (Optional) [front-proxy](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/)를 위한 server certificate
+
+### Client certificates
+- kube-apiserver에 인증을 위해 kubelet이 사용하는 client certificate
+- etcd에 인증을 위해 kube-apiserver가 사용하는 client certificate
+- kube-apiserver와 안정하게 통신하기 위해 kube-controller-manager가 사용하는 client certificate
+- kube-apiserver와 안전하게 통신하기 위해 kube-scheduler가 사용하는 client certificate
+- kube-apiserver에 인증을 위해 kube-proxy가 사용하는 client certificate
+- kube-apiserver에 인증을 위해 관리자가 사용하는 client certificate
+- (Optional) [front-proxy](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/)를 위한 client certificate
+
+### Kubelet's server and client certificates
+kube-apiserver가 kubelet과 안전하게 통신, 인증을 위해 client certificate와 key가 필요하다.
+
+아래 두 가지 방식을 사용해 certificate를 이용할 수 있다.
+- Shared Certificates: kube-apiserver는 client와 통신하기 위해 사용하는 server certificate를 동일하게 사용할 수 있다. 즉 `apiserver.cet`, `apiserver.key`를 kubelet과 통신하기 위해 client certificate로 사용할 수 있다.
+- Separate Certificates: 위 방법 대신 kube-apiserver는 kubelet과 통신하기 위한 별도의 client certificate를 사용할 수 있다. 즉 `kubelet-client.crt`, `kubelet-client.key`를 대신 사용할 수 있다.
 
 > **Note**:  
 > front-proxy certificate는 [an Extension API server](https://kubernetes.io/docs/tasks/extend-kubernetes/setup-extension-api-server/)를 사용할 경우에만 필요하다.
+
+etcd도 mutual TLS를 구현 및 사용한다.
 
 ## Where certificates are stored
 kubeadm을 사용해 k8s를 설치할 경우 대부분의 certificate는 `/etc/kubernetes/pki`에 저장된다. 해당 문서에서의 경로는 모두 해당 디렉토리의 상대경로다. 예외적으로 사용자를 위한 certificate는 `/etc/kubernetes`에 위치한다.
 
 ## Configure certificates manually
-kubeadm이 모든 certificate를 만드는 대신 직접 root CA를 생성하거나 필요한 모든 certificate를 직접 제공할 수 있다. CA 생성 방법은 [Certificates](https://kubernetes.io/docs/tasks/administer-cluster/certificates/)를 참고한다.
+kubeadm이 모든 certificate를 만드는 대신 단일 root CA를 이용해 직접 생성하거나 필요한 모든 certificate를 직접 제공할 수 있다. CA 생성 방법은 [Certificates](https://kubernetes.io/docs/tasks/administer-cluster/certificates/)를 참고한다.
 
 ### Single root CA
-관리자가 관리하는 단일 root CA를 생성할 수 있다. root CA는 intermediate CA를 생성할 수 있고 이후의 작업은 k8s에 위임할 수 있다.
+관리자가 직접 관리할 수 있는 단일 root CA를 생성할 수 있다. 이 root CA를 이용해 intermediate CA를 생성한 후, 이후의 작업은 k8s에 위임할 수 있다.
 
 필요 CA 목록:
 | path                   | Default CN                | description                    |
