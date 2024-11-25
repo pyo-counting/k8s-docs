@@ -5,7 +5,7 @@ cluster 내 각 object는 resource 유형 별로 고유한 name을 갖는다. �
 사용자가 설정할 수 있는 속성인 label, annotation도 있다.
 
 ## Names
-사용자는 resource URL에서 `/api/v1/pods/<name>`와 같이 object를 참조하는 문자열을 제공할 수 있다.
+사용자가 설정하는 name은 resource URL에서 `/api/v1/pods/<name>`와 같이 object를 참조하는 데 사용된다.
 
 resource 내에서 해당 name은 1개의 object만 가질 수 있다. 물론 해당 object를 삭제하고 동일한 이름을 갖는 새로운 object를 생성할 수 있다.
 

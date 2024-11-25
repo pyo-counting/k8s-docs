@@ -77,6 +77,11 @@ CA private key를 cluster에 복사하기 싫다면 직접 모든 certificate를
 | kube-apiserver-kubelet-client | kubernetes-ca             | system:masters | client         |                                                              |
 | front-proxy-client            | kubernetes-front-proxy-ca |                | client         |                                                              |
 
+> **Note**:  
+> Instead of using the super-user group system:masters for kube-apiserver-kubelet-client a less privileged group can be used. kubeadm uses the kubeadm:cluster-admins group for that purpose.
+
+
+
 ### Certificate paths
 
 ``` sh

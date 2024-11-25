@@ -7,14 +7,30 @@
 - k8s의 control plane은 linux에서 실행되도록 디자인됐다. 물론 cluster 내에서 애플리케이션은 windows를 포함한 다른 os에서 실행할 수도 있다. ([Getting started](https://kubernetes.io/docs/setup/#what-s-next))
 - ns의 limit, hierarchical limit을 고려한다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#set-limits-on-workload-resources))
 - k8s는 내부적으로 유저 인증 정보를 저장하지 않는다. 대부분의 웹 서비스나 인증 서버들은 사용자 정보를 내부적으로 저장하여 사용자로부터 인증 정보를 전달 받았을 때 저장된 정보를 바탕으로 인증을 처리한(예를 들어 웹 사이트에서 계정과 비밀번호를 입력 받아 유저DB를 조회하여 사용자 인증을 처리). k8s는 이와 다르게 따로 인증 정보를 저장하지 않고 외부 인증 시스템에서 제공해주는 신원 확인 기능들을 활용하여 사용자 인증을 하고 유저를 인식(identify)한다. 이러한 특징으로 인해 k8s에서는 쉽게 인증체계를 확장할 수 있다. k8s 내부 인증체계에 종속되는 부분이 거의 없기 때문이다. k8s는 사용자 인증체계를 전부 외부 시스템 (혹은 메커니즘)에 의존한다고 볼 수 있다. (X.509, HTTP Auth, Proxy Authentication 등) ([PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/))
-- k8s는 구성 요소간의 안전한 통신, 인증을 위해 PKI x.509 server, certificate 인증서를 사용한다.
-- k8s v1.25버전부터 kube-apiserver가 server side field validation을 제공한다. 이는 kubectl의 --validation flag와 동일한 기능을 수행한다.
+- k8s는 구성 요소간의 안전한 통신, 인증을 위해 PKI x.509 server, certificate 인증서를 사용한다. 기본적으로 kube-apiserver, etcd, front-proxy(옵션)를 위한 ica가 필요하다. ([PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/#configure-certificates-manually))
+- k8s v1.25버전부터 kube-apiserver가 server side field validation을 제공한다. 이는 kubectl의 --validation flag와 동일한 기능을 수행한다. ([Objects In Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/#server-side-field-validation))
+- 각 object는 resource 유형 별로 고유한 name을 갖는다. 또한 모든 k8s object는 cluster lifecycle 동안 고유한 UID를 갖는다. resource 내에서 동일한 name을 갖는 object가 존재할 수 없다. 물론 해당 object를 삭제하고 동일한 이름을 갖는 새로운 object를 생성할 수 있다(이 때 UUID는 다름). name은 동일한 resource에 대해 모든 API 버전(`.apiVersion` 필드)에서 유일해야 한다. API resource는 API group, resource type, namespace(namespaced resource일 경우)로 구분된다. 즉, API 버전은 상관이 없다. ([Object Names and IDs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names))
+- 사용자가 설정하는 name은 resource URL에서 `/api/v1/pods/<name>`와 같이 object를 참조하는 데 사용된다. 가장 보수적으로 RFC 1035를 준수하는 것이 편하다. resource 마다 object naming 규칙에 대한 제약 사항이 더 많을 수도 있다. ([Object Names and IDs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names))
+- label은 k8s에서 기본 중요 grouping으로 사용된다. label key는 /로 구분된 prefix(optional), name 형태로 구성된다. `kubernetes.io/`, `k8s.io/` 접두사는 k8s core system에서 사용되도록 예약됐다. ([Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set))
+- label selector는 2개의 타입(equality-based, set-based)을 지원(`kubectl get -l`)한다. ([Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors))
+- ns는 여러 사용자가 있는 환경에서 여러 resource의 분리를 위해 사용한다. ns와 quota를 resource 사용에 대한 정책을 관리할 수 있다. 운영 환경에서는 default ns를 사용하는 것을 권장하지 않는다.
+- k8s cluster에는 `default`, `kube-system`, `kube-node-lease`, `kube-public` 기본 ns가 존재한다. ns에 대해 `kube-` 접두사는 k8s 시스템을 위해 예약됐기 때문에 사용하지 않는다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/%2523working-with-namespaces))
+- svc 생성 시 ns의 이름을 사용해 cluster 내에서 domain을 생성한다(포맷은 `<service-name>.<namespace-name>.svc.cluster.local`). TLD와 동일한 이름을 갖는 ns의 경우 public TLD를 덮어쓸 수 있기 때문에 위험하다. 그렇기 때문에 제한된 사용자만 ns를 만들 수 있도록 제한한다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#namespaces-and-dns))
+- annotation key는 /로 구분된 prefix(optional), name 형태로 구성된다. `kubernetes.io/`, `k8s.io/` 접두사는 k8s core system에서 사용되도록 예약됐다. ([Annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set))
+- 각 resource의 필드 필터링을 위해 field selector를 사용(`kubectl get --field-selector`)할 수 있다. 모든 resource가 공통적으로 `metadata.name`, `metadata.namespace` 필드를 지원하며, resource 종류에 따라 지원하는 추가 필드가 다르다. ([Field Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/))
+- finalizer는 삭제 마킹된 resource를 완전히 삭제하기 전에 특정 조건이 충족될 때까지 대기하도록 k8s에 지시하는 namespaced key다. finalizer는 controller로 하여금 삭제된 object가 소유한 resource를 정리하도록 한다. resource를 삭제할 때 finalizer의 동작은 다음과 같다. ([Finalizers](https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/))
+  - 해당 resource를 삭제하려고 할 때 kube-apiserver는 finalizer 필드 값을 확인하고 다음을 수행한다.
+    - 삭제 요청 시간을 `.metadata.deletionTimestamp` 필드 값을 추가해 ojbect를 수정한다.
+    - `metadata.finalizers` 필드가 빈 상태가 될때까지 object가 삭제되지 않도록 한다.
+    - HTTP 202 status code(Accepted)를 반환한다.
+  - finalizer를 관리하는 controller는 object 삭제가 요청됐음을 나타내는 `.metadata.deletionTimestamp` 필드 설정에 대한 업데이트를 확인한다.
+  - controller는 해당 resource에 대해 finalizer의 요구 사항을 충족하려고한다. finalizer 조건이 만족될 때마다 controller는 resource의 finalizer 필드에서 해당 키를 삭제한다. finalizer 필드가 빈 값이 되면 deletionTimestamp가 설정된 object가 자동으로 삭제(gc)된다.
+- label(`metadata.labels`), finalizer(`.metadata.finalizers`), owner reference(`metadata.ownerReferences`)는 비슷해 보이지만 각기 다른 목적으로 사용된다. label과 owner reference는 모두 객체간의 관계를 나타내지만 label의 경우 controller가 관련있는 객체 들에 대한 변화를 추적할 때 사용하는 반면, owner reference는 관련 객체를 삭제할 때 종속 관계를 파악하고 cascading deletion(background, foreground)를 수행하는 데 사용한다. 이 삭제 단계에서 k8s는 finalizer 필드도 같이 고려한다. ([Finalizers](https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/#owners-labels-finalizers))
+- owner reference는 resource 간 소유권 관게를 정의(예를 들어 rs와 po)하고 부모 resource 삭제 시 자식 resource를 삭제하는 생명주기 메커니즘을 갖는다. 이에 반해 finalizer는 resource의 의존성이나 사용 중인 상태를 표현하는 데 사용된다(예를 들어 pv와 po의 관계). ([ChatGPT]())
+- cross-namespace owner reference는 허용되지 않는다. namespaced object는 cluster-scoped, namespaced owner를 가질 수 있다. 반면 cluster-scoped object는 cluster-scoped owner만 가질 수 있다. ([Owners and Dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/#owner-references-in-object-specifications))
+- `app.kubernetes.io` prefix를 갖는 label을 관리하는 것을 권장한다. ([Recommended Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/))
+- k8s control plane의 핵심은 kube-apiserver다. kube-apiserver는 HTTP API를 노출하여 최종 사용자, cluster의 다양한 부분, 외부 구성 요소가 서로 통신할 수 있도록한다. k8s API를 사용하면 k8s에서 API object의 state를 조회하고 수정할 수 있다(예: po, ns, cm 등). 대부분의 작업은 kubectl, kubeadm과 같은 CLI를 통해 수행된다. 이러한 도구들은 k8s API를 사용한다. 물론 REST call을 사용해 API에 직접 접근할 수도 있다. k8s는 k8s API를 사용하여 애플리케이션을 개발하려는 사람들을 위한 client libraries를 제공한다. ([The Kubernetes API](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#openapi-interface-definition))
 
-- resource 마다 object naming 규칙에 대한 제약 사항이 더 많을 수도 있다. 가장 보수적으로 RFC 1035를 준수하는 것이 편하다. ([Object Names and IDs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names))
-- ns에 대해 `kube-` 접두사는 k8s 시스템을 위해 예약됐기 때문에 사용하지 않는다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/%2523working-with-namespaces))
-- ns의 이름을 사용해 cluster 내에서 domain을 생성하기 때문에 제한된 사용자만 ns를 만들 수 있도록 제한한다. ([Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#namespaces-and-dns))
-- `kubernetes.io/`, `k8s.io/` 접두사는 k8s core system에서 사용되도록 예약됐다. ([Annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set))
-- owner reference는 k8s resource 간의 종속 관계를 나타낸다. k8s는 object 삭제 시 label이 아닌 owner reference를 사용해 종속 관계에 대한 cascading deletion(background 또는 foreground)을 수행한다 ([Owners and Dependents](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/))
 - default ns의 kubernetes svc는 kube-apiserver의 HTTPS 엔드포인트로 redirect(kube-proxy가 수행)되는 virtual ip로 구성되어 있다. ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#node-to-control-plane))
 - 각 ns에 존재하는 default sa는 사용자가 삭제하더라도 control plane이 재생성한다. ([Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/#default-service-accounts))
 -  k8s v1.22부터는 기본적으로 `TokenRequest` API를 사용해 짧은 수명의 automatically rotating token을 얻고 token을 projected volume으로 mount한다. token이 만료되면 kubelet은 token을 재발급 받는다. ([Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/#assign-to-pod))
@@ -63,8 +79,8 @@
 - no당 최대 po 실행 갯수는 110개 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/))
 - no가 시작되면 각 no의 kubelet은 no object에 zone과 관련된 label(`topology.kubernetes.io/region`, `topology.kubernetes.io/zone`)을 추가한다. ([Running in multiple zones](https://kubernetes.io/docs/setup/best-practices/multiple-zones/#node-behavior))
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
-- kube-proxy는 각 no에서 네트워크 규칙을 이용해 svc의 구현을 담당한다.
 
+- kube-proxy는 각 no에서 네트워크 규칙을 이용해 svc의 구현을 담당한다. ([Cluster Architecture](https://kubernetes.io/docs/concepts/architecture/#kube-proxy))
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
 - no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
 - kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다. control plane 구성 요소의 경우 아직은 flag를 이용한 설정을 사용하는 것 같다.

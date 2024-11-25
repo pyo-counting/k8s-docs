@@ -6,8 +6,7 @@ finalizer를 사용해 resource에 대한 gc를 제어할 수 있다. 예를 들
 
 finalizer를 사용해 대상 resoucre를 삭제하기 전에 특정 정리 작업을 수행하도록 controller에게 알림으로써 resource의 gc를 제어할 수 있다.
 
-finalizer는 일반적으로 실행항 코드를 지정하지 않는다. 대신 일반적으로 annotation과 유사한 특정 resource에 대한 key 목록이다. k8s는 일부 finalizer를 자동으로 지정하지만 사용자가 직접 설정할 수도 있다. 아래는 finalizer를 갖는 pv의 메니페스트 파일 일부 내용이다:
-
+finalizer는 일반적으로 실행항 코드를 지정하지 않는다. 대신 일반적으로 annotation과 유사한 특정 resource에 대한 key 목록이다. k8s는 일부 finalizer를 자동으로 지정하지만 사용자가 직접 설정할 수도 있다. 아래는 finalizer를 갖는 pv의 메니페스트 파일 일부 내용이다.
 ``` yaml
 apiVersion: v1
 kind: PersistentVolume
@@ -17,8 +16,7 @@ metadata:
 ```
 
 ## How finalizers work
-manifest 파일을 사용해 resource를 생성할 떄 `.metadata.finalizers` 필드에 finalizer를 명시할 수 있다. 해당 resource를 삭제하려고 할 때 API server는 finalizer 필드 값을 확인하고 다음을 수행한다:
-
+manifest 파일을 사용해 resource를 생성할 떄 `.metadata.finalizers` 필드에 finalizer를 명시할 수 있다. 해당 resource를 삭제하려고 할 때 kube-apiserver는 finalizer 필드 값을 확인하고 다음을 수행한다.
 - 삭제 요청 시간을 `.metadata.deletionTimestamp` 필드 값을 추가해 ojbect를 수정한다.
 - `metadata.finalizers` 필드가 빈 상태가 될때까지 object가 삭제되지 않도록 한다.
 - HTTP 202 status code(Accepted)를 반환한다.
@@ -26,7 +24,6 @@ manifest 파일을 사용해 resource를 생성할 떄 `.metadata.finalizers` �
 finalizer를 관리하는 controller는 object 삭제가 요청됐음을 나타내는 `.metadata.deletionTimestamp` 필드 설정에 대한 업데이트를 확인한다. controller는 해당 resource에 대해 finalizer의 요구 사항을 충족하려고한다. finalizer 조건이 만족될 때마다 controller는 resource의 finalizer 필드에서 해당 키를 삭제한다. finalizer 필드가 빈 값이 되면 deletionTimestamp가 설정된 object가 자동으로 삭제된다. finalizer를 사용해 관리되지 않는 resource의 삭제를 방지할 수 있다.
 
 finalizer에 대한 일반적인 사용 예는 kubernetes.io/pv-protection이 있으며 이는 pv 객체의 우발적인 삭제를 방지하기 위함이다. pv 객체가 po에서 사용 중인 경우 k8s는 pv에 finalizer를 추가한다. 해당 pv를 삭제하려고 하면 terminating 상태가 되지만 finalizer가 존재하기 때문에 controller에서 해당 object를 삭제할 수 없다. po가 pv 사용을 중지하면 k8s는 pv-protection finalizer를 삭제하고 controller는 volume을 삭제한다.
-
 > **Note**:  
 > - object를 삭제하면 k8s는 deletion timestamp를 추가하고 삭제 pending 상태의 object의 `.metadata.finalizers` 필드에 대한 변경을 제한한다.
 > - 삭제가 요청된 이후 object를 다시 부활시킬 수 없다. 유일한 방법은 object를 삭제하고 유사한 object를 다시 생성하는 것이다.

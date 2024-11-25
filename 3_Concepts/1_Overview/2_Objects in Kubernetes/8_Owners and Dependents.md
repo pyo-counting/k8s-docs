@@ -7,8 +7,7 @@ owner reference는 명시적으로 object 간의 계층 관계를 파악할 수 
 ## Owner references in object specifications
 종속 object는 소유자 object를 참조할 수 있도록 `.metadata.ownerReferences`필드가 있다. 유효한 owner reference일 경우 해당 필드는 종속 object와 동일한 ns 내의 object 이름과 UID로 구성된다. k8s는 rs, ds, deploy, jobs, cj, rc와 같은 object에 종속되는 object에 이 필드 값을 자동으로 설정한다. 이 필드의 값을 수정해 이러한 관계를 수동으로 설정할 수도 있다. 하지만 일반적으로 k8s가 자동으로 관리하도록 허용할 수 있다.
 
-아래는 rs에 종속된 po의 manifest 예시다:
-
+아래는 rs에 종속된 po의 manifest 예시다.
 ``` yaml
 apiVersion: v1
 kind: Pod
