@@ -1,4 +1,4 @@
-finalizer는 삭제 마킹된 resource를 완전히 삭제하기 전에 특정 조건이 충족될 때까지 대기하도록 k8s에 지시하는 namespaced key다. finalizer는 controller로 하여금 삭제된 object가 소유한 resource를 정리하도록 한다.
+finalizer는 삭제 마킹된 resource를 완전히 삭제하기 전에 특정 조건이 충족될 때까지 대기하도록 k8s에 지시하는 namespaced key다.
 
 finalizer가 존재하는 object를 삭제하도록 k8s에 지시하면 k8s API는 `.metadata.deletionTimestamp`를 추가해 해당 object를 삭제 대상으로 마킹하고 HTTP 202 status code를 반환한다. control plane 또는 다른 구성 요소가 finalizer가 정의한 작업을 수행하는 동안 대상 object는 terminating 상태를 유지한다. 작업이 완료되면 controller는 대상 object에서 finalizer를 삭제한다. `.metadata.finalizers`가 빈 값이면 k8s는 삭제가 완료된 것으로 간주하고 해당 object를 삭제한다.
 
