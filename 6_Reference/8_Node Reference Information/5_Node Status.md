@@ -149,7 +149,7 @@ status:
 `.status.conditions` 필드는 running no의 상태를 설명한다. conditions type의 종류는 다음과 같다:
 |Node Condition    |Description|
 |------------------|-----------|
-|Ready             |`True`: no가 healthy하고 po를 수용할 수 있는 상태<br>`False`: no가 healthy하지 않고, po를 수용할 수 없는 상태<br>`Unknown`: node controller가 node-monitor-grace-period(기본 값 40s) 설정 값 동안 no의 상태를 알 수 없는 경우|
+|Ready             |`True`: no가 healthy하고 po를 수용할 수 있는 상태<br>`False`: no가 healthy하지 않고, po를 수용할 수 없는 상태<br>`Unknown`: node controller가 `--node-monitor-grace-period`(기본 값 40s) 설정 값 동안 no의 상태를 알 수 없는 경우|
 |DiskPressure      |`True`: disk 크기에 대한 pressure가 있는 경우(disk 용량이 부족할 경우)<br>`False`: 반대의 경우|
 |MemoryPressure    |`True`: no 메모리에 대한 pressure가 있는 경우(no의 메모리가 부족할 경우)<br>`False`: 반대의 경우|
 |PIDPressure       |`True`: 프로세스에 대한 pressure이 있는 경우(no에 너무 많은 프로세스가 있는 경우)<br>`False`: 반대의 경우|
@@ -190,21 +190,20 @@ You may read more about capacity and allocatable resources while learning how to
 ## Heartbeats
 no가 전송하는 heartbeat를 통해 k8s cluster에서 사용 가능한 no를 식별할 수있으며 failure가 감지되면 이에 대한 조치를 취한다.
 
-no는 2가지 heartbeat 방식을 사용한다:
+no는 2가지 heartbeat 방식을 사용한다.
 - no의 `.status` 필드를 업데이트한다.
 - kube-node-lease ns의 lease object. 각 no에 대해 kube-node-lease ns 내 lease object를 갖는다.
-
-관련 kubelet의 flag, 설정 파일 내 필드는 다음과 같다.
-
-- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드를 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
-- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. But if nodeStatusUpdateFrequency is set explicitly, nodeStatusReportFrequency's default value will be set to nodeStatusUpdateFrequency for backward compatibility.
-- `.nodeLeaseDurationSeconds`: (기본값 40) kubelet이 no의 lease object `.spec.renewTime`을 통해 no의 상태를 업데이트하는 주기. 해당 설정 값은 실제 시간을 나타내지 않으며 기본 값 40은 10s를 나타낸다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
 no의 `.status`를 업데이트하는 것에 비해 lease resource는 더 간단하다. heartbeat를 위해 lease를 사용하는 것은 규모가 큰 클러스터의 경우 성능에 영향을 줄여준다.
 
 kubelet은 no의 `.status`를 생성 및 업데이트, lease object를 업데이트해야 하는 책임이 있다.
 - kubelet은 상태가 변경되거나 설정 간격 동안 업데이트가 없는 경우 no의 `.status`를 업데이트 한다. `.status` 업데이트에 대한 기본 간격은 5분이다(이는 unreachable no에 대한 기본 타임아웃 시간인 40초보다 훨씬 길다).
 - kubelet은 lease object 생성하고 10초 마다 업데이트(기본 값) 한다. lease에 대한 업데이트는 no의 `.status` 업데이트와 독립적으로 수행된다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
+
+관련 kubelet의 flag, 설정 파일 내 필드는 다음과 같다.
+- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
+- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. But if nodeStatusUpdateFrequency is set explicitly, nodeStatusReportFrequency's default value will be set to nodeStatusUpdateFrequency for backward compatibility.
+- `.nodeLeaseDurationSeconds`: (기본값 40) kubelet이 no의 lease object `.spec.renewTime`을 통해 no의 상태를 업데이트하는 주기. 해당 설정 값은 실제 시간을 나타내지 않으며 기본 값 40은 10s를 나타낸다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
 아래는 kubectl get -n kube-node-lease lease/${LEASE_NAME} -o yaml 명령어 출력 결과다:
 

@@ -42,10 +42,12 @@ kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설�
 - `--kubeconfig`: kube-apiserver에 인증하기 위해 사용되는 credentials의 경로
 - `--cloud-provider`: metadata를 읽기 위해 cloud provier와 통신하는 방법
 - `.registerNode`: kube-apiserver에 스스로 등록할지 여부
-- `.registerWithTaints`: no의 taints 목록(`<key>=<value>:<effect>`를 ,로 구분)
-- `--node-ip`: no의 IP 주소. no의 여러 ip주소를 사용할 수 있으며 dual-stack cluster의 경우 [configure IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#configure-ipv4-ipv6-dual-stack)를 참고한다. 이 flag를 명시하지 않으면 no의 기본 ipv4 주소를 사용하고 ipv4 주소가 없으면 ipv6 주소를 사용한다.
+- `.registerWithTaints`: no의 taints 목록(`<key>=<value>:<effect>`를 ,로 구분). `.registerNode`가 false일 경우 동작하지 않는다.
+- `--node-ip`: (Optional) no의 ip 주소. no의 여러 ip주소를 사용할 수 있으며 dual-stack cluster의 경우 [configure IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#configure-ipv4-ipv6-dual-stack)를 참고한다. 이 flag를 명시하지 않으면 no의 기본 ipv4 주소를 사용하고 ipv4 주소가 없으면 ipv6 주소를 사용한다.
 - `--node-labels`: no의 label ([NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)에 의해 강제되는 label 규칙도 있다)
-- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 kube-apiserver에 보고하는 주기. 자세한 내용은 아래를 참고한다.
+- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
+- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. But if nodeStatusUpdateFrequency is set explicitly, nodeStatusReportFrequency's default value will be set to nodeStatusUpdateFrequency for backward compatibility.
+- `.nodeLeaseDurationSeconds`: (기본값 40) kubelet이 no의 lease object `.spec.renewTime`을 통해 no의 상태를 업데이트하는 주기. 해당 설정 값은 실제 시간을 나타내지 않으며 기본 값 40은 10s를 나타낸다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
 [Node authorization mode](https://kubernetes.io/docs/reference/access-authn-authz/node/), [NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)가 활성화된 경우, kubelet은 자체 no의 resource만 생성/수정할 수 있는 권한이 있다. 
 
@@ -57,7 +59,7 @@ kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설�
 ### Manual Node administration
 kubectl을 사용해 no object를 생성, 수정할 수 있다.
 
-직접 no object를 생성하기 위해 kubelet 설정 파일 내 `.registerNode` 필드를 사용한다.
+직접 no object를 생성하기 위해 kubelet 설정 파일 내 `.registerNode` 필드를 false로 설정한다.
 
 `.registerNode` 필드와 상관없이 no obejct를 수정할 수 있다. 예를 들어 label 수정하거나 unschedulable로 마킹할 수 있다.
 
@@ -65,8 +67,7 @@ no의 label은 po의 label selector와 같이 사용해 스케줄링을 제어�
 
 no를 스케줄링 불가능하도록 만들면 kube-scheduler는 해당 no에 새로운 po를 스케줄링할 수 없지만 기존 po에는 영향을 미치지 않는다. 이는 no의 재부팅, 기타 유지 보수 준비 단계를 위해 유용하다.
 
-no를 스케줄링 불가하게 하기 위해 아래 명령어를 사용할 수 있다:
-
+no를 스케줄링 불가하게 하기 위해 아래 명령어를 사용할 수 있다.
 ``` bash
 kubectl cordon $NODENAME
 ```
@@ -84,8 +85,7 @@ no의 status는 아래 정보를 포함한다:
 - Capacity and Allocatable
 - Info
 
-no의 status 및 기타 정보를 조회하기 위해 kubectl 명령어를 사용할 수 있다:
-
+no의 status 및 기타 정보를 조회하기 위해 kubectl 명령어를 사용할 수 있다.
 ``` bash
 kubectl describe node <insert-node-name-here>
 ```
@@ -106,20 +106,21 @@ node controller는 no의 다양한 측면을 관리하는 k8s control plane 구�
 
 node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 
-1. no가 등록될 때 CIDR 블락을 할당한다(`--allocate-node-cidrs=true`일 경우). kube-controller-manager는 po 네트워킹을 위한 cluster의 CIDR 중 no CIDR를 각 no 별로 할당한다. CIDR 크기는 `--node-cidr-mask-size`을 통해 설정한다.
-2. controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
-3. no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다:
+- no가 등록될 때 CIDR 블락을 할당한다(`--allocate-node-cidrs=true`일 경우). kube-controller-manager는 po 네트워킹을 위한 cluster의 CIDR 중 no CIDR를 각 no 별로 할당한다. CIDR 크기는 `--node-cidr-mask-size`을 통해 설정한다.
+- controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
+- no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다.
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
     - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
 
 기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다.
 
 kube-controller-manager
-- `--allocate-node-cidrs`: po, svc에 ip를 할당할지 여부
-- `--service-cluster-ip-range`: svc에 할당할 주소 cidr. `--allocate-node-cidrs=true`이어야 한다.
-- `--cluster-cidr`: k8s cluster(또는 po) cidr. po에 할당할 주소 cidr. `--allocate-node-cidrs=true`이어야 한다. 예를 들어 172.0.0.0/16
-- `--node-cidr-mask-size`: (기본값 24). no가 po의 ip 할당에 사용할 cidr 크기(`--cluster-cidr` 기반).
-- `--node-monitor-period`:(기본값 5s). no의 status를 확인하는 주기
+- `--service-cluster-ip-range`: 클러스터 내에서 svc에 할당할 ip cidr. `--cluster-cidr`와 겹치지 않아야 한다. `--allocate-node-cidrs`가 true여야 한다.
+- `--cluster-cidr`: 클러스터 전체 내 po에 할당할 ip cidr. `--allocate-node-cidrs=true`와 같이 사용해 각 no에 서브넷을 할당할 수 있도록 해야한다. 그리고 `--service-cluster-ip-range`와 겹치지 않아야 한다.
+- `--node-cidr-mask-size`: (기본값 24). no에 할당할 서브넷 마스크 크기. no는 해당 서브넷 내에서 po에 ip를 할당한다. 예를 들어, --cluster-cidr가 192.168.0.0/16이고 --node-cidr-mask-size가 24라면, 각 노드는 /24 크기의 CIDR 블록(예: 192.168.1.0/24)을 할당받습니다.
+- `--allocate-node-cidrs`: 각 no에 `--cluster-cidr`, `--node-cidr-mask-size` 기반 서브넷을 할당할지 여부
+
+- `--node-monitor-period`:(기본값 5s). kube-controller-manager가 kube-apiserver를 통해 no의 상태를 확인하는 주기
 - `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `.nodeStatusUpdateFrequency`보다 충분히 큰 값이어야 한다.
 
 ![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)

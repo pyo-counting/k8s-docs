@@ -83,10 +83,13 @@
 - no가 시작되면 각 no의 kubelet은 no object에 zone과 관련된 label(`topology.kubernetes.io/region`, `topology.kubernetes.io/zone`)을 추가한다. ([Running in multiple zones](https://kubernetes.io/docs/setup/best-practices/multiple-zones/#node-behavior))
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
 - kube-proxy는 각 no에서 네트워크 규칙을 이용해 svc의 구현을 담당한다. ([Cluster Architecture](https://kubernetes.io/docs/concepts/architecture/#kube-proxy))
+- kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다. control plane 구성 요소의 경우 아직은 flag를 이용한 설정을 사용하는 것 같다. ([kubelet](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/))
+- kube-apiserver에 no를 등록하는 방법은 관리자가 no object를 생성하기(`.registerNode`가 false), kubelet이 직접 kube-apiserver에 자신을 등록하기(`registerNode`가 true) 2가지다.
+- 동일한 이름의 object가 
+- 
 
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
 - no의 cgroup v2 설정 고려 ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
-- kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다. control plane 구성 요소의 경우 아직은 flag를 이용한 설정을 사용하는 것 같다.
 - kubelet에서 container runtime에 접근하기 위한 endpoint 설정 고려 ([Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/#api))
 - kubelet에서 image 용량에 따른 gc 설정 고려 ([Garbage Collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/#container-image-lifecycle))
 - kubelet에서 image age에 따른 gc 설정 고려 ([Garbage Collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/#image-maximum-age-gc))
