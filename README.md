@@ -48,8 +48,20 @@
 - 구성 요소: `kube-apiserver`, `etcd`, `kube-scheduler`, `kube-controller-manager`, `cloud-controller-manager`
 - control plane의 구성 요소 etcd는 3개 이상(raft 알고리즘을 위해)의 failure zone에서 실행하는 것을 권장한다. 이외 kube-controller-manager, cloud-controller-manager, kube-scheduler는 고가용성은 유지하지만 작업 충돌 방지를 위해 leader election 메커니즘을 사용하며 동일하게 3개 이상의 failure zone에서 실행하는 것은 권장한다. kube-apiserver는 load balancer 뒤에서 다중 운영이 가능하다. ([Production environment](https://kubernetes.io/docs/setup/production-environment/#production-control-plane), [Running in multiple zones](https://kubernetes.io/docs/setup/best-practices/multiple-zones/#control-plane-behavior))
 - 대규모 cluster의 경우 Event object 저장을 위한 별도의 etcd를 운영을 고려한다. ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/#etcd-storage))
-- kube-apiserver -> kubelet 통신 시, 기본적으로 kube-apiserver는 kubelet의 server certificate를 검증하지 않는다. 검증을 위해 `--kubelet-certificate-authority` flag에 kubelet의 ca certificate를 설정해 kubelet으로의 연결을 안전하게 수행할 수 있다(SSH tunneling을 대신 사용 가능). kube-apiserver -> kubelet 통신 경우는 다음과 같다. kube-apiserver가 kubelet에 no, po 상태에 대한 추가 정보 요청 등, po의 로그조회 (`kubectl logs`), 실행 중인 po에 대한 attach(`kubectl exec`), kubelet의 port-forwarding 일부 과정 중 po와 no의 정보를 식별할 때(`kubectl port-forward`) ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#control-plane-to-node))
-- kube-apiserver -> no, po, svc와 직접 통신하는 경우는 kube-apiserver의 proxy 기능을 사용할 때다. proxy 기능은 kube-apiserver의 내장 기능으로 kube-apiserver를 통해 po, svc, no에 접근하는 경우에 사용된다. 대표적인 예시로 `kubectl cluster-info` 명령어를 사용해 조회되는 목록이다. 해당 목록에는 k8s kube-apiserver의 도메인과 `kubernetes.io/cluster-servic` label이 true인 svc에 접근하기 위한 kube-apiserver의 주소를 출력한다. 물론 해당 목록에 조회되지 않더라도 kuber-apiserver의 API 명세서를 참고해 접근할 수 있다. ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#api-server-to-nodes-pods-and-services))
+- kube-apiserver: kube-apiserver -> kubelet 통신 시, 기본적으로 kube-apiserver는 kubelet의 server certificate를 검증하지 않는다. 검증을 위해 `--kubelet-certificate-authority` flag에 kubelet의 ca certificate를 설정해 kubelet으로의 연결을 안전하게 수행할 수 있다(대안으로 SSH tunneling 사용 가능). kube-apiserver -> kubelet 통신 경우는 다음과 같다. kube-apiserver가 kubelet에 no, po 상태에 대한 추가 정보 요청 등, po의 로그조회 (`kubectl logs`), 실행 중인 po에 대한 attach(`kubectl exec`), kubelet의 port-forwarding 일부 과정 중 po와 no의 정보를 식별할 때(`kubectl port-forward`) ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#control-plane-to-node))
+- kube-apiserver: kube-apiserver -> no, po, svc와 직접 통신하는 경우는 kube-apiserver의 proxy 기능을 사용할 때다. proxy 기능은 kube-apiserver의 내장 기능으로 kube-apiserver를 통해 po, svc, no에 접근하는 경우에 사용된다. 대표적인 예시로 `kubectl cluster-info` 명령어를 사용해 조회되는 목록이다. 해당 목록에는 k8s kube-apiserver의 도메인과 `kubernetes.io/cluster-service` label이 true인 svc에 접근하기 위한 kube-apiserver의 주소를 출력한다. 물론 해당 목록에 조회되지 않더라도 kuber-apiserver의 API 명세서를 참고해 접근할 수 있다. ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#api-server-to-nodes-pods-and-services))
+- kube-controller-manager(node controller): node controller는 no의 생명 주기 동안 여러 작업을 수행한다. 첫 번째로 no가 등록될 때 CIDR 블락을 할당한다. 두 번째로 ontroller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다. 세 번째로 no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#node-controller))
+    - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
+    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
+- 
+- kube-controller-manager(node controller): node와 관련된 flag는 다음과 같다.
+  - `--service-cluster-ip-range`: 클러스터 내에서 svc에 할당할 ip cidr. `--cluster-cidr`와 겹치지 않아야 한다. `--allocate-node-cidrs`가 true여야 한다.
+  - `--cluster-cidr`: 클러스터 전체 내 po에 할당할 ip cidr. `--allocate-node-cidrs=true`와 같이 사용해 각 no에 서브넷을 할당할 수 있도록 해야한다. 그리고 `--service-cluster-ip-range`와 겹치지 않아야 한다.
+  - `--node-cidr-mask-size`: (기본값 24). no에 할당할 서브넷 마스크 크기. no는 해당 서브넷 내에서 po에 ip를 할당한다. 예를 들어, --cluster-cidr가 192.168.0.0/16이고 --node-cidr-mask-size가 24라면, 각 노드는 /24 크기의 CIDR 블록(예: 192.168.1.0/24)을 할당받습니다.
+  - `--allocate-node-cidrs`: 각 no에 `--cluster-cidr`, `--node-cidr-mask-size` 기반 서브넷을 할당할지 여부
+  - `--node-monitor-period`:(기본값 5s). kube-controller-manager가 kube-apiserver를 통해 no의 상태를 확인하는 주기
+  - `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `.nodeStatusUpdateFrequency`보다 충분히 큰 값이어야 한다.
+  - `--node-startup-grace-period`: (기본값: 1m0s) starting no가 unhealthy로 마킹되는 것을 방지하기 위해 기다리는 시간
 
 - control plane 구성 요소(예를 들어 kube-scheduler, kube-controller-manager)의 여러 replica는 kube-system ns에 저장된 lease object를 사용해 reader를 관리한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#leader-election))
 - kube-apiserver는 kube-system ns에 저장된 lease object를 통해 k8s 전체 시스템에 kube-apiserver에 대한 정보를 제공한다 ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/#api-server-identity))
@@ -59,7 +71,6 @@
   - no의 non-graceful shutdown 처리 대신 po의 삭제가 6분동안 실패할 경우 강제로 volume mount를 해제하는 `--disable-force-detach-on-timeout` 설정 확인. ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/#storage-force-detach-on-timeout))
   - bootstrap token authentication mode 사용시 만료된 token을 gc하기 위해 `--controllers=tokencleaner,...` flag를 사용해 tokencleaner controller를 활성화한다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#bootstrap-tokens))
 - kube-apiserver
-
   - 적어도 사용자, sa 인증을 위한 2가지 authentication mode를 활성화 해야한다. authentication mode의 실행 순서는 랜덤이다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authentication-strategies))
   - k8s 내장 authentication은 사용자 인증에 적합하지 않기 때문에 oidc와 같은 외부 authentication mode를 사용해야 한다. ([Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/))
     - client certificate authentication mode 활성화는 `--client-ca-file` flag를 사용한다. ([Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#x509-client-certificates))
@@ -84,8 +95,11 @@
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
 - kube-proxy는 각 no에서 네트워크 규칙을 이용해 svc의 구현을 담당한다. ([Cluster Architecture](https://kubernetes.io/docs/concepts/architecture/#kube-proxy))
 - kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다. control plane 구성 요소의 경우 아직은 flag를 이용한 설정을 사용하는 것 같다. ([kubelet](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/))
-- kube-apiserver에 no를 등록하는 방법은 관리자가 no object를 생성하기(`.registerNode`가 false), kubelet이 직접 kube-apiserver에 자신을 등록하기(`registerNode`가 true) 2가지다.
-- 동일한 이름의 object가 
+- kube-apiserver에 no를 등록하는 방법은 관리자가 no object를 생성하기(`.registerNode`가 false), kubelet이 kube-apiserver에 자신을 등록하기(`registerNode`가 true) 2가지다. 만약 no가 healthy 상태라면(즉, 필요한 모든 서비스가 실행 중) po를 실행할 자격이 있다. healthy 상태가 아니라면 healthy 상태가 되기 전까지 해당 no는 cluster와 관련된 행동에서 제외된다. k8s는 유효하지 않은 no의 object를 보존하면서 healthy 상태가 될때까지 게속 체크한다. health check를 멈추기 위해 no object를 직접 또는 controller가 삭제해야 한다. no를 교체하거나 업데이트해야 하는 경우 기존 no object를 먼저 kube-apiserver에서 제거하고 업데이투 후 다시 추가해야 한다. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#management))
+- k8s no가 보내는 heartbeat는 cluster가 각 no의 가용성을 파악하고 failure가 감지되면 조치를 취할 수 있도록 도와준다. 2가지 형태의 heartbeat(no object의 .status 필드 업데이트, `kube-node-lease` ns의 lease obejct 업데이트)가 있다. heartbeat와 관련된 kubelet의 설정은 다음과 같다. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#self-registration-of-nodes))
+  - `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다.
+  - `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다.
+  - `.nodeLeaseDurationSeconds`: (기본값 40) kubelet이 no의 lease object `.spec.renewTime`을 통해 no의 상태를 업데이트하는 주기. 해당 설정 값은 실제 시간을 나타내지 않으며 기본 값 40은 10s를 나타낸다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 - 
 
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
@@ -165,6 +179,7 @@
 - `kuvectl apply --validate --dry-run`: client validation, dry run 수행
 - `kubectl cluster-info`: control  plane의 주소(kube-apiserver)와 `kubernetes.io/cluster-service` label이 true인 service의 주소를 노출한다.
 - `kubectl cluster-info dump --output-directory -A`: 클러스터의 전체 정보와 현재 ns, kube-system ns의 전체 정보를 stdout으로 출력한다.
+- `kubectl cordon`: no를 unscheduleable 상태로 변경한다.
 
 ---
 ## 체크리스트

@@ -46,7 +46,7 @@ kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설�
 - `--node-ip`: (Optional) no의 ip 주소. no의 여러 ip주소를 사용할 수 있으며 dual-stack cluster의 경우 [configure IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#configure-ipv4-ipv6-dual-stack)를 참고한다. 이 flag를 명시하지 않으면 no의 기본 ipv4 주소를 사용하고 ipv4 주소가 없으면 ipv6 주소를 사용한다.
 - `--node-labels`: no의 label ([NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)에 의해 강제되는 label 규칙도 있다)
 - `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
-- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. But if nodeStatusUpdateFrequency is set explicitly, nodeStatusReportFrequency's default value will be set to nodeStatusUpdateFrequency for backward compatibility.
+- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. But if `.nodeStatusUpdateFrequency` is set explicitly, `.nodeStatusReportFrequency`'s default value will be set to `.nodeStatusUpdateFrequency` for backward compatibility.
 - `.nodeLeaseDurationSeconds`: (기본값 40) kubelet이 no의 lease object `.spec.renewTime`을 통해 no의 상태를 업데이트하는 주기. 해당 설정 값은 실제 시간을 나타내지 않으며 기본 값 40은 10s를 나타낸다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
 [Node authorization mode](https://kubernetes.io/docs/reference/access-authn-authz/node/), [NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)가 활성화된 경우, kubelet은 자체 no의 resource만 생성/수정할 수 있는 권한이 있다. 
@@ -78,8 +78,7 @@ kubectl cordon $NODENAME
 > ds의 일부인 po는 스케줄링 불가한 no에서도 실행될 수 있다. ds는 일반적으로 workload 애플리케이션이 제거되더라도 no에서 실행되어야 하는 no lacal 서비스다.
 
 ## Node status
-no의 status는 아래 정보를 포함한다:
-
+no의 `.status` 필드는 아래 정보를 포함한다.
 - Addresses
 - Conditions
 - Capacity and Allocatable
@@ -105,7 +104,6 @@ kubelet의 no heartbeat와 관련된 상세 사항은 [Node status](https://kube
 node controller는 no의 다양한 측면을 관리하는 k8s control plane 구성요소다.
 
 node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
-
 - no가 등록될 때 CIDR 블락을 할당한다(`--allocate-node-cidrs=true`일 경우). kube-controller-manager는 po 네트워킹을 위한 cluster의 CIDR 중 no CIDR를 각 no 별로 할당한다. CIDR 크기는 `--node-cidr-mask-size`을 통해 설정한다.
 - controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
 - no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다.
@@ -114,19 +112,22 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 
 기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다.
 
-kube-controller-manager
+node와 관련된 kube-controller-manager flag는 다음과 같다.
 - `--service-cluster-ip-range`: 클러스터 내에서 svc에 할당할 ip cidr. `--cluster-cidr`와 겹치지 않아야 한다. `--allocate-node-cidrs`가 true여야 한다.
 - `--cluster-cidr`: 클러스터 전체 내 po에 할당할 ip cidr. `--allocate-node-cidrs=true`와 같이 사용해 각 no에 서브넷을 할당할 수 있도록 해야한다. 그리고 `--service-cluster-ip-range`와 겹치지 않아야 한다.
 - `--node-cidr-mask-size`: (기본값 24). no에 할당할 서브넷 마스크 크기. no는 해당 서브넷 내에서 po에 ip를 할당한다. 예를 들어, --cluster-cidr가 192.168.0.0/16이고 --node-cidr-mask-size가 24라면, 각 노드는 /24 크기의 CIDR 블록(예: 192.168.1.0/24)을 할당받습니다.
 - `--allocate-node-cidrs`: 각 no에 `--cluster-cidr`, `--node-cidr-mask-size` 기반 서브넷을 할당할지 여부
-
 - `--node-monitor-period`:(기본값 5s). kube-controller-manager가 kube-apiserver를 통해 no의 상태를 확인하는 주기
 - `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `.nodeStatusUpdateFrequency`보다 충분히 큰 값이어야 한다.
+- `--node-startup-grace-period`: (기본값: 1m0s) starting no가 unhealthy로 마킹되는 것을 방지하기 위해 기다리는 시간
+- `--large-cluster-size-threshold`:
+- `--unhealthy-zone-threshold`:
+- `--node-eviction-rate`:
+- `--secondary-node-eviction-rate`:
 
 ![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)
 
 위 그림에서는 `--pod-eviction-timeout`가 있지만 이는 k8s v1.29 기준 없어진 flag다.
-
 
 ### Rate limits on eviction
 대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.
