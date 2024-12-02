@@ -108,11 +108,9 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 - controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
 - no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다.
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
-    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다.
+    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다. 기본적으로 k8s는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key에 대해 `tolerationSeconds=300`을 추가한다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
 
-기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다.
-
-node와 관련된 kube-controller-manager flag는 다음과 같다.
+기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다. node와 관련된 kube-controller-manager flag는 다음과 같다.
 - `--service-cluster-ip-range`: 클러스터 내에서 svc에 할당할 ip cidr. `--cluster-cidr`와 겹치지 않아야 한다. `--allocate-node-cidrs`가 true여야 한다.
 - `--cluster-cidr`: 클러스터 전체 내 po에 할당할 ip cidr. `--allocate-node-cidrs=true`와 같이 사용해 각 no에 서브넷을 할당할 수 있도록 해야한다. 그리고 `--service-cluster-ip-range`와 겹치지 않아야 한다.
 - `--node-cidr-mask-size`: (기본값 24). no에 할당할 서브넷 마스크 크기. no는 해당 서브넷 내에서 po에 ip를 할당한다. 예를 들어, --cluster-cidr가 192.168.0.0/16이고 --node-cidr-mask-size가 24라면, 각 노드는 /24 크기의 CIDR 블록(예: 192.168.1.0/24)을 할당받습니다.
@@ -120,14 +118,14 @@ node와 관련된 kube-controller-manager flag는 다음과 같다.
 - `--node-monitor-period`:(기본값 5s). kube-controller-manager가 kube-apiserver를 통해 no의 상태를 확인하는 주기
 - `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `.nodeStatusUpdateFrequency`보다 충분히 큰 값이어야 한다.
 - `--node-startup-grace-period`: (기본값: 1m0s) starting no가 unhealthy로 마킹되는 것을 방지하기 위해 기다리는 시간
-- `--large-cluster-size-threshold`:
+- `--large-cluster-size-threshold`: (기본값: 50) large cluster에 대한 기준 값. 이는 eviction 로직에 영향을 준다. 만약 multiple zone이 구성된 경우 이 값은 각 zone 별로 적용된다.
 - `--unhealthy-zone-threshold`:
 - `--node-eviction-rate`:
 - `--secondary-node-eviction-rate`:
 
 ![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)
 
-위 그림에서는 `--pod-eviction-timeout`가 있지만 이는 k8s v1.29 기준 없어진 flag다.
+위 그림에서는 `--pod-eviction-timeout`가 있지만 이는 k8s v1.29 기준 없어진 flag다. 해당 flag는 unhealthy no에서 po를 eviction하기까지 대기하는 시간이다. 대신 [Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions)을 사용한다.([#39681](https://github.com/kubernetes/website/issues/39681))
 
 ### Rate limits on eviction
 대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.
