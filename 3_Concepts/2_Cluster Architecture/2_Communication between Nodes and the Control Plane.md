@@ -17,9 +17,8 @@ kube-apiserver가 kubelet과 통신하는 이유는 다음과 같다.
 - 필요에 따라 kube-apiserver가 kubelet에 no, po 상태에 대한 추가 정보 요청 등
 - po의 로그조회 (`kubectl logs`)
 - 실행 중인 po에 대한 attach(`kubectl exec`)
-- kubelet의 port-forwarding 기능 제공(`kubectl port-forward`). 상세 동작은 다음과 같다.
-    - kubectl <-> kube-apiserver: 클라이언트(kubectl)는 먼저 kube-apiserver와 HTTPS를 통해 통신하여 해당 Pod를 찾는다. 그리고 kube-apiserver는 해당 po의 위치(no)를 확인하고, 사용자에게 적절한 정보를 제공한다.
-    - kubectl <-> kubelet: kube-apiserver의 역할은 po의 위치를 식별하는 데까지이며, 이후 클라이언트(kubectl)가 kubelet과 직접 연결한다. kubelet은 po 내의 container로 트래픽을 전달한다.
+- kubelet의 port-forwarding 기능 제공(`kubectl port-forward`)
+
 이러한 연결은 kubelet의 endpoint를 통해 이루어진다. 기본적으로 kube-apiserver는 kubelet의 서버 certificate를 확인하지 않으며 이로 인해 연결이 중간자(man-in-the-middle) 공격에 노출되어 신뢰할 수 없거나 공용 네트워크를 통해 실행하는 것이 안전하지 않다.
 
 이러한 연결을 검증하기 위해 `--kubelet-certificate-authority` flag를 사용해 kube-apiserver에서 kubelet의 certificate를 검증할 수 있는 root certificate를 명시할 수 있다.

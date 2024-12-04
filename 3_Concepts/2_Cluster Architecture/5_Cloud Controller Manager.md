@@ -35,7 +35,7 @@ cloud provider에 따라 route controller는 po 네트워크를 위해 ip 주소
 svc는 cloud에서 제공하는 load balancer, ip 주소, network packet filtering, target health check와 같은 cloud 구성 요소와 통합된다. service controller는 해당 구성 요소가 필요한 svc object를 생성할 때 cloud provider API와 상호 작용해 load balancer와 같은 인프라 구성 요소를 구성한다.
 
 ## Authorization
-cloud-controller-manager가 작업을 수행하기 위해 다양한 API object에 대해 필요한 접근 권한을 설명한다.
+cloud-controller-manager가 위와 같은 다양한 동작을 수행하기 위해 k8s resource에 대한 권한 필요하다.
 
 ### Node controller
 node controller는 no object에 대해서만 작업을 수행하며 모든 접근이 필요하다.
