@@ -8,7 +8,7 @@ linux에는 두 가지 버전의 cgroup이 있다. cgroup v1, cgroupv2. cgroup v
 cgroup v2는 linux cgroup API 차세대 버전이다. cgroup v2는 향상된 리소스 관리 기능을 갖춘 통합된 제어 시스템을 제공한다.
 
 cgroup v2는 다음과 같은 여러 가지 개선 사항을 제공한다.
-- API에서 single unified hierarchy
+- single unified hierarchy API
 - container에 대한 안전한 sub-tree delegation
 - [Pressure Stall Information](https://www.kernel.org/doc/html/latest/accounting/psi.html)과 같은 새로운 기능
 - 다양한 리소스 간 향상된 리소스 할당 및 격리

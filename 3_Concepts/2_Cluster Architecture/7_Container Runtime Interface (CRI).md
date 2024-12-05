@@ -7,7 +7,7 @@ container runtime interface(CRI)는 kubelet과 container runtime 사이의 프�
 k8s container runtime interface(CRI)는 no의 구성 요소인 kubelet과 container runtime 사이의 gRPC 프로토콜을 정의한다.
 
 ## The API
-kubelet은 gRPC를 사용해 container에 연결할 때 client로 동작한다. runtime endpoint, image service endpoint는 container runtime에서 사용 가능해야 하며 kubelet에서는 `.containerRuntimeEndpoint`, `.imageServiceEndpoint` 설정을 사용해 container runtime의 endpoint를 명시해야 한다.
+kubelet은 gRPC를 사용해 container runtime에 연결할 때 client로 동작한다. runtime endpoint, image service endpoint는 container runtime에서 사용 가능해야 하며 kubelet에서는 `.containerRuntimeEndpoint`, `.imageServiceEndpoint` 설정을 사용해 각각 설정할 수 있다. `.imageServiceEndpoint`를 명시하지 않으면 기본적으로 `.containerRuntimeEndpoint`을 사용해 image service에 연결한다. `.imageServiceEndpoint`는 container runtime service와 image service가 분리된 환경에서 사용한다(docker, containerd는 기본적으로 container runtime에서 image 관리와 container 실행 서비스를 모두 제공). 예를 들어 container runtime service와 image service가 분리된 환경에서 사용한다.
 
 k8s v1.29에서는 kubelet이 CRI v1을 사용하는 것을 선호한다. container runtime이 CRI의 v1을 지원하지 않는 경우 kubelet은 이전 버전의 지원되는 버전으로 협상하려고 시도한다. v1.29 kubelet은 CRI v1alpha2를 협상할 수 있지만 이 버전은 deprecated 된 것으로 간주된다. kubelet과 container runtime 간의 협상이 실패할 경우 kubelet은 포기하고 no를 등록하지 않는다.
 

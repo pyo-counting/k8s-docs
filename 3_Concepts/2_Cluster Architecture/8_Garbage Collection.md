@@ -1,5 +1,4 @@
-gc는 k8s 클러스터가 resource를 정리하기 위해 사용하는 다양한 방법을 종합하는 용어다. 다음과 같은 resource를 정리한다:
-
+gc는 k8s 클러스터가 resource를 정리하기 위해 사용하는 다양한 방법을 종합하는 용어다. 다음과 같은 resource를 정리한다.
 - [Terminated pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-garbage-collection)
 - [Completed Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/ttlafterfinished/)
 - Objects without owner references
