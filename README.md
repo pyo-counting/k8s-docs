@@ -80,6 +80,7 @@
   - node controller: 클라우드 인프라의 서버 정보를 기반으로 k8s no object 정보를 업데이트하는 책임이 있다. 그리고 no의 상태를 확인하는 역할도 수행한다. no가 응답하지 않는 경우 controller는 cloud provider API를 사용해 서버의 상태(비활성/삭제/종료)를 확인한다. no가 cloud에서 삭제된 경우 controller는 해당 no 객체를 k8s cluster에서 삭제한다. 일부 cloud provider는 node controller, node lifecycle controller로 분리해서 구현하는 경우도 있다.
   - route controller: route controller는 k8s cluster의 다른 no에 있는 container가 서로 통신할 수 있도록 cloud 내에서 route를 구성한다. cloud provider에 따라 route controller는 po 네트워크를 위해 ip 주소 CIDR block을 할당한다.
   - service controller: svc는 cloud에서 제공하는 load balancer, ip 주소, network packet filtering, target health check와 같은 cloud 구성 요소와 통합된다. service controller는 해당 구성 요소가 필요한 svc object를 생성할 때 cloud provider API와 상호 작용해 load balancer와 같은 인프라 구성 요소를 구성한다.
+- k8s에서 scheduling은 kubelet이 po를 실행할 수 있도록 적절한 no를 찾는 것을 말한다. preemption(선점)은 우선 순위가 높은 po가 no에 스케줄링 될 수 있도록 우선 순위가 낮은 po를 종료하는 것을 말한다. eviction은 no에서 po를 종료하는 것을 말한다. pod disruption은 no에서 po가 자발적 또는 비자발적으로 종료되는 프로세스를 말한다. voluntary disruption은 사용자에 의해 의도적으로 수행된다. involuntary disruption은 의도적이지 않은 것으로 no의 리소스 부족과 같은 불가피한 문제 또는 실수로 인한 삭제로 발생할 수 있다. ([Scheduling, Preemption and Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/))
 ---
 
 - encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
