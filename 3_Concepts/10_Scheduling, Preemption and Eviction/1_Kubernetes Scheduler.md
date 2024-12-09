@@ -8,11 +8,13 @@ scheduler는 no가 할당되지 않은 새로 생성된 po를 감시한다. sche
 ## kube-scheduler
 [kube-scheduler](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/)는 k8s의 기본 scheduler이며 control plane의 구성 요소로 실행된다. kube-scheduler는 필요에 따라 직접 사용자 정의 스케줄링 구성 요소를 개발해 사용할 수 있도록 설계됐다.
 
-kube-scheduler는 새로 생성되거나 아직 스케줄링 되지 않은(unscheduled) po를 실행할 최적의 no를 선택한다. po 또는 container가 요구 사항을 가질 수 있기 때문에 scheduler는 po의 특정 스케줄링 요구 사항을 충족하지 않는 no를 걸러낸다(filtering). 물론 po를 생성할 때 no를 지정할 수도 있지만 이는 일반적이지 않으며 특수한 경우에만 사용한다.
+kube-scheduler는 scheduling frameowkr라는 plugin 아키텍처를 갖는다. kube-scheduler는 기본적으로 여러 plugin을 제공하며 추가적으로 사용자는 plugin을 개발하고 직접 kube-scheduler를 컴파일해서 사용할 수 있다. scheduling framework는 몇 가지 extension point을 정의한다. 스케줄러 plugin은 하나 이상의 extension point에서 호출되도록 등록한다. 이러한 plugin 중 일부는 스케줄링 결정을 변경할 수 있고 일부는 정보 제공에 불과하다. 하나의 po를 스케줄링하기 위한 프로세스는 2개의 phase(scheduling cycle, binding cycle)로 구성된다. scheduling cycle은 po를 위한 no를 선택하고 binding cycle은 해당 결정을 cluster에 적용한다. 이 두 cycle을 "scheduling context"라고 부른다.
+
+scheduling cyle은 내부적으로 크게 filtering, scoring 단계로 수행된다. kube-scheduler는 새로 생성되거나 아직 스케줄링 되지 않은(unscheduled) po를 실행할 최적의 no를 선택한다. po 또는 container가 요구 사항을 가질 수 있기 때문에 scheduler는 po의 특정 스케줄링 요구 사항을 충족하지 않는 no를 걸러낸다(filtering). 물론 po를 생성할 때 no를 지정할 수도 있지만 이는 일반적이지 않으며 특수한 경우에만 사용한다.
 
 위처럼 cluster에서 po의 스케줄링 요구 사항을 충족(filtering 단계)하는 no를 feasible no라고 한다. feasible no가 없는 경우 scheduler가 po를 배치할 수 있을 때까지 po는 unscheduled 상태로 유지된다.
 
-scheduler는 po에 대한 feasible no를 모두 찾은 다음, 각 feasible no에 대해 일련의 함수를 실행해 점수를 계산하고, 가장 높은 점수를 받은 feasible no를 선택해 po를 할당한다. 그리고 scheduler는 이러한 결정을 `binding`이라는 프로세스에서 kube-apiserver에 통지한다.
+scheduler는 po에 대한 feasible no를 모두 찾은 다음, 각 feasible no에 대해 일련의 함수를 실행해 점수를 계산하고, 가장 높은 점수를 받은 feasible no를 선택해 po를 할당한다. 동일한 점수를 가진 no가 여러 개인 경우 kube-scheduler는 이들 중 하나를 무작위로 선택한다. 그리고 scheduler는 이러한 결정을 `binding`이라는 프로세스에서 kube-apiserver에 통지한다.
 
 스케줄링 결정에 고려해야 할 요소에는 리소스 요구 사항, 하드웨어/소프트웨어/policy constrains, affinity와 anti-affinity, data locality, workload 간 간섭 등이 포함된다.
 

@@ -10,7 +10,7 @@ k8s에서 특정 po를 배치할 위치(no)를 선택하는 데 다음과 같은
 다른 k8s object와 마찬가지로 no도 `.metadata.labels` 필드가 있다. k8s는 cluster의 모든 no에 [standard set of labels](https://kubernetes.io/docs/reference/node/node-labels/)을 할당한다(k8s 구성 요소 중 kubelet이 설정).
 
 > **Note**:  
-> label 값은 cloud provider마다 다를 수 있으며 보장되지 않는다ㅏ. 예를 들어, `kubernetes.io/hostname` label의 값은 일부 환경에서 no 이름과 동일할 수 있고 다른 환경에서는 다른 값을 가질 수도 있다.
+> label 값은 cloud provider마다 다를 수 있으며 보장되지 않는다. 예를 들어, `kubernetes.io/hostname` label의 값은 일부 환경에서 no 이름과 동일할 수 있고 다른 환경에서는 다른 값을 가질 수도 있다.
 
 ### Node isolation/restriction
 no에 label을 추가해 특정 no나 no 그룹에 po를 스케줄링할 수 있다. 이 기능을 사용해 특정 po가 특정 isolation, security, regulatory property을 가진 no에서만 실행되도록 할 수 있다.

@@ -1,4 +1,4 @@
-scheduling framework는 k8s kube-scheduler를 위한 plugin 아키텍처다. 이는 kube-scheduler에 직접 컴파일된 "plugin" API 집합으로 구성된다. API를 사용해 대부분의 스케줄링 기능을 plugin으로 구현할 수 있으며 동시에 스케줄링 "core"를 가볍고 관리 가능하게 한다. scheduling framework의 설계에 대한 기술적 자세한 내용은 [design proposal of the scheduling framework](https://github.com/kubernetes/enhancements/blob/master/keps/sig-scheduling/624-scheduling-framework/README.md)을 참고한다.
+scheduling framework는 k8s kube-scheduler를 위한 plugin 아키텍처다. 이는 kube-scheduler에 직접 컴파일된 "plugin" API 집합으로 구성된다. 이러한 API를 사용해 대부분의 스케줄링 기능을 plugin으로 구현할 수 있으며 동시에 스케줄링 "core"를 가볍고 관리 가능하게 한다. scheduling framework의 설계에 대한 기술적 자세한 내용은 [design proposal of the scheduling framework](https://github.com/kubernetes/enhancements/blob/master/keps/sig-scheduling/624-scheduling-framework/README.md)을 참고한다.
 
 ## Framework workflow
 scheduling framework는 몇 가지 extension point을 정의한다. 스케줄러 plugin은 하나 이상의 extension point에서 호출되도록 등록한다. 이러한 plugin 중 일부는 스케줄링 결정을 변경할 수 있고 일부는 정보 제공에 불과하다.
@@ -20,3 +20,25 @@ po가 스케줄링 불가하거나 내부 오류가 있는 경우 두 cycle을 �
 일부 interface는 [Scheduler Configuration](https://kubernetes.io/docs/reference/scheduling/config/#extension-points)을 통해 설정할 수 있는 scheduler extension point에 매칭된다.
 
 ![](https://kubernetes.io/images/docs/scheduling-framework-extensions.png)
+
+## Plugin API
+There are two steps to the plugin API. First, plugins must register and get configured, then they use the extension point interfaces. Extension point interfaces have the following form.
+``` go
+type Plugin interface {
+    Name() string
+}
+
+type QueueSortPlugin interface {
+    Plugin
+    Less(*v1.pod, *v1.pod) bool
+}
+
+type PreFilterPlugin interface {
+    Plugin
+    PreFilter(context.Context, *framework.CycleState, *v1.pod) error
+}
+
+// ...
+```
+
+## Plugin configuration
