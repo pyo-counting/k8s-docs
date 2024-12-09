@@ -37,7 +37,7 @@ foreground cascading deletion에서는 삭제하려는 소유자 object가 먼�
 
 소유자 object가 삭제 중 상태가 된 이후 controller는 종속 object를 삭제한다. 모든 종속 object가 삭제되면 controller가 소유자 object를 삭제한다. 이 시점에서 object는 더 이상 kube-apiserver를 통해 조회할 수 없다.
 
-foreground cascading deletion 중에 소유자 object의 삭제를 막는 종속 object는 `ownerReference.blockOwnerDeletion` 필드 값이 true인 object다. 더 자세한 내용은 [Use foreground cascading deletion](https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/#use-foreground-cascading-deletion)를 참고한다.
+foreground cascading deletion 중에 소유자 object의 삭제를 막는 종속 object는 `.metadata.ownerReference.blockOwnerDeletion` 필드 값이 true인 object다. 더 자세한 내용은 [Use foreground cascading deletion](https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/#use-foreground-cascading-deletion)를 참고한다.
 
 ### Background cascading deletion
 background cascading deletion에서는 kube-apiserver가 소유자 object를 즉시 삭제하고 백그라운드에서 controller가 종속 object들을 삭제한다. k8s는 기본적으로 background cascading deletion를 사용한다.
@@ -46,7 +46,7 @@ background cascading deletion에서는 kube-apiserver가 소유자 object를 즉
 k8s가 소유자 object를 삭제할 때 삭제되지 않고 남은 종속 object를 orphan object라고 부른다. 기본적으로 k8s는 종속 object를 삭제한다. 하지만 orphan cascade를 사용해 삭제되지 않도록 할 수 있다.
 
 ## Garbage collection of unused containers and images
-kubelet은 사용되지 않는 image에 대한 gc를 2분, container에 대한 gc를 1분마다 수행한다. 외부 gc 도구는 kubelet의 행동을 방해하고 필요한 container를 삭제할 수 있으므로 사용을 피해야 한다.
+kubelet은 사용되지 않는 image에 대한 gc를 5분, container에 대한 gc를 1분마다 수행한다. 외부 gc 도구는 kubelet의 행동을 방해하고 필요한 container를 삭제할 수 있으므로 사용을 피해야 한다.
 
 사용되지 않는 container와 image에 대한 gc 옵션을 설정하기 위해 configuration file 사용하여 kubelet을 수정하고 KubeletConfiguration 리소스 타입의 gc과 관련된 파라미터를 수정한다.
 
@@ -68,6 +68,9 @@ alpha 기능으로 디스크 사용량과 무관하게 로컬에 있는 사용�
 > kubelet이 재시작되면 계산 중이던 age는 초기화된다.
 
 ### Container garbage collection
+> **Note**:  
+> [#127157](https://github.com/kubernetes/kubernetes/issues/127157#issuecomment-2333512962)에서는 kubelet의 eviction(`.evictionHard`, `evictionSoft`) 기능으로 container gc 기능이 deprecated 됐다고한다.
+
 kubelet은 사용자가 정의할 수 있는 다음 변수들을 기반으로 사용되지 않는 container를 gc한다.
 - MinAge: kubelet이 gc할 수 있는 container의 최소 나이. 0으로 설정해 비활성화할 수 있다.
 - MaxPerPodContainer: 각 po가 가질 수 있는 죽은 container의 최대 개수. 0으로 설정해 비활성화할 수 있다.
