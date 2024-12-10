@@ -3,6 +3,8 @@ po가 특정 no에서만 실행될 수 있도록 제약하거나 특정 no를 �
 k8s에서 특정 po를 배치할 위치(no)를 선택하는 데 다음과 같은 방법을 사용할 수 있다.
 - po의 `.spec.nodeSelector` 필드
 - po의 `.spec.affinity` 필드
+  - `.spec.affinity.nodeAffinity`: node affinity
+  - `.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`: inter-pod affinity/anti-affinity
 - po의 `.spec.nodeName` 필드
 - po의 `.spec.topologySpreadConstraints` 필드
 
@@ -31,7 +33,7 @@ no 제약 조건 중 가장 간단한 방법은 po의 `.spec.nodeSelector` 필�
 ## Affinity and anti-affinity
 nodeSelector는 po를 특정 label이 있는 no에 스케줄링 되도록 제한하는 가장 간단한 방법이다. affinity, anti-affinity은 제한에 대한 더 많은 기능을 제공한다. affinity, anti-affinity의 이점은 아래와 같다.
 - affinity/anti-affinity가 더 표현적(expressive)이다. nodeSelector는 명시된 label이 있는 no만 선택할 수 있다. affinity/anti-affinity는 선택 뿐만 아니라 더 많은 제어를 제공한다.
-- 규칙이 "soft", "preference" 임을 나타낼 수 있으며 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다.
+- preferred 규칙을 사용해 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다.
 - no label 대신 no(또는 다른 topological domain)에서 실행 중인 다른 po의 label을 사용해 po를 제한할 수 있다. 이를 통해 po가 동일 no에 함께 배치되도록 규칙을 정의할 수 있다.
 
 affinity 기능은 다음의 두 가지 종류로 구성된다.
@@ -87,6 +89,8 @@ operator 필드에는 In, NotIn, Exists, DoesNotExist, Gt, Lt를 사용할 수 �
 NotIn, DoesNotExist는 node anti-affinity 동작을 정의할 떄 허용된다. 이 대신 [node taints](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)를 사용할 수도 있다.
 
 > **Note**:  
+> - nodeAffinity의 soft, hard 정책을 같이 사용하면 두 조건을 모두(AND) 만족해야 한다.
+> - nodeAffinity의 soft 정책을 여러개 사용할 경우 no별로 각 정책의 weight를 더해 가장 점수가 높은 no가 우선 순위를 갖는다.
 > - nodeSelector, nodeAffinity를 모두 사용한다면 스케줄링이 되기 위해 두 조건을 모두(AND) 만족해야 한다.
 > - nodeAffinity의 nodeSelectorTerms을 여러개 사용할 경우 명시된 nodeSelectorTerms 중 하나(OR)를 만족하는 no에도 po가 스케줄링 될 수 있다.
 > - nodeSelectorTerms의 matchExpressions를 여러개 사용하는 경우 모든(AND) matchExpressions를 만족하는 no에만 po가 스케줄링 될 수 있다.
