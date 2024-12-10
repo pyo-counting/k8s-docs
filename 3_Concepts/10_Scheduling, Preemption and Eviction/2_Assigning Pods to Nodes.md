@@ -192,7 +192,7 @@ no affinity와 마찬가지로 po affinity, anti-affinity에는 다음의 2 종�
 
 예를 들어, requiredDuringSchedulingIgnoredDuringExecution affinity를 사용하여 서로 통신을 많이 하는 두 po를 동일 cloud provider zone에 배치하도록 scheduler에게 지시할 수 있다. 비슷하게, preferredDuringSchedulingIgnoredDuringExecution anti-affinity를 사용해 po를 여러 cloud provider zone에 퍼뜨릴 수 있다.
 
-po 사이의 affinity를 사용하려면, po에 `.spec.affinity.podAffinity` 필드를 사용한다. po간 anti-affinity를 사용하려면, po에 `.spec.affinity.podAntiAffinity` 필드를 사용한다.
+inter-pod affinity를 사용하려면, po에 `.spec.affinity.podAffinity` 필드를 사용한다. po간 anti-affinity를 사용하려면, po에 `.spec.affinity.podAntiAffinity` 필드를 사용한다.
 
 #### Scheduling a group of pods with inter-pod affinity to themselves
 스케줄링 중인 po가 동일 affinity를 갖는 여러 po 중 첫 번째 po인 경우 다른 모든 affinity에 대한 검사를 통과하면 스케줄링이 허용된다. This is determined by verifying that no other pod in the cluster matches the namespace and selector of this pod, that the pod matches its own terms, and the chosen node matches all requested topologies. This ensures that there will not be a deadlock even if all the pods have inter-pod affinity specified.
@@ -242,7 +242,7 @@ po affinity, anti-affinity의 operator 필드에 In, NotIn, Exists 및 DoesNotEx
 
 원칙적으로, topologyKey에는 성능과 보안상의 이유로 다음의 예외를 제외하면 어느 label 키도 사용할 수 있다.
 - po affinity, anti-affinity에 대해, 빈 topologyKey 필드는 requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution에서 허용되지 않는다.
-- requiredDuringSchedulingIgnoredDuringExecution po anti-affinity 규칙에 대해, LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 kubernetes.io/hostname으로 제한한다. 커스텀 토폴로지를 허용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다.
+- requiredDuringSchedulingIgnoredDuringExecution po anti-affinity 규칙에 대해, LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 kubernetes.io/hostname으로 제한한다. 다른 topology를 사용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다.
 
 labelSelector와 topologyKey에 더하여 선택적으로, labelSelector가 비교해야 하는 ns의 목록을 namespaces 필드에 명시할 수 있다. 생략하거나 비워 두면, 해당 affinity, anti-affinity 정의가 있는 po의 ns를 기본값으로 사용한다.
 
@@ -290,7 +290,6 @@ spec:
 ```
 
 아래 deploy는 app=web-store label을 갖는 replica를 생성한다. inter-pod affinity 규칙은 scheduler로 하여금 app=store label이 있는 po를 실행 중인 no에 각 replica를 배치하도록 한다. po anti-affinity 규칙은 scheduler로 하여금 app=web-store label이 있는 서버 po를 한 no에 여러 개 배치하지 못하도록 한다.
-
 ``` yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -341,7 +340,7 @@ spec:
 [ZooKeeper tutorial](https://kubernetes.io/docs/tutorials/stateful-application/zookeeper/#tolerating-node-failure)에서 위 예시와 동일한 기술을 사용해 고 가용성을 위한 anti-affinity로 구성된 sts의 예시를 확인할 수 있다.
 
 ## nodeName
-`.spec.nodeName`은 affinity, `.spec.nodeSelector`보다 더 직접적인 no 선택 방법이다. `.spec.nodeName` 필드가 명시되면 scheduler는 해당 po를 무시하고 명시된 no의 kubelet이 해당 po를 자기 no에 배치하려고 시도한다. 이는 다른 규칙보다 우선 적용된다.
+`.spec.nodeName`은 affinity, `.spec.nodeSelector`보다 더 직접적인 no 선택 방법이다. `.spec.nodeName` 필드가 명시되면 scheduler는 해당 po를 무시하고, 명시된 no의 kubelet이 해당 po를 자기 no에 배치하려고 시도한다. 이는 다른 규칙보다 우선 적용된다.
 
 몇 가지 제한 사항이 있다.
 - 명시한 no가 존재하지 않을 경우, 때떄로 po는 실행되지 않고 삭제될 수도 있다.

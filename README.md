@@ -149,15 +149,17 @@
   - nodeSelector: (po의 `.spec.nodeSelector`) no에 대한 label selector로 po가 스케줄링 no를 제한한다. 해당 label을 갖는 no가 없으면 po는 스케줄링되지 않는다.
     - kubelet이 `node-restriction.kubernetes.io/` 접두사를 갖는 label을 업데이트하지 못하도록 함으로써 특정 po에 대한 격리를 수행할 수 있다(po의 `.spec.nodeSelector`). 해당 label을 사용하기 위한 몇 가지 필요 사항이 있다. [Node authorizer](https://kubernetes.io/docs/reference/access-authn-authz/node/), NodeRestriction admission plugin 활성화가 필요하다.
   - affinity / anti-affinity: (po의 `.spec.affinity`) label selector에 비패 더 표현적이며, no 뿐만 아니라 po에 대한 affinity도 제공한다. 그리고 preferred 규칙을 사용해 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다.
-    - node affinity: (po의 `.spec.affinity.nodeAffinity`): matchExpressions의 operator를 NotIn, DoesNotExist를 사용해 node anti-affinity처럼 사용할 수 있다. `.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution`, `.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution`는 각각 hard, soft 정책을 나타낸다. soft 정책을 
+    - node affinity: (po의 `.spec.affinity.nodeAffinity`): matchExpressions의 operator를 NotIn, DoesNotExist를 사용해 node anti-affinity처럼 사용할 수 있다. `.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution`, `.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution`는 각각 hard, soft 정책을 나타낸다.
       - nodeAffinity의 soft, hard 정책을 같이 사용하면 두 조건을 모두(AND) 만족해야 한다.
       - nodeAffinity의 soft 정책을 여러개 사용할 경우 no별로 각 정책의 weight를 더해 가장 점수가 높은 no가 우선 순위를 갖는다.
       - nodeSelector, nodeAffinity를 모두 사용한다면 스케줄링이 되기 위해 두 조건을 모두(AND) 만족해야 한다.
       - nodeAffinity의 nodeSelectorTerms을 여러개 사용할 경우 명시된 nodeSelectorTerms 중 하나(OR)를 만족하는 no에도 po가 스케줄링 될 수 있다.
       - nodeSelectorTerms의 matchExpressions를 여러개 사용하는 경우 모든(AND) matchExpressions를 만족하는 no에만 po가 스케줄링 될 수 있다.
-    - pod affinity, pod anti-affinity: (po의 `.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`)
-  - nodeName: (po의 `.spec.nodeName`)
+    - inter-pod affinity, pod anti-affinity: (po의 `.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`) 보통 po가 동일 po에 접근해야 하는 경우에 사용한다. topology에 매칭되는 no 중 이미 실행 중인 다른 po의 label을 기반으로 po를 스케줄링한다. topologyKey는 반드시 명시해야한다. requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution는 각각 hard, soft 정책을 나타낸다.  requiredDuringSchedulingIgnoredDuringExecution pod anti-affinity 규칙의 경우 LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 kubernetes.io/hostname으로 제한한다. 다른 topology를 사용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다. affinity의 대상이 되는 po는 namespaces, namespaceSelector와 labelSelector, matchLabelKeys, mismatchLabelKeys 필드를 통해 지정할 수 있다.
+  - nodeName: (po의 `.spec.nodeName`): 해당 affinity, nodeSelecotr보다 더 직접적인 no 선택 방법이다. scheduler는 해당 필드를 사용하는 po를 무시하며, 바로 해당 no의 kubelet이 해당 po를 자기 no에 배치하려고 시도한다. 이는 다른 규칙보다 우선 적용된다. 이는 advanced use case를 위한 목적으로만 사용하는 것을 권장한다.
   - pod topology constraints: (po의 `.spec.topologySpreadConstraints`)
+- pod overhead는 보통 container runtime에서 container의 resource 외에 container를 생성 및 실행하는 데 필요한 리소스를 설정하기 위해 사용한다. pod overhead는 RuntimeClass admission controller가 po의 `.spec.overhead`을 추가한다. pod overhead는 스케줄링, eviction에서 모두 고려한다. ([Pod Overhead](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-overhead/))
+- po는 생성되면 일단 스케줄링을 위한 준비가 완료 된것으로 간주된다. 그렇기 때문에 k8s scheduler는 즉시 pending pod를 배치할 no를 찾기 위해 노력한다. 이러한 po로 인해 원하지 않는 동작이 발생할 수 있다. 예를 들어 Cluster AutoScaler가 동작할 수도 있다. po의 `.spec.schedulingGate` 필드를 명시/삭제함으로써 po가 언제 scheduling 될 준비가 됐는지 제어할 수 있다. `.spec.schedulingGate` 필드에 문자열 목록을 명시할 수 있으며 각 문자열은 po가 스케줄링 될 준비가 됐다고 간주되기 전에 충족해야 하는 조건을 나타내는데 사용한다. 이 필드는 po가 생성될 때만 명시할 수 있다. 즉 po가 생성(schedulding이 아닌 kube-apiserver에 등록)된 후에는 각 필드를 임의의 순서로 제거할 수 있지만, 추가로 새로운 목록을 추가할 수는 없다. ([Pod Scheduling Readiness](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-scheduling-readiness/))
 ---
 
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
