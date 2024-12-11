@@ -133,7 +133,7 @@
 - k8s는 기본 container runtime을 사용한다. 하지만 여러 container runtime을 사용하는 경우 po의 `.spec.runtimeClassName`을 이용해 cluster에 존재하는 [RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/) object를 명시해 특정 container runtime을 사용할 수도 있다. ([Containers](https://kubernetes.io/docs/concepts/containers/))
 - container image는 registry hostname(옵션), image name, tag 또는 digest 구성된다. digest는 image 내용을 hashing 알고리즘 적용한 hash 값으로 immutable이다. tag는 명시하지 않은 경우 latest 값으로 사용한다. po가 항상 동일한 container image 버전을 사용하는 것을 보장하기 위해 `<image-name>:<tag>` 대신 `<image-name>@<digest>`를 사용할 수 있다. ([Images](https://kubernetes.io/docs/concepts/containers/images/))
 - `.spec.containers[*].imagePullPolicy`을 생략할 경우의 기본 동작은 다음과 같다. ([Images](https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting))
-  - tag에 digest를 설정한 경우 IfNotPresent 값으로 설정
+  - tag 대신 digest를 설정한 경우 IfNotPresent 값으로 설정
   - tag가 :latest일 때 Always 값으로 설정
   - tag를 명시하지 않을 경우 Always 값으로 설정
   -  :latest가 아닌 tag일 때 IfNotPresent 값으로 설정
@@ -148,16 +148,32 @@
 - k8s에서 po의 스케줄링을 제어하기 위한 설정은 다음과 같다. ([Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/))
   - nodeSelector: (po의 `.spec.nodeSelector`) no에 대한 label selector로 po가 스케줄링 no를 제한한다. 해당 label을 갖는 no가 없으면 po는 스케줄링되지 않는다.
     - kubelet이 `node-restriction.kubernetes.io/` 접두사를 갖는 label을 업데이트하지 못하도록 함으로써 특정 po에 대한 격리를 수행할 수 있다(po의 `.spec.nodeSelector`). 해당 label을 사용하기 위한 몇 가지 필요 사항이 있다. [Node authorizer](https://kubernetes.io/docs/reference/access-authn-authz/node/), NodeRestriction admission plugin 활성화가 필요하다.
-  - affinity / anti-affinity: (po의 `.spec.affinity`) label selector에 비패 더 표현적이며, no 뿐만 아니라 po에 대한 affinity도 제공한다. 그리고 preferred 규칙을 사용해 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다.
+  - affinity / anti-affinity: (po의 `.spec.affinity`) label selector에 비해 더 표현적이며, no 뿐만 아니라 po에 대한 affinity도 제공한다. 그리고 preferred 규칙을 사용해 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다.
     - node affinity: (po의 `.spec.affinity.nodeAffinity`): matchExpressions의 operator를 NotIn, DoesNotExist를 사용해 node anti-affinity처럼 사용할 수 있다. `.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution`, `.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution`는 각각 hard, soft 정책을 나타낸다.
       - nodeAffinity의 soft, hard 정책을 같이 사용하면 두 조건을 모두(AND) 만족해야 한다.
       - nodeAffinity의 soft 정책을 여러개 사용할 경우 no별로 각 정책의 weight를 더해 가장 점수가 높은 no가 우선 순위를 갖는다.
       - nodeSelector, nodeAffinity를 모두 사용한다면 스케줄링이 되기 위해 두 조건을 모두(AND) 만족해야 한다.
       - nodeAffinity의 nodeSelectorTerms을 여러개 사용할 경우 명시된 nodeSelectorTerms 중 하나(OR)를 만족하는 no에도 po가 스케줄링 될 수 있다.
       - nodeSelectorTerms의 matchExpressions를 여러개 사용하는 경우 모든(AND) matchExpressions를 만족하는 no에만 po가 스케줄링 될 수 있다.
-    - inter-pod affinity, pod anti-affinity: (po의 `.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`) 보통 po가 동일 po에 접근해야 하는 경우에 사용한다. topology에 매칭되는 no 중 이미 실행 중인 다른 po의 label을 기반으로 po를 스케줄링한다. topologyKey는 반드시 명시해야한다. requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution는 각각 hard, soft 정책을 나타낸다.  requiredDuringSchedulingIgnoredDuringExecution pod anti-affinity 규칙의 경우 LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 kubernetes.io/hostname으로 제한한다. 다른 topology를 사용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다. affinity의 대상이 되는 po는 namespaces, namespaceSelector와 labelSelector, matchLabelKeys, mismatchLabelKeys 필드를 통해 지정할 수 있다.
+    - inter-pod affinity, pod anti-affinity: (po의 `.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`) 보통 po가 동일 po에 접근해야 하는 경우 사용한다. topology에 매칭되는 no 중 이미 실행 중인 다른 po의 label을 기반으로 po를 스케줄링한다. topologyKey는 반드시 명시해야한다. requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution는 각각 hard, soft 정책을 나타낸다.  requiredDuringSchedulingIgnoredDuringExecution pod anti-affinity 규칙의 경우 LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 `kubernetes.io/hostname`으로 제한한다. 다른 topology를 사용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다. affinity의 대상이 되는 po는 namespaces, namespaceSelector와 labelSelector, matchLabelKeys, mismatchLabelKeys 필드를 통해 지정할 수 있다. inter-pod affinity와 anti-affinity에는 상당한 양의 프로세싱이 필요하기에 대규모 cluster에서는 스케줄링 속도가 크게 느려질 수 있다. 수백 개의 no를 넘어가는 cluster에서 이를 사용하는 것은 추천하지 않는다. no에 일관된 label을 지정해야 한다. 즉, cluster의 모든 no는 topologyKey와 매칭되는 적절한 label을 가지고 있어야 한다. 일부 또는 모든 no에 topologyKey로 명시한 label이 없는 경우에는 의도하지 않은 동작이 발생할 수 있다.
   - nodeName: (po의 `.spec.nodeName`): 해당 affinity, nodeSelecotr보다 더 직접적인 no 선택 방법이다. scheduler는 해당 필드를 사용하는 po를 무시하며, 바로 해당 no의 kubelet이 해당 po를 자기 no에 배치하려고 시도한다. 이는 다른 규칙보다 우선 적용된다. 이는 advanced use case를 위한 목적으로만 사용하는 것을 권장한다.
-  - pod topology constraints: (po의 `.spec.topologySpreadConstraints`)
+  - pod topology constraints: (po의 `.spec.topologySpreadConstraints[*]`) po을 특정 topology(zone, az, node) 내에서 균등하게 분산하기 위해 사용한다. affinity는 no, po와의 관계를 통해 po가 배치 될 no를 결정하기 위해 사용한다. 두 개념은 같이 사용할 수 있으며 pod topology constraints 내에서 node affinity, taint를 무시할지 여부도 정책으로 사용할 수 있다. 여러 constraints를 사용하는 경우 모두 만족하는 no를 고려한다. 각 필드의 의미는 다음과 같다.
+    - `topologyKey`: (required) no label key. 해당 label key를 갖고 동일한 값을 갖는 no는 동일 topology로 간주된다. 각 topology instance(no의 label key&value가 같은 집합)를 domain이라고 부른다. kube-scheduler는 각 domain에 po를 균등하게 배포하려고 한다. 그리고 domain을 구성하는 no가 `nodeAffinityPolicy`, `nodeTaintsPolicy` 요구 사항을 충족(요구 사항이 없는 경우에도)하는 경우 eligible domain이라고 한다.
+    - minDomains: (optional, 기본 값 1) eligible domain의 최소 개수로 값은 0보다 커야하며 `whenUnsatisfiable`이 DoNotSchedule일 경우에만 사용할 수 있다. topology key와 매칭되는 eligible domain 개수가 `minDomains`보다 작으면 global minimum을 0으로 간주해 skew를 계산한다(global minimum은 eligible domain에서 매칭되는 po의 최소 개수를 나타내며, 만약 eligible domain이 `minDomains`보다 작으면 0으로 간주된다). topology key와 매칭되는 eligible domain 개수가 `minDomains`와 같거나 더 크면 scheduling에 영향을 주지 않는다.
+    - `maxSkew`: (required) po가 고르지 않게 분포될 수 있는 정도를 나타낸다. 이 필드는 필수이며 0 보다 큰 숫자를 사용해야 한다. 이 필드의 의미는 `whenUnsatisfiable` 필드 값에 따라 바뀐다.
+      - `whenUnsatisfiable`이 DoNotSchedule: `maxSkew`는 대상 topology에 있는 매칭 po의 갯수와 global minimum(eligible domain 중 매칭되는 po 개수 값 중 가장 작은 수, 만약 eligible domain이 `minDomains`보다 작으면 0으로 간주) 사이의 최대 허용 차이를 정의한다. 예를 들어 2, 2, 1개의 매칭 po를 갖는 3개 zone이 있는 경우 `maxSkew`가 1이라면 global minimum은 1이다.
+      - `whenUnsatisfiable`이 ScheduleAnyway: kube-scheduler는 skew를 줄이기 위해 도움이되는 topology에 더 높은 우선 순위를 부여한다.
+    - `whenUnsatisfiable`: (required) spread constraint를 만족하지 않는 po를 처리할 방법을 설정한다.
+      - DoNotSchedule: (default) 스케줄링을 수행하지 않는다.
+      - ScheduleAnyway: skew를 최소화하는 no의 우선순위를 지정해 스케줄링을 계속 수행하도록 한다.
+    - `labelSelector`: 매칭 po를 찾는데 사용된다. label selector에 매칭되는 po는 topology domain에 존재하는 po 개수를 계산하는데 사용된다.
+    - `matchLabelKeys`: `labelSelector`와 마찬가지로 매칭 po를 찾는데 사용된다. 다만 label key의 유무만 검사한다. `labelSelector` 필드를 사용하는 경우에만 사용할 수 있으며 `labelSelector`와 중복되는 key를 사용할 수 없다. 그리고 `labelSelector`의 label 목록과 AND 연산 결과 label에 매칭되는 po를 찾는다. 빈 값은 모든 po를 의미하며 `labelSelector`만 고려한다. 예를 들어 deploy를 사용해 새로운 버전을 배포하는 경우에 pod-template-hash label을 사용해 revision을 고려할 수 있다.
+    - `nodeAffinityPolicy`: topology spread skew를 계산할 때 po의 node affinity, node selector를 어떻게 처리할지 설정한다. 기본 값은 `Honor`다.
+      - `Honor`: node affinity, node selector 결과 no에 대한 skew를 계산한다.
+      - `Ignore`: 모든 no에 대한 skew를 계산한다
+    - `nodeTaintsPolicy`: topology spread skew를 계산할 때 no의 taints를 어떻게 처리할지 설정한다. 기본 값은 `Ignore`다.
+      - `Honor`: taints가 없는 no, po의 toleration이 있는 경우 관련 tainted no에 대한 skew를 계산한다.
+      - `Ignore`: 모든 no에 대한 skew를 계산한다.
 - pod overhead는 보통 container runtime에서 container의 resource 외에 container를 생성 및 실행하는 데 필요한 리소스를 설정하기 위해 사용한다. pod overhead는 RuntimeClass admission controller가 po의 `.spec.overhead`을 추가한다. pod overhead는 스케줄링, eviction에서 모두 고려한다. ([Pod Overhead](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-overhead/))
 - po는 생성되면 일단 스케줄링을 위한 준비가 완료 된것으로 간주된다. 그렇기 때문에 k8s scheduler는 즉시 pending pod를 배치할 no를 찾기 위해 노력한다. 이러한 po로 인해 원하지 않는 동작이 발생할 수 있다. 예를 들어 Cluster AutoScaler가 동작할 수도 있다. po의 `.spec.schedulingGate` 필드를 명시/삭제함으로써 po가 언제 scheduling 될 준비가 됐는지 제어할 수 있다. `.spec.schedulingGate` 필드에 문자열 목록을 명시할 수 있으며 각 문자열은 po가 스케줄링 될 준비가 됐다고 간주되기 전에 충족해야 하는 조건을 나타내는데 사용한다. 이 필드는 po가 생성될 때만 명시할 수 있다. 즉 po가 생성(schedulding이 아닌 kube-apiserver에 등록)된 후에는 각 필드를 임의의 순서로 제거할 수 있지만, 추가로 새로운 목록을 추가할 수는 없다. ([Pod Scheduling Readiness](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-scheduling-readiness/))
 ---
