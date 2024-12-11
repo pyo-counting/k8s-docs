@@ -1,0 +1,1 @@
+## [Kubernetes 1.27: More fine-grained pod topology spread policies reached beta](https://kubernetes.io/blog/2023/04/17/fine-grained-pod-topology-spread-features-beta/)

@@ -36,8 +36,8 @@ spec:
 
 ### Spread constraint definition
 `.spec.topologySpreadConstraints`에 1개 이상의 목록을 정의해 kube-scheduler가 cluster에서 어떻게 po를 분배할지에 대해 정의한다. 필드는 다음과 같다.
-- `topologyKey`: (required) no label key. 해당 label key를 갖고 동일한 값을 갖는 no는 동일 topology로 간주된다. 각 topology instance(no의 label key&value가 같은 집합)를 domain이라고 부른다. kube-scheduler는 각 domain에 po를 균등하게 배포하려고 한다. 그리고 domain을 구성하는 no가 `nodeAffinityPolicy`, `nodeTaintsPolicy` 요구 사항을 충족(요구 사항이 없는 경우에도)하는 경우 eligible domain이라고 한다.
-- `minDomains`: (optional) eligible domain의 최소 개수.
+- `topologyKey`: (required) no label key. 해당 label key를 갖고 동일한 값을 갖는 no는 동일 topology로 간주된다. 각 topology instance(no의 label key&value가 같은 집합)를 domain이라고 부른다. 그리고 domain을 구성하는 no가 `nodeAffinityPolicy`, `nodeTaintsPolicy` 요구 사항을 충족(요구 사항이 없는 경우에도)하는 경우 eligible domain이라고 한다. kube-scheduler는 각 domain에 po를 균등하게 배포하려고 한다. 
+- `minDomains`: (optional) eligible domain의 최소 개수. domain의 개수가 `minDomains`보다 작으면 global minimum이 0이 되기 때문에 각 domain에는 최대 `maxSkew` 개수의 po만 스케줄링될 수 있다.
   > **Note**:  
   > k8s v1.30 이전에서 `minDomains` 필드는 MinDomainsInPodTopologySpread feature gate(v1.28부터 기본 활성화)가 활성화된 경우에만 사용할 수 있다. 이 전 버전에서는 비활성화 됐기 때문에 기본적으로 사용이 불가하다.
   - 값은 0보다 커야하며 `whenUnsatisfiable: DoNotSchedule`일 경우에만 사용할 수 있다.
@@ -117,12 +117,73 @@ You need a mechanism to ensure that all the nodes in a topology domain (such as 
 ### Example: topology spread constraints with node affinity
 
 ## Implicit conventions
-
+몇 가지 내장된 규칙이 있다.
+- 동일 ns의 po만 고려한다.
+- scheduler는 `topologySpreadConstraints[*].topologyKey`에 명시된 모든 label을 갖는 no만 고려한다. 이는 다음을 의미한다.
+  1. 제외된 no에 위치한 po는 maxskew 계산에 계산하지 않는다.
+  2. 새롭게 생성될 po는 이미 제외된 no에 스케쥴링 될 수 없다.
+- 새롭게 생성된 po의 `topologySpreadConstraints[*].labelSelector`가 해당 po의 label과 일치하지 않을 경우, 발생할 수 있는 상황에 유의해야 한다. 위 예시에서 새롭게 생성된 po에서 label을 제거하더라도 maxskew를 만족하기 때문에 zone b에 있는 no에 배치할 수 있다. However, after that placement, the degree of imbalance of the cluster remains unchanged - it's still zone A having 2 Pods labeled as foo: bar, and zone B having 1 Pod labeled as foo: bar. If this is not what you expect, update the workload's topologySpreadConstraints[*].labelSelector to match the labels in the pod template
 
 ## Cluster-level default constraints
+cluster에 기본 topology spread constraints를 설정하는 것도 가능하다. 기본 topology spread constrains는 아래의 경우에만 적용된다.
+- `.spec.topologySpreadConstraints` 필드를 사용하지 않은 po
+- svc, rs, sts에 속한 po
+
+기본 constraints는 scheduler의 PodTopologySpread plugin을 통해 설정 가능하다. constraints는 `labelSelector` 필드가 빈 값이어야 한다는 점을 제외하고 po의 `.spec.topologySpreadConstraints`와 동일하다. selector는 po가 속한 svc, rs, sts를 통해 계산된다.
+
+아래는 설정 예시다.
+``` yaml
+apiVersion: kubescheduler.config.k8s.io/v1beta3
+kind: KubeSchedulerConfiguration
+
+profiles:
+  - schedulerName: default-scheduler
+    pluginConfig:
+      - name: PodTopologySpread
+        args:
+          defaultConstraints:
+            - maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+          defaultingType: List
+```
 
 ### Built-in default constraints
+사용자가 cluster-level 기본 constraints를 설정하지 않는 경우 kube-scheduler는 아래 기본 topology constraints를 사용한다.
+``` yaml
+defaultConstraints:
+  - maxSkew: 3
+    topologyKey: "kubernetes.io/hostname"
+    whenUnsatisfiable: ScheduleAnyway
+  - maxSkew: 5
+    topologyKey: "topology.kubernetes.io/zone"
+    whenUnsatisfiable: ScheduleAnyway
+```
+
+Also, the legacy SelectorSpread plugin, which provides an equivalent behavior, is disabled by default.
+
+> **Note**:  
+> The PodTopologySpread plugin does not score the nodes that don't have the topology keys specified in the spreading constraints. This might result in a different default behavior compared to the legacy SelectorSpread plugin when using the default topology constraints.
+>
+> If your nodes are not expected to have both kubernetes.io/hostname and topology.kubernetes.io/zone labels set, define your own constraints instead of using the Kubernetes defaults.
+
+기본 topology constraints를 사용하길 원하지 않을 경우 PodTopologySpread plugin 설정에 `defaultingType` 필드를 List, `defaultConstraints` 필드를 빈 값으로 설정한다.
+``` yaml
+apiVersion: kubescheduler.config.k8s.io/v1beta3
+kind: KubeSchedulerConfiguration
+
+profiles:
+  - schedulerName: default-scheduler
+    pluginConfig:
+      - name: PodTopologySpread
+        args:
+          defaultConstraints: []
+          defaultingType: List
+```
 
 ## Comparison with podAffinity and podAntiAffinity
 
 ## Known limitations
+- po가 no에서 삭제되는 상황에도 constraints가 만족되는 것을 보장하지 않는다. 예를 들어 deploy의 scale down으로 po의 분포가 불균등할 수 있다. 이 경우를 대비해 [Descedhuler](https://github.com/kubernetes-sigs/descheduler)를 사용할 수 있다.
+- tainted no에 존재하는 po도 계산된다.
+- scheduler는 해당 시점에 cluster에 존재하는 no만 고려한다.
