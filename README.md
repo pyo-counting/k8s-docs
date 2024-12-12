@@ -53,9 +53,9 @@
 - 대규모 cluster의 경우 Event object 저장을 위한 별도의 etcd를 운영을 고려한다. ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/#etcd-storage))
 - kube-apiserver: kube-apiserver -> kubelet 통신 시, 기본적으로 kube-apiserver는 kubelet의 server certificate를 검증하지 않는다. 검증을 위해 `--kubelet-certificate-authority` flag에 kubelet의 ca certificate를 설정해 kubelet으로의 연결을 안전하게 수행할 수 있다(대안으로 SSH tunneling 사용 가능). kube-apiserver -> kubelet 통신 경우는 다음과 같다. kube-apiserver가 kubelet에 no, po 상태에 대한 추가 정보 요청 등, po의 로그조회 (`kubectl logs`), 실행 중인 po에 대한 attach(`kubectl attach`, `kubectl exec`), 실행 중인 po에 대한 트래픽 포워딩(`kubectl port-forward`) ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#control-plane-to-node))
 - kube-apiserver: kube-apiserver -> no, po, svc와 직접 통신하는 경우는 kube-apiserver의 proxy 기능을 사용할 때다. proxy 기능은 kube-apiserver의 내장 기능으로 kube-apiserver를 통해 po, svc, no에 접근하는 경우에 사용된다. 대표적인 예시로 `kubectl cluster-info` 명령어를 사용해 조회되는 목록이다. 해당 목록에는 k8s kube-apiserver의 도메인과 `kubernetes.io/cluster-service` label이 true인 svc에 접근하기 위한 kube-apiserver의 주소를 출력한다. 물론 해당 목록에 조회되지 않더라도 kuber-apiserver의 API 명세서를 참고해 접근할 수 있다. ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#api-server-to-nodes-pods-and-services))
-- kube-controller-manager(node controller): node controller는 no의 생명 주기 동안 여러 작업을 수행한다. 첫 번째로 no가 등록될 때 CIDR 블락을 할당한다. 두 번째로 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy(Ready `.status.conditions[*].type`이 Unknown or False) 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다. 세 번째로 no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다(kubelet의 [Node-pressure Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/)과 비교). ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#node-controller))
+- kube-controller-manager(node controller): node controller는 no의 생명 주기 동안 여러 작업을 수행한다. 첫 번째로 no가 등록될 때 CIDR 블락을 할당한다. 두 번째로 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy(Ready `.status.conditions[*].type`이 Unknown or False) 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다. 세 번째로 no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다(kubelet의 [Node-pressure Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/), [API-initiated Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)와 비교). ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#node-controller))
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
-    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다. 기본적으로 k8s는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key에 대해 `tolerationSeconds=300`을 추가한다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
+    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 eviction 하기 위해 `node.kubernetes.io/unreachable` toleration key를 추가한다. k8s는 명시적으로 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key를 설정하지 않으면 해당 toleration과 `tolerationSeconds=300`을 설정하기 때문에 첫 eviction까지 5분을 기다린다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
       - kube-controller-manager의 api initiated eviction에 대한 상세 동작은 다음과 같다. 대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다. 이 기본 동작은 cluster의 large cluster 여부, healthy 또는 unhealthy zone인지에 따라 달라진다.
       - no에 대한 eviction rate(`--node-eviction-rate`, `--secondary-node-eviction-rate`)는 `--unhealthy-zone-threshold`, `--large-cluster-size-threshold`에 따라 달라진다.
         - large cluster일 경우 `--unhealthy-zone-threshold`가 0.55 이상(unhealthy zone)이면 `--secondary-node-eviction-rate`을 사용한다.
@@ -96,15 +96,17 @@
     topologyKey: "topology.kubernetes.io/zone"
     whenUnsatisfiable: ScheduleAnyway
   ```
-- kube-controller-manager(node controller)는 특정 조건이 만족될 때 자동으로 no에 taint를 추가한다. no가 drain된 경우 no controller 또는 kubelet은 NoExecute effect를 추가한다. efeect는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가된다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다. no에 unreachable이면 kube-apiserver가 no의 kubelet과 통신에 실패할 수 있다. 그렇기 때문에 po에 대한 삭제를 kubelet에 통보할 수 없다. 그렇기 때문에 해당 no에 po는 계속해서 실행 중일 수 있다.
+- kube-controller-manager(node controller)는 특정 조건이 만족될 때 pod eviction을 위해 자동으로 no에 taint를 추가한다. no가 drain된 경우 no controller 또는 kubelet은 NoExecute effect를 추가한다. efeect는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가된다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다. no에 unreachable이면 kube-apiserver가 no의 kubelet과 통신에 실패할 수 있다. 그렇기 때문에 po에 대한 삭제를 kubelet에 통보할 수 없다. 그렇기 때문에 해당 no에 po는 계속해서 실행 중일 수 있다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
   - `node.kubernetes.io/not-ready`: no가 준비되지 않았다. 이는 NodeCondition Ready 가 "False"로 됨에 해당한다.
   - `node.kubernetes.io/unreachable`: no가 no controller에서 도달할 수 없다. 이는 NodeCondition Ready 가 "Unknown"로 됨에 해당한다.
   - `node.kubernetes.io/memory-pressure`: no에 memory pressure이 있다.
   - `node.kubernetes.io/disk-pressure`: no에 disk pressure이 있다.
   - `node.kubernetes.io/pid-pressure`: no에 PID pressure이 있다.
   - `node.kubernetes.io/network-unavailable`: no의 네트워크를 사용할 수 없다.
-  - `node.kubernetes.io/unschedulable`: no를 스케줄할 수 없다.
+  - `node.kubernetes.io/unschedulable`: no를 스케줄할 수 없다(예를 들어 no의 `.spec.unschedulable` 필드가 false일 때).
   - `node.cloudprovider.kubernetes.io/uninitialized`: kubelet의 "external" cloud provider와 같이 실행되는 경우 사용 불가능한 no로 표기하기 위해 taint를 추가한다. 이후, cloud-controller-manager의 controller가 이 no를 초기화하면 kubelet은 taint를 제거한다.
+- kube-controller-manager(node controller)는 no의 condition에 따라 NoSchedule effect taint를 추가한다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-nodes-by-condition))
+- kube-scheduler는 스케줄링 결정을 내릴 때 no condition을 확인하는 것이 아니라 taint를 확인한다. 이렇게 하면 no condition이 스케줄링에 직접적인 영향을 주지 않는다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-nodes-by-condition))
 ---
 
 - encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
@@ -207,6 +209,13 @@
       - `PreferNoSchedule`: `NoSchedule`의 soft 버전이다. 시스템은 no의 taint를 허용하지 않는 po를 스케줄링하지 않으려고 노력하지만 반드시는 아니다.
     - `tolerations[*].tolerationSeconds`: `tolerations[*].effect`가 `NoExecute`일 때 eviction 대기 시간을 의미한다. 설정하지 않으면 eviction하지 않으며, 0은 즉시 eviction을 의미한다.
   - no의 `.spec.taints[*]` 필드 `effect`, `key`, `value`는 po의 toleration과 같은 의미다. 추가적으로 `timeAdded` 필드는 `NoExecute` effect에 대해 언제 추가됐는지를 나타내는 필드다.
+- ds는 po 생성 시 tolerationSeconds가 없는 NoExecute toleration `node.kubernetes.io/unreachable`, `node.kubernetes.io/not-ready`을 추가한다. 이를 통해 po가 eviction 되지 않도록 보장한다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
+- ds는 po 생성 시 아래 NoSchedule effct toleration을 추가한다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-nodes-by-condition))
+  - node.kubernetes.io/memory-pressure
+  - node.kubernetes.io/disk-pressure
+  - node.kubernetes.io/pid-pressure (1.14 or later)
+  - node.kubernetes.io/unschedulable (1.10 or later)
+  - node.kubernetes.io/network-unavailable (host network only)
 ---
 
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
@@ -283,7 +292,7 @@
 - `kuvectl apply --validate --dry-run`: client validation, dry run 수행
 - `kubectl cluster-info`: control  plane의 주소(kube-apiserver)와 `kubernetes.io/cluster-service` label이 true인 service의 주소를 노출한다.
 - `kubectl cluster-info dump --output-directory -A`: 클러스터의 전체 정보와 현재 ns, kube-system ns의 전체 정보를 stdout으로 출력한다.
-- `kubectl cordon`: no를 unscheduleable 상태로 변경한다.
+- `kubectl cordon`: no를 unscheduleable 상태로 변경한다(no의 `.spec.unschedulable`을 false로 설정).
 - `kubectl taint`: no에 taint를 추가한다.
 
 ---

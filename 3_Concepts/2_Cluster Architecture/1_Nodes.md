@@ -61,7 +61,7 @@ kubectl을 사용해 no object를 생성, 수정할 수 있다.
 
 직접 no object를 생성하기 위해 kubelet 설정 파일 내 `.registerNode` 필드를 false로 설정한다.
 
-`.registerNode` 필드와 상관없이 no obejct를 수정할 수 있다. 예를 들어 label 수정하거나 unschedulable로 마킹할 수 있다.
+`.registerNode` 필드와 상관없이 no obejct를 수정할 수 있다. 예를 들어 label 수정하거나 unschedulable(`.spec.unschedulable` 필드를 true로 설정))로 마킹할 수 있다.
 
 no의 label은 po의 label selector와 같이 사용해 스케줄링을 제어할 수 있다.
 
@@ -108,7 +108,9 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 - controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
 - no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다.
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
-    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 위해 [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)을 트리거한다. 기본적으로 node controller는 Unknown 상태가 된 시점부터 첫 eviction 요청까지 5분 동안 기다린다. 기본적으로 k8s는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key에 대해 `tolerationSeconds=300`을 추가한다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
+    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 eviction 하기 위해 `node.kubernetes.io/unreachable` toleration key를 추가한다. k8s는 명시적으로 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key를 설정하지 않으면 해당 toleration과 `tolerationSeconds=300`을 설정하기 때문에 첫 eviction까지 5분을 기다린다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
+      > **Note**:  
+      > 해당 페이지에서는 node controller가 pod eviction을 위해 API-initiated eviction(Eviction 리소스)을 사용한다고 되어있지만 [Taint based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions) 페이지를 확인해보면 node controller는 pod eviction을 위해 taint를 사용하는 것처럼 보인다.
 
 기본적으로 node controller는 각 no의 상태를 5초 마다 확인한다. 이 주기는 kube-controller-manager 구성요소의 `--node-monitor-period` flag를 사용해 설정할 수 있다. node와 관련된 kube-controller-manager flag는 다음과 같다.
 - `--service-cluster-ip-range`: 클러스터 내에서 svc에 할당할 ip cidr. `--cluster-cidr`와 겹치지 않아야 한다. `--allocate-node-cidrs`가 true여야 한다.

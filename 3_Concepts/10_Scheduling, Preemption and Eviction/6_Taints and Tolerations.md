@@ -118,14 +118,14 @@ taint, toleration은 po를 no에서 멀어지게 하거나 실행되지 않아�
 - taint 기반 eviction: no 문제가 있을 때 po 별로 구성 가능한 eviction 동작은 다음 섹션에서 설명한다.
 
 ## Taint based Evictions
-node controller는 특정 조건이 만족될 때 자동으로 no를 taint시킨다. 다음은 내장 taint 목록이다.
+node controller는 특정 조건이 만족될 때 pod eviction을 위해 자동으로 no를 taint시킨다. 다음은 내장 taint 목록이다.
 - `node.kubernetes.io/not-ready`: no가 준비되지 않았다. 이는 NodeCondition Ready 가 "False"로 됨에 해당한다.
 - `node.kubernetes.io/unreachable`: no가 no controller에서 도달할 수 없다. 이는 NodeCondition Ready 가 "Unknown"로 됨에 해당한다.
 - `node.kubernetes.io/memory-pressure`: no에 memory pressure이 있다.
 - `node.kubernetes.io/disk-pressure`: no에 disk pressure이 있다.
 - `node.kubernetes.io/pid-pressure`: no에 PID pressure이 있다.
 - `node.kubernetes.io/network-unavailable`: no의 네트워크를 사용할 수 없다.
-- `node.kubernetes.io/unschedulable`: no를 스케줄할 수 없다.
+- `node.kubernetes.io/unschedulable`: no를 스케줄할 수 없다(예를 들어 no의 `.spec.unschedulable` 필드가 false일 때).
 - `node.cloudprovider.kubernetes.io/uninitialized`: kubelet의 "external" cloud provider와 같이 실행되는 경우 사용 불가능한 no로 표기하기 위해 taint를 추가한다. 이후, cloud-controller-manager의 controller가 이 no를 초기화하면 kubelet은 taint를 제거한다.
 
 no가 drain된 경우 no controller 또는 kubelet은 NoExecute effect를 추가한다. effect는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가된다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다.
@@ -151,14 +151,14 @@ tolerations:
 >
 > 자동으로 추가된 이 toleration은 이러한 문제 중 하나가 감지된 후 5분 동안 po가 no에 binding된 상태를 유지함을 의미한다.
 
-ds po는 아래 taint에 대해 tolerationSeconds가 없는 toleration을 갖는다.
+ds는 po 생성 시, 아래 taint에 대해 tolerationSeconds가 없는 NoExecute toleration을 추가한다.
 - `node.kubernetes.io/unreachable`
 - `node.kubernetes.io/not-ready`
 
 이렇게 하면 이러한 문제로 인해 ds po가 eviction되지 않는다.
 
 ## Taint Nodes by Condition
-control plane은 no controller를 이용해 [no condition](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/#node-conditions)에 대한 NoSchedule effect를 사용해 자동으로 taint를 생성한다.
+control plane은 node controller를 이용해 [no condition](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/#node-conditions)에 대한 NoSchedule effect를 사용해 자동으로 taint를 추가한다.
 
 scheduler는 스케줄링 결정을 내릴 때 no condition을 확인하는 것이 아니라 taint를 확인한다. 이렇게 하면 no condition이 스케줄링에 직접적인 영향을 주지 않는다. 예를 들어 DiskPressure no condition이 활성화된 경우 control plane은 `node.kubernetes.io/disk-pressure` taint를 추가하고 영향을 받는 no에 새 po를 할당하지 않는다. MemoryPressure no condition이 활성화되면 control plane이 `node.kubernetes.io/memory-pressure` taint를 추가한다.
 
