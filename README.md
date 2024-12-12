@@ -204,7 +204,7 @@
     - `tolerations[*].operator`: 동일 key 내에서 value에 대한 추가 연산자. `Exists`와 `Equal`(기본 값)이 있다.
     - `tolerations[*].value`: 매칭시킬 taint의 value. `tolerations[*].operator`가 `Exists`라면 빈 값이어야 한다. 그렇지 않으면 정규 표현식으로 처리된다.
     - `tolerations[*].effect`: taint의 effect. `NoSchedule`, `PreferNoSchedule`, `NoExecute` 값을 사용할 수 있다. 빈 값은 모든 effect를 의미한다.
-      - `NoExecute`: no에서 실행 중인 po에 영향을 미친다. 매칭되는 toleration이 없는 po는 즉시 eviction된다. 매칭되는 toleration에 대해 tolerationSeconds가 없는 po는 해당 no에 계속 bound된 상태로 남는다. 매칭되는 toleration에 대해 tolerationSeconds가 있는 po는 해당 시간 동안 bounde된 상태로 남아있으며 시간이 초과하면 eviction된다.
+      - `NoExecute`: no에서 실행 중인 po에도 영향을 미친다. 매칭되는 toleration이 없는 po는 즉시 eviction된다. 매칭되는 toleration에 대해 tolerationSeconds가 없는 po는 해당 no에 계속 bound된 상태로 남는다. 매칭되는 toleration에 대해 tolerationSeconds가 있는 po는 해당 시간 동안 bounde된 상태로 남아있으며 시간이 초과하면 eviction된다.
       - `NoSchedule`: 스케줄링 단계의 po에 영향을 미친다. 매칭되는 toleration이 없는 po는 해당 no에 스케줄링 될 수 없다. 미이 실행 중인 po는 eviction되지 않는다.
       - `PreferNoSchedule`: `NoSchedule`의 soft 버전이다. 시스템은 no의 taint를 허용하지 않는 po를 스케줄링하지 않으려고 노력하지만 반드시는 아니다.
     - `tolerations[*].tolerationSeconds`: `tolerations[*].effect`가 `NoExecute`일 때 eviction 대기 시간을 의미한다. 설정하지 않으면 eviction하지 않으며, 0은 즉시 eviction을 의미한다.
