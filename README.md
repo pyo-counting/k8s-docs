@@ -96,6 +96,15 @@
     topologyKey: "topology.kubernetes.io/zone"
     whenUnsatisfiable: ScheduleAnyway
   ```
+- kube-controller-manager(node controller)는 특정 조건이 만족될 때 자동으로 no에 taint를 추가한다. no가 drain된 경우 no controller 또는 kubelet은 NoExecute effect를 추가한다. efeect는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가된다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다. no에 unreachable이면 kube-apiserver가 no의 kubelet과 통신에 실패할 수 있다. 그렇기 때문에 po에 대한 삭제를 kubelet에 통보할 수 없다. 그렇기 때문에 해당 no에 po는 계속해서 실행 중일 수 있다.
+  - `node.kubernetes.io/not-ready`: no가 준비되지 않았다. 이는 NodeCondition Ready 가 "False"로 됨에 해당한다.
+  - `node.kubernetes.io/unreachable`: no가 no controller에서 도달할 수 없다. 이는 NodeCondition Ready 가 "Unknown"로 됨에 해당한다.
+  - `node.kubernetes.io/memory-pressure`: no에 memory pressure이 있다.
+  - `node.kubernetes.io/disk-pressure`: no에 disk pressure이 있다.
+  - `node.kubernetes.io/pid-pressure`: no에 PID pressure이 있다.
+  - `node.kubernetes.io/network-unavailable`: no의 네트워크를 사용할 수 없다.
+  - `node.kubernetes.io/unschedulable`: no를 스케줄할 수 없다.
+  - `node.cloudprovider.kubernetes.io/uninitialized`: kubelet의 "external" cloud provider와 같이 실행되는 경우 사용 불가능한 no로 표기하기 위해 taint를 추가한다. 이후, cloud-controller-manager의 controller가 이 no를 초기화하면 kubelet은 taint를 제거한다.
 ---
 
 - encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
@@ -159,14 +168,14 @@
  ([Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/))
   - nodeSelector: (po의 `.spec.nodeSelector`) no에 대한 label selector로 po가 스케줄링 no를 제한한다. 해당 label을 갖는 no가 없으면 po는 스케줄링되지 않는다.
     - kubelet이 `node-restriction.kubernetes.io/` 접두사를 갖는 label을 업데이트하지 못하도록 함으로써 특정 po에 대한 격리를 수행할 수 있다(po의 `.spec.nodeSelector`). 해당 label을 사용하기 위한 몇 가지 필요 사항이 있다. [Node authorizer](https://kubernetes.io/docs/reference/access-authn-authz/node/), NodeRestriction admission plugin 활성화가 필요하다.
-  - affinity / anti-affinity: (po의 `.spec.affinity`) label selector에 비해 더 표현적이며, no 뿐만 아니라 po에 대한 affinity도 제공한다. 그리고 preferred 규칙을 사용해 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다.
+  - affinity / anti-affinity: (po의 `.spec.affinity`) label selector에 비해 더 표현적이며, no 뿐만 아니라 po에 대한 affinity도 제공한다. 그리고 preferred 규칙을 사용해 scheduler는 매칭되는 no를 찾지 못할 경우에도 po를 스케줄링할 수 있다. IgnoredDuringExecution의 의미는 스케줄링이 완료된 후에는 조건을 보장하지 않는다는 것을 의미한다.
     - node affinity: (po의 `.spec.affinity.nodeAffinity`): matchExpressions의 operator를 NotIn, DoesNotExist를 사용해 node anti-affinity처럼 사용할 수 있다. `.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution`, `.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution`는 각각 hard, soft 정책을 나타낸다.
       - nodeAffinity의 soft, hard 정책을 같이 사용하면 두 조건을 모두(AND) 만족해야 한다.
       - nodeAffinity의 soft 정책을 여러개 사용할 경우 no별로 각 정책의 weight를 더해 가장 점수가 높은 no가 우선 순위를 갖는다.
       - nodeSelector, nodeAffinity를 모두 사용한다면 스케줄링이 되기 위해 두 조건을 모두(AND) 만족해야 한다.
       - nodeAffinity의 nodeSelectorTerms을 여러개 사용할 경우 명시된 nodeSelectorTerms 중 하나(OR)를 만족하는 no에도 po가 스케줄링 될 수 있다.
       - nodeSelectorTerms의 matchExpressions를 여러개 사용하는 경우 모든(AND) matchExpressions를 만족하는 no에만 po가 스케줄링 될 수 있다.
-    - inter-pod affinity, pod anti-affinity: (po의 `.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`) 보통 po가 동일 po에 접근해야 하는 경우 사용한다. topology에 매칭되는 no 중 이미 실행 중인 다른 po의 label을 기반으로 po를 스케줄링한다. topologyKey는 반드시 명시해야한다. requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution는 각각 hard, soft 정책을 나타낸다.  requiredDuringSchedulingIgnoredDuringExecution pod anti-affinity 규칙의 경우 LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 `kubernetes.io/hostname`으로 제한한다. 다른 topology를 사용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다. affinity의 대상이 되는 po는 namespaces, namespaceSelector와 labelSelector, matchLabelKeys, mismatchLabelKeys 필드를 통해 지정할 수 있다. inter-pod affinity와 anti-affinity에는 상당한 양의 프로세싱이 필요하기에 대규모 cluster에서는 스케줄링 속도가 크게 느려질 수 있다. 수백 개의 no를 넘어가는 cluster에서 이를 사용하는 것은 추천하지 않는다. no에 일관된 label을 지정해야 한다. 즉, cluster의 모든 no는 topologyKey와 매칭되는 적절한 label을 가지고 있어야 한다. 일부 또는 모든 no에 topologyKey로 명시한 label이 없는 경우에는 의도하지 않은 동작이 발생할 수 있다.
+    - inter-pod affinity, pod anti-affinity: (po의 `.spec.affinity.podAffinity`, `.spec.affinity.podAntiAffinity`) 보통 po가 동일 po에 접근해야 하는 경우 사용한다. topology에 매칭되는 no 중 이미 실행 중인 다른 po의 label을 기반으로 po를 스케줄링한다. topologyKey는 반드시 명시해야한다. requiredDuringSchedulingIgnoredDuringExecution, preferredDuringSchedulingIgnoredDuringExecution는 각각 hard, soft 정책을 나타낸다. requiredDuringSchedulingIgnoredDuringExecution pod anti-affinity 규칙의 경우 LimitPodHardAntiAffinityTopology admission controller는 topologyKey를 `kubernetes.io/hostname`으로 제한한다. 다른 topology를 사용하고 싶다면 admission controller를 수정하거나 비활성화할 수 있다. affinity의 대상이 되는 po는 namespaces, namespaceSelector와 labelSelector, matchLabelKeys, mismatchLabelKeys 필드를 통해 지정할 수 있다. inter-pod affinity와 anti-affinity에는 상당한 양의 프로세싱이 필요하기에 대규모 cluster에서는 스케줄링 속도가 크게 느려질 수 있다. 수백 개의 no를 넘어가는 cluster에서 이를 사용하는 것은 추천하지 않는다. no에 일관된 label을 지정해야 한다. 즉, cluster의 모든 no는 topologyKey와 매칭되는 적절한 label을 가지고 있어야 한다. 일부 또는 모든 no에 topologyKey로 명시한 label이 없는 경우에는 의도하지 않은 동작이 발생할 수 있다.
   - nodeName: (po의 `.spec.nodeName`): 해당 affinity, nodeSelecotr보다 더 직접적인 no 선택 방법이다. scheduler는 해당 필드를 사용하는 po를 무시하며, 바로 해당 no의 kubelet이 해당 po를 자기 no에 배치하려고 시도한다. 이는 다른 규칙보다 우선 적용된다. 이는 advanced use case를 위한 목적으로만 사용하는 것을 권장한다.
   - pod topology constraints: (po의 `.spec.topologySpreadConstraints[*]`) po을 특정 topology(zone, az, node) 내에서 균등하게 분산하기 위해 사용한다. affinity는 no 또는 po와의 관계를 통해 po가 배치 될 no를 결정하기 위해 사용한다. 두 개념은 같이 사용할 수 있으며 pod topology constraints 내에서 node affinity, taint를 무시할지 여부도 정책으로 사용할 수 있다. 여러 constraints를 사용하는 경우 모두 만족하는 no를 고려한다. 기본적으로 동일 ns의 po만 고려한다. 이미 po가 배치된 no에 topology label이 삭제되면 해당 추가 po를 스케줄링할 때 해당 no의 po는 maxSkew 계산에 사용하지 않는다. po가 no에서 삭제되는 상황에도 constraints가 만족되는 것을 보장하지 않는다. 예를 들어 deploy의 scale down으로 po의 분포가 불균등할 수 있다. 이 경우를 대비해 [Descedhuler](https://github.com/kubernetes-sigs/descheduler)를 사용할 수 있다. tainted no에 존재하는 po도 계산된다. scheduler는 해당 시점에 cluster에 존재하는 no만 고려한다. 각 필드의 의미는 다음과 같다.
     - `topologyKey`: (required) no label key. 해당 label key를 갖고 동일한 값을 갖는 no는 동일 topology로 간주된다. 각 topology instance(no의 label key&value가 같은 집합)를 domain이라고 부른다. 그리고 domain을 구성하는 no가 `nodeAffinityPolicy`, `nodeTaintsPolicy` 요구 사항을 충족(요구 사항이 없는 경우에도)하는 경우 eligible domain이라고 한다. kube-scheduler는 각 domain에 po를 균등하게 배포하려고 한다. 
@@ -187,6 +196,17 @@
       - `Ignore`: 모든 no에 대한 skew를 계산한다.
 - pod overhead는 보통 container runtime에서 container의 resource 외에 container를 생성 및 실행하는 데 필요한 리소스를 설정하기 위해 사용한다. pod overhead는 RuntimeClass admission controller가 po의 `.spec.overhead`을 추가한다. pod overhead는 스케줄링, eviction에서 모두 고려한다. ([Pod Overhead](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-overhead/))
 - po는 생성되면 일단 스케줄링을 위한 준비가 완료 된것으로 간주된다. 그렇기 때문에 k8s scheduler는 즉시 pending pod를 배치할 no를 찾기 위해 노력한다. 이러한 po로 인해 원하지 않는 동작이 발생할 수 있다. 예를 들어 Cluster AutoScaler가 동작할 수도 있다. po의 `.spec.schedulingGate` 필드를 명시/삭제함으로써 po가 언제 scheduling 될 준비가 됐는지 제어할 수 있다. `.spec.schedulingGate` 필드에 문자열 목록을 명시할 수 있으며 각 문자열은 po가 스케줄링 될 준비가 됐다고 간주되기 전에 충족해야 하는 조건을 나타내는데 사용한다. 이 필드는 po가 생성될 때만 명시할 수 있다. 즉 po가 생성(schedulding이 아닌 kube-apiserver에 등록)된 후에는 각 필드를 임의의 순서로 제거할 수 있지만, 추가로 새로운 목록을 추가할 수는 없다. ([Pod Scheduling Readiness](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-scheduling-readiness/))
+- node affinity는 po의 입장에서 `.spec.affinity.nodeAffinity` 필드를 사용해 해당 po가 스케쥴링될 no에 대한 제약 사항을 설정한다. 반면에 taint는 no의 입장에서 `.spec.taints` 필드를 사용해	 해당 no에 스케줄링, 실행될 수 있는 제약 사향을 설정한다. taint가 있는 no에는 `.spec.tolerations`에 해당 taint 목록이 있는 po만 스케쥴링, 실행될 수 있다. 그렇다고 toleration이 po의 무조건적인 스케줄링을 보장하는 것은 아니다. 왜냐하면 스케줄링을 위한 다른 평각 조건도 있기 때문이다. 만약 po에 `.spec.nodeName`를 명시하면 scheduler의 동작과 관련 없이 po는 해당 no에 binding된다(no에 `NoSchedule` taint가 있더라도). 물론 no에 `NoExecute` taint가 추가적으로 있는 경우에 kubelet이 po가 적절한 toleration이 없다면 실행하지 않는다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/))
+  - po의 `.spec.tolerations[*]` 필드는 다음과 같다.
+    - `tolerations[*].key`: 매칭시킬 taint의 key. 빈 값은 모든 taint를 의미하며 추가적으로 `tolerations[*].operator`가 `Exists`라면 모든 taint key와 value에 매칭된다.
+    - `tolerations[*].operator`: 동일 key 내에서 value에 대한 추가 연산자. `Exists`와 `Equal`(기본 값)이 있다.
+    - `tolerations[*].value`: 매칭시킬 taint의 value. `tolerations[*].operator`가 `Exists`라면 빈 값이어야 한다. 그렇지 않으면 정규 표현식으로 처리된다.
+    - `tolerations[*].effect`: taint의 effect. `NoSchedule`, `PreferNoSchedule`, `NoExecute` 값을 사용할 수 있다. 빈 값은 모든 effect를 의미한다.
+      - `NoExecute`: no에서 실행 중인 po에 영향을 미친다. 매칭되는 toleration이 없는 po는 즉시 eviction된다. 매칭되는 toleration에 대해 tolerationSeconds가 없는 po는 해당 no에 계속 bound된 상태로 남는다. 매칭되는 toleration에 대해 tolerationSeconds가 있는 po는 해당 시간 동안 bounde된 상태로 남아있으며 시간이 초과하면 eviction된다.
+      - `NoSchedule`: 스케줄링 단계의 po에 영향을 미친다. 매칭되는 toleration이 없는 po는 해당 no에 스케줄링 될 수 없다. 미이 실행 중인 po는 eviction되지 않는다.
+      - `PreferNoSchedule`: `NoSchedule`의 soft 버전이다. 시스템은 no의 taint를 허용하지 않는 po를 스케줄링하지 않으려고 노력하지만 반드시는 아니다.
+    - `tolerations[*].tolerationSeconds`: `tolerations[*].effect`가 `NoExecute`일 때 eviction 대기 시간을 의미한다. 설정하지 않으면 eviction하지 않으며, 0은 즉시 eviction을 의미한다.
+  - no의 `.spec.taints[*]` 필드 `effect`, `key`, `value`는 po의 toleration과 같은 의미다. 추가적으로 `timeAdded` 필드는 `NoExecute` effect에 대해 언제 추가됐는지를 나타내는 필드다.
 ---
 
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
@@ -264,6 +284,7 @@
 - `kubectl cluster-info`: control  plane의 주소(kube-apiserver)와 `kubernetes.io/cluster-service` label이 true인 service의 주소를 노출한다.
 - `kubectl cluster-info dump --output-directory -A`: 클러스터의 전체 정보와 현재 ns, kube-system ns의 전체 정보를 stdout으로 출력한다.
 - `kubectl cordon`: no를 unscheduleable 상태로 변경한다.
+- `kubectl taint`: no에 taint를 추가한다.
 
 ---
 ## 체크리스트
