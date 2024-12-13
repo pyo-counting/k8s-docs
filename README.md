@@ -34,6 +34,7 @@
 - default ns의 kubernetes svc는 kube-apiserver의 HTTPS 엔드포인트로 redirect(kube-proxy가 수행)되는 virtual ip로 구성되어 있다. ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#node-to-control-plane))
 - k8s는 no의 heartbeat, control plane 구성 요소의 leader election, kube-apiserver의 신원 제공을 위해 lease 개념을 사용한다. lease는 k8s resource로 제공되기 때문에 사용자 workload에서도 사용할 수 있다. ([Leases](https://kubernetes.io/docs/concepts/architecture/leases/))
 - 기본적으로 `.metadata.ownerReference.blockOwnerDeletion` 필드가 true일 경우 소유자 object를 삭제할 때 종속 object가 모두 삭제되지 않는 한 소유자 object를 삭제할 수 없다. 하지만 `kubectl delete` 명령어를 사용할 경우 `--cascade` flag에 따라 무시될 수 있다. 기본 값은 background로 무시되며 foreground(기본 값은 background)일 경우 정상 동작한다. ([Garbage Collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/#cascading-deletion))
+- API-initiated eviction는 eviction API를 사용해 graceful pod termination을 트리거하는 eviction object를 생성한다. API-initiated eviction는 po의 `PodDisruptionBudgets`, `terminationGracePeriodSeconds`을 존중한다. API를 사용해 po에 대한 eviction object를 생성하는 것은 po에 대한 delete 작업을 수행하는 것과 동일하다. ([API-initiated Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/))
 ---
 
 - 각 ns에 존재하는 default sa는 사용자가 삭제하더라도 control plane이 재생성한다. ([Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/#default-service-accounts))
@@ -55,7 +56,7 @@
 - kube-apiserver: kube-apiserver -> no, po, svc와 직접 통신하는 경우는 kube-apiserver의 proxy 기능을 사용할 때다. proxy 기능은 kube-apiserver의 내장 기능으로 kube-apiserver를 통해 po, svc, no에 접근하는 경우에 사용된다. 대표적인 예시로 `kubectl cluster-info` 명령어를 사용해 조회되는 목록이다. 해당 목록에는 k8s kube-apiserver의 도메인과 `kubernetes.io/cluster-service` label이 true인 svc에 접근하기 위한 kube-apiserver의 주소를 출력한다. 물론 해당 목록에 조회되지 않더라도 kuber-apiserver의 API 명세서를 참고해 접근할 수 있다. ([Communication between Nodes and the Control Plane](https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/#api-server-to-nodes-pods-and-services))
 - kube-controller-manager(node controller): node controller는 no의 생명 주기 동안 여러 작업을 수행한다. 첫 번째로 no가 등록될 때 CIDR 블락을 할당한다. 두 번째로 controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy(Ready `.status.conditions[*].type`이 Unknown or False) 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다. 세 번째로 no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다(kubelet의 [Node-pressure Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/), [API-initiated Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)와 비교). ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#node-controller))
     - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
-    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 eviction 하기 위해 `node.kubernetes.io/unreachable` toleration key를 추가한다. k8s는 명시적으로 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key를 설정하지 않으면 해당 toleration과 `tolerationSeconds=300`을 설정하기 때문에 첫 eviction까지 5분을 기다린다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
+    - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 eviction 하기 위해 `node.kubernetes.io/unreachable` toleration key를 추가한다. k8s는 po에 명시적으로 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key를 설정하지 않으면 해당 toleration과 `tolerationSeconds=300`을 설정하기 때문에 첫 eviction까지 5분을 기다린다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
       - kube-controller-manager의 api initiated eviction에 대한 상세 동작은 다음과 같다. 대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다. 이 기본 동작은 cluster의 large cluster 여부, healthy 또는 unhealthy zone인지에 따라 달라진다.
       - no에 대한 eviction rate(`--node-eviction-rate`, `--secondary-node-eviction-rate`)는 `--unhealthy-zone-threshold`, `--large-cluster-size-threshold`에 따라 달라진다.
         - large cluster일 경우 `--unhealthy-zone-threshold`가 0.55 이상(unhealthy zone)이면 `--secondary-node-eviction-rate`을 사용한다.
@@ -96,7 +97,7 @@
     topologyKey: "topology.kubernetes.io/zone"
     whenUnsatisfiable: ScheduleAnyway
   ```
-- kube-controller-manager(node controller)는 특정 조건이 만족될 때 pod eviction을 위해 자동으로 no에 taint를 추가한다. no가 drain된 경우 no controller 또는 kubelet은 NoExecute effect를 추가한다. efeect는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가된다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다. no에 unreachable이면 kube-apiserver가 no의 kubelet과 통신에 실패할 수 있다. 그렇기 때문에 po에 대한 삭제를 kubelet에 통보할 수 없다. 그렇기 때문에 해당 no에 po는 계속해서 실행 중일 수 있다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
+- kube-controller-manager(node controller)는 특정 조건이 만족될 때 pod eviction을 위해 자동으로 no에 taint를 추가한다. no가 drain 되어야 하는 경우 node controller 또는 kubelet은 NoExecute effect를 추가한다. efeect는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가된다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다. no에 unreachable이면 kube-apiserver가 no의 kubelet과 통신에 실패할 수 있다. 그렇기 때문에 po에 대한 삭제를 kubelet에 통보할 수 없다. 그렇기 때문에 해당 no에 po는 계속해서 실행 중일 수 있다. ([Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
   - `node.kubernetes.io/not-ready`: no가 준비되지 않았다. 이는 NodeCondition Ready 가 "False"로 됨에 해당한다.
   - `node.kubernetes.io/unreachable`: no가 no controller에서 도달할 수 없다. 이는 NodeCondition Ready 가 "Unknown"로 됨에 해당한다.
   - `node.kubernetes.io/memory-pressure`: no에 memory pressure이 있다.
@@ -288,11 +289,11 @@
 - `kubectl auth can-i`: 사용자의 동작에 대한 인가 정보 확인(selfsubjectaccessreview resource)
 - `kubectl certificate (approve|deny)`: csr에 대한 승인/거부
 - `kubectl delete ${RESOURCE}/${NAME} --cascade`: cascade deletion. 기본값은 background
-- `kubectl drain ${NODE}`: API-initiated eviction
 - `kuvectl apply --validate --dry-run`: client validation, dry run 수행
 - `kubectl cluster-info`: control  plane의 주소(kube-apiserver)와 `kubernetes.io/cluster-service` label이 true인 service의 주소를 노출한다.
 - `kubectl cluster-info dump --output-directory -A`: 클러스터의 전체 정보와 현재 ns, kube-system ns의 전체 정보를 stdout으로 출력한다.
 - `kubectl cordon`: no를 unscheduleable 상태로 변경한다(no의 `.spec.unschedulable`을 false로 설정).
+- `kubectl drain ${NODE}`:  no를 unscheduleable 상태로 변경하고, po를 eviction한다. 이 때 API-initiated eviction을 사용하는 것이 아니라 직접 po 목록을 대상을 갖고 delete한다([kubectl drain --help 명령어](https://kubernetes.io/images/docs/kubectl_drain.svg)).
 - `kubectl taint`: no에 taint를 추가한다.
 
 ---

@@ -1,13 +1,13 @@
-API-initiated eviction는 eviction API를 사용해 graceful pod termination을 트리거하는 eviction object를 만드는 프로세스다.
+API-initiated eviction는 eviction API를 사용해 graceful pod termination을 트리거하는 eviction object를 생성한다.
 
 eviction API를 직접 호출하거나 kubectl drain 명령어를 사용해 eviction을 요청할 수 있다. 그러면 eviction object가 생성되고 kube-apiserver는 po를 종료시킨다.
 
-API-initiated eviction는 설정된 `PodDisruptionBudgets`, `terminationGracePeriodSeconds`을 존중한다.
+API-initiated eviction는 po의 `PodDisruptionBudgets`, `terminationGracePeriodSeconds`을 존중한다.
 
 API를 사용해 po에 대한 eviction object를 생성하는 것은 po에 대한 delete 작업을 수행하는 것과 동일하다.
 
 ## Calling the Eviction API
-k9s POST API를 사용해 eviction object를 생성할 수 있다. 아래는 예시다.
+k8s POST API를 사용해 eviction object를 생성할 수 있다. 아래는 예시다.
 - policy/v1
     ``` json
     {
@@ -42,8 +42,8 @@ kube-apiserver가 eviction을 허용한 경우 아래 단계를 거쳐 po는 삭
 6. kube-apiserver는 po를 삭제한다.
 
 ## Troubleshooting stuck evictions
-경우에 따라 애플리케이션이 broken state로 전환되어 eviction API가 429, 500 HTTP status ccde만 반환할 수도 있다. 예를 들어 rs가 애플리케이션에 대한 po를 생성했지만 Ready state에 진입하기 전에 발생할 수 있다. 또는 마지막으로 evicted된 po의 terminationGracePeriodSeconds가 클 경우에도 발생할 수 있다.
+경우에 따라 애플리케이션이 broken state로 전환되어 eviction API가 429, 500 HTTP status code만 반환할 수도 있다. 예를 들어 rs가 애플리케이션에 대한 po를 생성했지만 Ready state에 진입하기 전에 발생할 수 있다. 또는 마지막으로 evicted된 po의 terminationGracePeriodSeconds가 클 경우에도 발생할 수 있다.
 
-eviction에서 행이걸린 경우 아래 해결 방법을 사용할 수 있다.
+eviction에서 행이 걸린 경우 아래 해결 방법을 사용할 수 있다.
 - 문제의 원인이 되는 자동화된 작업을 중지 또는 일시 중지한다. 작업을 다시 시작하기 전에 행걸린 애플리케이션을 살펴본다.
 - 잠시 기다렸다가 eviction API를 사용하는 대신 cluster control plane에서 po를 직접 삭제한다.
