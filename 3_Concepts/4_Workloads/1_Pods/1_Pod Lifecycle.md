@@ -185,19 +185,19 @@ startup probe는 서비스를 시작하는 데 오랜 시간이 걸리는 contai
 
 container가 보통 initialDelaySeconds + failureThreshold × periodSeconds 이후에 기동된다면, startup probe가 liveness probe와 같은 엔드포인트를 확인하도록 지정해야 한다. periodSeconds의 기본값은 10s 이다. 이 때 container가 liveness probe의 기본값 변경 없이 기동되도록 하려면, failureThreshold 를 충분히 높게 설정해주어야 한다. 그래야 데드락(deadlocks)을 방지하는데 도움이 된다.
 
-## Termindateion of Pods
+## Termination of Pods
 po는 클러스터 내에서 no에서 실행되는 프로세스를 나타내기 때문에 KILL signal로 종료해 gracefully shutdown하지 못하도록하는 것이 아니라 gracefully shutdown하는 것이 중요하다.
 
 이 설계의 목적은 삭제를 요청할 수 있게하고, 프로세스의 종료시점을 알게하고, 삭제가 완료됐음을 확인하게하는 것이다. po 삭제를 요청하면 cluster는 po가 강제 종료되기 전에 의도한 grace period를 기록하고 추적한다. 강제 종료 추적이 설정된 상태에서 kubelet은 graceful shutdown을 시도한다.
 
-일반적으로 kubelet은 container runtime을 통해 각 container의 메인 프로세스에 grace period timeout이 있는 TERM(또는 SIGTERM) signal을 먼저 전송해 po의 container를 먼저 종료한다. container 종료 요청은 container runtime에 의해 비동기적으로 처리된다. 이러한 요청에 대한 처리 순서는 보장되지 않는다. 대부분의 container runtime은 container image에 정의된 STOPSIGNAL에 설정된 signal을 TERM signal 대신 사용한다. grace period가 만료되면, KILL signal이 남아있는 모든 프로세스에 전송되고 po는 API server에서 삭제된다. 프로세스가 종료될 때까지 기다리는 동안 kubelet 또는 container runtime 관리 서비스가 다시 시작되면 클러스터는 전체 grace period을 포함하여 처음부터 다시 시도한다.
+일반적으로 kubelet은 container runtime을 통해 각 container의 메인 프로세스에 grace period timeout이 있는 TERM(또는 SIGTERM) signal을 먼저 전송해 po의 container를 먼저 종료한다. container 종료 요청은 container runtime에 의해 비동기적으로 처리된다. 이러한 요청에 대한 처리 순서는 보장되지 않는다. 대부분의 container runtime은 container image에 정의된 STOPSIGNAL 명령어에 설정된 signal을 TERM signal 대신 사용한다. grace period가 만료되면, KILL signal이 남아있는 모든 프로세스에 전송되고 po는 kube-apiserver에서 삭제된다. 프로세스가 종료될 때까지 기다리는 동안 kubelet 또는 container runtime 관리 서비스가 다시 시작되면 cluster는 전체 grace period을 포함하여 처음부터 다시 시도한다.
 
 아래는 po 종료에 대한 예시다.
-1. kubectl을 사용해 po를 삭제한다(grace period 기본 값 30초 사용).
-2. kube-apiserver 내에서 po는 grace period와 함께 "dead"로 간주되는 시간으로 업데이트된다. kubectl describe로 확인 시 po는 "Terminating"으로 표시된다. po가 실행되는 no의 kubelet은 해당 po가 terminating으로 표시된 것을 확인하고 po의 종료 프로세스를 시작한다.
+1. kubectl을 사용해 po를 삭제한다(grace period(`.spec.terminationGracePeriodSeconds`)의 기본 값은 30s).
+2. kube-apiserver 내에서 po는 grace period와 함께 "dead"로 간주되는 시간으로 업데이트된다(grace period의 countdown이 시작된다). kubectl describe로 확인 시 po는 "Terminating"으로 표시된다. po가 실행되는 no의 kubelet은 해당 po가 terminating으로 표시된 것을 확인하고 po의 종료 프로세스를 시작한다.
     1. container가 preStop hook을 설정한 경우, kubelet은 container 내부에서 hook을 실행한다. grace period가 만료된 후 preStop hook이 계속 실행 중이라면, kubelet은 2초의 작은 일회성 grace period 연장을 요청한다.   
         > **Note**:  
-        > preStop hook을 완료하는 데 기본 grace period가 허용하는 것보다 오랜 시간이 필요한 경우 terminationGracePeriodSeconds을 수정한다. 
+        > preStop hook을 완료하는 데 기본 grace period가 허용하는 것보다 오랜 시간이 필요한 경우 `.spec.terminationGracePeriodSeconds`을 수정한다. 
     2. kubelet은 container runtime을 트리거해 각 container 내부 1번 프로세스에 TERM signal을 전송한다.   
         > **Note**:  
         > sidecar container를 사용하는 경우 정해진 순서가 있다. 그렇지 않으면 po의 container는 서로 다른 시간에 임의 순서로 TERM signal을 수신한다. 종료 순서가 중요한 경우 preStop hook을 사용해 동기화하면 된다.
