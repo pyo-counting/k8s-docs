@@ -195,27 +195,46 @@ po는 클러스터 내에서 no에서 실행되는 프로세스를 나타내기 
 아래는 po 종료에 대한 예시다.
 1. kubectl을 사용해 po를 삭제한다(grace period(`.spec.terminationGracePeriodSeconds`)의 기본 값은 30s).
 2. kube-apiserver 내에서 po는 grace period와 함께 "dead"로 간주되는 시간으로 업데이트된다(grace period의 countdown이 시작된다). kubectl describe로 확인 시 po는 "Terminating"으로 표시된다. po가 실행되는 no의 kubelet은 해당 po가 terminating으로 표시된 것을 확인하고 po의 종료 프로세스를 시작한다.
-    1. container가 preStop hook을 설정한 경우, kubelet은 container 내부에서 hook을 실행한다. grace period가 만료된 후 preStop hook이 계속 실행 중이라면, kubelet은 2초의 작은 일회성 grace period 연장을 요청한다.   
+    1. container가 preStop hook을 설정한 경우, kubelet은 container 내부에서 hook을 실행한다. grace period가 만료된 후 preStop hook이 계속 실행 중이라면, kubelet은 2초의 작은 일회성 grace period 연장을 요청한다.
         > **Note**:  
-        > preStop hook을 완료하는 데 기본 grace period가 허용하는 것보다 오랜 시간이 필요한 경우 `.spec.terminationGracePeriodSeconds`을 수정한다. 
-    2. kubelet은 container runtime을 트리거해 각 container 내부 1번 프로세스에 TERM signal을 전송한다.   
+        > preStop hook을 완료하는 데 기본 grace period가 허용하는 것보다 오랜 시간이 필요한 경우 `.spec.terminationGracePeriodSeconds`을 수정한다.
+    2. preStop hook 실행이 완료된 후, kubelet은 container runtime을 트리거해 각 container 내부 1번 프로세스에 TERM signal을 전송한다.
         > **Note**:  
         > sidecar container를 사용하는 경우 정해진 순서가 있다. 그렇지 않으면 po의 container는 서로 다른 시간에 임의 순서로 TERM signal을 수신한다. 종료 순서가 중요한 경우 preStop hook을 사용해 동기화하면 된다.
-3. kubelet이 graceful shutdown을 실행하는 것과 동시에 control plane은 svc의 ep에서 해당 po를 제거한다. rs과 같은 workload resoucre는 더 이상 해당 po를 유효하다고 판단하지 않는다. Pods that shut down slowly cannot continue to serve traffic as load balancers (like the service proxy) remove the Pod from the list of endpoints as soon as the termination grace period begins.
-4. grace period가 만료되면 kubelet은 forcible shutdown을 트리거한다. container runtime은 container의 프로세스에 SIGKILL signal을 전송한다. 또한 kubelet은 pause container가 있는 container runtime에 대해 해당 container를 정리한다.
-5. kubelet은 grace period를 0으로 설정해 API server에서 po를 force deletion한다.
-6. API server는 po의 API object를 삭제한다.
+3. kubelet이 graceful shutdown을 실행하는 것과 동시에 control plane은 svc의 ep에서 해당 po를 제거한다. rs과 같은 workload resoucre는 더 이상 해당 po를 유효하다고 판단하지 않는다.   
+Pods that shut down slowly should not continue to serve regular traffic and should start terminating and finish processing open connections. Some applications need to go beyond finishing open connections and need more graceful termination, for example, session draining and completion.   
+Any endpoints that represent the terminating Pods are not immediately removed from EndpointSlices, and a status indicating terminating state is exposed from the EndpointSlice API (and the legacy Endpoints API). Terminating endpoints always have their ready status as false (for backward compatibility with versions before 1.26), so load balancers will not use it for regular traffic.   
+If traffic draining on terminating Pod is needed, the actual readiness can be checked as a condition serving. You can find more details on how to implement connections draining in the tutorial Pods And Endpoints Termination Flow
+4. kubelet은 po가 완전히 종료되는 것을 보장하기 위해 다음과 같은 동작을 수행한다.
+  1. grace period가 완료됐음에도 실행 중인 container가 있는 경우 forcible shutdown을 트리거한다. container runtime은 container내 실행 중인 모든 프로세스에 SIGKILL signal을 전송한다. 또한 kubelet은 pause container가 있는 container runtime에 대해 해당 container도 정리한다.
+  2. po를 terminal phase(`Failed` 또는 `Succeeded`)로 변경한다.
+  3. kubelet은 grace period를 0로 변경함으로써 po를 force deletion한다.
+  4. kube-apiserver는 po object를 삭제한다.
 
 ### Forced Pod termination
 기본 삭제에 대한 grace period는 30초다. kubectl delete 명령어의 --grace-period flag를 사용해 변경할 수 있다.
 
-grace period를 0으로 설정하면 API server에서 po가 즉시 삭제된다. 만약 no에 po가 실행 중이라면 kubelet은 즉시 종료 프로세스를 시작한다.
+grace period를 0으로 설정하면 kube-apiserver에서 po가 즉시 삭제된다. 만약 no에 po가 실행 중이라면 kubelet은 즉시 종료 프로세스를 시작한다.
 
-**Note**: --force, --grace-period=0을 사용해 force deletion을 수행할 수 있다.
+kubectl을 사용하는 경우 --force, --grace-period=0을 사용해 force deletion을 수행할 수 있다.
 
-force deletion이 수행되면, API server는 no에서 po가 종료되었다는 kubelet의 확인을 기다리지 않는다. API server에서 즉시 po를 제거하므로 동일한 이름으로 새로운 po를 생성할 수 있다. 즉시 종료되도록 설정된 po는 강제 종료되기 전에 짧은 grace period가 제공된다.
+force deletion이 수행되면, kube-apiserver는 no에서 po가 종료되었다는 kubelet의 확인을 기다리지 않는다. kube-apiserver에서 즉시 po를 제거하므로 동일한 이름으로 새로운 po를 생성할 수 있다. 즉시 종료되도록 설정된 po는 no에서 강제 종료되기 전에 짧은 grace period가 제공된다.
+
+> **Caution**:  
+> immediate deletion은 실행 중인 po를 즉시 종료 및 삭제하지만 실제로 종료가 됐는지 여부는 확인하지 않는다. 그렇기 때문에 해당 po가 no에 계속 남아있을 수도 있게 된다.
+
+If you need to force-delete Pods that are part of a StatefulSet, refer to the task documentation for [deleting Pods from a StatefulSet](https://kubernetes.io/docs/tasks/run-application/force-delete-stateful-set-pod/).
+
+### Pod shutdown and sidecar containers
 
 ### Garbage collection of failed Pods
-실패한 po의 경우 API object는 명시적으로 po를 삭제할 때까지 API server에 존재한다.
+실패한 po의 경우 명시적으로 삭제할 때까지 kube-apiserver에 존재한다.
 
-control plane은 po의 수가 설정된 임계값(kube-controller-manager 내 terminated-pod-gc-threshold 값)을 초과할 때 종료된 po(Succeded 또는 Failed phase 포함)을 정리한다.
+kube-controller-manager 내 pod garbage collector(PodGC)는 terminated po(phase가 `Succeeded`, `Failed`)의 수가 --terminated-pod-gc-threshold(기본 값 12500)을 초과할 때 정리한다.
+
+추가적으로 PodGC 아래 조건을 만족하는 po도 정리한다.
+- 더 이상 존재하지 않는 no에 있는 고아 po
+- unscheduled terminating po
+- `node.kubernetes.io/out-of-service` taint가 있는 non-ready no에 있는 종료 중인 po
+
+Along with cleaning up the Pods, PodGC will also mark them as failed if they are in a non-terminal phase. Also, PodGC adds a Pod disruption condition when cleaning up an orphan Pod. See [Pod disruption conditions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-conditions) for more details.
