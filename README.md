@@ -186,6 +186,8 @@
       3. kubelet은 grace period를 0로 변경함으로써 po를 force deletion한다.
       4. kube-apiserver는 po object를 삭제한다.
 - force deletion(예를 들어 `kubectl --force, --grace-period=0`)이 수행되면, kube-apiserver는 no에서 po가 종료되었다는 kubelet의 확인을 기다리지 않는다. kube-apiserver에서 즉시 po를 제거하므로 동일한 이름으로 새로운 po를 생성할 수 있다. 즉시 종료되도록 설정된 po는 no에서 강제 종료되기 전에 짧은 grace period가 제공된다. 이러한 삭제는 실행 중인 po를 즉시 종료 및 삭제하지만 실제로 종료가 됐는지 여부는 확인하지 않는다. 그렇기 때문에 해당 po가 no에 계속 남아있을 수도 있게 된다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-forced))
+- po는 누군가에 의해 삭제되지 않는한 사라지지 않는다. 물론 불가피한 하드웨어 또는 시스템 소프트웨어 오류가 있을 수 있으며 이러한 상황을 involuntary disruption(비자발적 중단)이라고 부른다(예를 들어 node pressure eviction). 이와 반대로 사용자의 동작으로 인한 상황을 voluntary disruption(자발적 중단)이라고 부른다. k8s는 자발적 중단이 자주 발생하는 경우에도 고가용성 애플리케이션을 실행하는 데 도움이 되는 pdb를 제공한다. 모든 자발적 중단이 pdb에 연관되는 것은 아니다. 예를 들어 deploy, po에 대한 삭제는 pdb를 무시한다. pdb는 자발적 중단으로 일시에 중지되는 replica의 갯수를 제한하는 정책을 갖는다. 비자발적 중단은 pdb로는 막을 수 없지만 budget은 차감된다. 이러한 불가피한 상황을 애플리케이션의 비자발적 중단(involuntary disruption)이라고 부른다. ([Disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/))
+- pdb의 `.spec.maxUnavailable`, `.spec.minAvailable`은 갯수 또는 퍼센트 값을 가질 수 있다. 퍼센트 값일 경우 소수점 값을 올림처리해서 계산한다. pdb에는 두 필드 중 1개만 사용해야 한다. ([Disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-conditions))
 - k8s에서 po의 스케줄링을 제어하기 위한 설정은 다음과 같다.
  ([Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/))
   - nodeSelector: (po의 `.spec.nodeSelector`) no에 대한 label selector로 po가 스케줄링 no를 제한한다. 해당 label을 갖는 no가 없으면 po는 스케줄링되지 않는다.
