@@ -3,7 +3,7 @@ k8s는 "hub-and-spoke" API 패턴을 사용한다. no와 po는 kube-apiserver의
 
 no는 cluster의 public root certificate가 provision 되어야 한다. 이를 통해 no는 유효한 client credential을 사용해 안전하게 kube-apiserver에 연결할 수 있다. kubelet에 제공되는 client credentials은 client certificate 형식이 권장된다. kubelet client certificate의 자동 provision은 [kubelet TLS bootstraping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)을 참고한다.
 
-po는 sa를 사용해 kube-apiserver에 안전하게 연결할 수 있다. 이를 위해 k8s는 po가 생성될 때 public root certificate와 유효한 bearer token을 자동으로 주입한다. default ns의 kubernetes svc는 kube-apiserver의 HTTPS endpoint로 redirect(kube-proxy가 수행)되는 virtual ip로 구성되어 있다.
+po는 sa를 사용해 kube-apiserver에 안전하게 연결할 수 있다. 이를 위해 k8s는 po가 생성될 때 public root certificate와 유효한 bearer token을 자동으로 주입한다. po는 인증서가 아닌 bearer token을 이용해 kube-apiserver에 인증한다. default ns의 kubernetes svc는 kube-apiserver의 HTTPS endpoint로 redirect(kube-proxy가 수행)되는 virtual ip로 구성되어 있다.
 
 control plane 구성 요소 역시 kube-apiserver와 안전한 포트를 사용해 통신한다.
 
