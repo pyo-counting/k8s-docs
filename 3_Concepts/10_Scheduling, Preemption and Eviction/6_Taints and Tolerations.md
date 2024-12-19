@@ -65,11 +65,11 @@ operator의 기본 값은 Equal이다. toleration의 key, effect가 taint와 동
 위의 예는 `NoSchedule` effect 를 사용했다. `PreferNoSchedule` effect를 사용할 수도 있다.
 
 effect 필드에 사용할 수 있는 값은 다음과 같다.
-- `NoExecute`: no에서 이미 실행 중인 아래 po에 영향을 미친다.
+- `NoExecute`: 새로운 po의 스케줄링도 제한하며 이미 실행 중인 po에도 영향을 미친다.
   - 매칭되는 toleration이 없는 po는 즉시 eviction된다.
   - 매칭되는 toleration에 대해 tolerationSeconds가 없는 po는 해당 no에 계속 bound된 상태로 남는다.
   - 매칭되는 toleration에 대해 tolerationSeconds가 있는 po는 해당 시간 동안 bound된 상태로 남아있으며 시간이 초과하면 eviction된다.
-- `NoSchedule`: 스케줄링 단계의 po에 영향을 미친다. 매칭되는 toleration이 없는 po는 해당 no에 스케줄링 될 수 없다. 미이 실행 중인 po는 eviction되지 않는다.
+- `NoSchedule`: 스케줄링 단계의 po에 영향을 미친다. 매칭되는 toleration이 없는 po는 해당 no에 스케줄링 될 수 없다. 이미 실행 중인 po는 eviction되지 않는다.
 - `PreferNoSchedule`: `NoSchedule`의 soft 버전이다. 시스템은 no의 taint를 허용하지 않는 po를 스케줄링하지 않으려고 노력하지만 반드시는 아니다.
 
 동일한 no에 여러 taint를, 동일한 po에 여러 toleration을 설정할 수 있다. k8s가 여러 taint, toleration을 처리하는 방식은 필터와 같다: no의 모든 taint와 po의 모든 toleration을 비교하고 매칭되는 taint는 제외한다. 그리고 제외되지 않은 나머지 taint에 대해 po에 effect가 적용된다.

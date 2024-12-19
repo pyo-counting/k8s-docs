@@ -60,7 +60,7 @@ kubelet이 container runtime을 사용해 po의 container 생성을 시작할 �
 
 ImagePullBackOff 상태는 k8s가 container image를 pull할 수 없어 실행할 수 없음을 의미한다. BackOff라는 단어는 k8s가 back-off 딜레이를 증가시키면서 image pulling을 계속 시도할 것임을 나타낸다.
 
-k8s는 시간 간격을 늘리면서 계속 시도하며, 시간 간격의 상항은 k8s 코드에 5분으로 하드코딩 되어있다.
+k8s는 시간 간격을 늘리면서 재시도를 수행하며 k8s에 코딩된 최대 시간 5분까지 시도한다.
 
 ### Image pull per runtime class
 

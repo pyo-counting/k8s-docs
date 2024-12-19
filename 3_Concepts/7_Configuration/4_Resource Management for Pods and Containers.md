@@ -1,13 +1,23 @@
 po를 정의할 때 container가 필요로하는 리소스에 대해 명시할 수 있다. 가장 일반적인 리소스 유형은 CPU와 메모리다.
 
-po 내에서 container에 대한 리소스 `request`를 지정하면 kube-scheduler는 이 정보를 사용해 po가 배치될 no를 결정한다. container에 대한 리소스 `limit`을 지정하면, kubelet은 실행 중인 container가 설정한 제한보다 많은 리소스를 사용할 수 없도록 해당 `limit`을 적용한다. 또한 kubelet은 container가 사용할 수 있도록 해당 시스템 리소스의 최소 `request`를 예약한다.
+po 내에서 container에 대한 리소스 `request`를 지정하면 kube-scheduler는 po가 배치될 no를 결정할 때 정보로 사용한다. container에 대한 리소스 `limit`을 지정하면, kubelet은 실행 중인 container가 설정한 제한보다 많은 리소스를 사용할 수 없도록 해당 `limit`을 적용한다. 또한 kubelet은 container가 사용할 수 있도록 해당 시스템 리소스의 최소 `request`를 예약한다.
 
 ## Requests and limits
 po가 실행 중인 no에 사용 가능한 리소스가 충분하면 container가 해당 리소스에 지정한 `request` 보다 더 많은 리소스를 사용할 수 있도록 허용된다. 그러나 container는 리소스 limit 보다 더 많은 리소스를 사용할 수는 없다.
 
-Limits can be implemented either reactively (the system intervenes once it sees a violation) or by enforcement (the system prevents the container from ever exceeding the limit). Different runtimes can have different ways to implement the same restrictions.
+예를 들어 8GiB memory를 갖는 no에 할당된 container에 memory `request`를 256MB를 설정한 경우, container 256MiB보다 더 큰 memory를 사용할 수도 있다.
 
-**Note**: 리소스에 대한 `request`를 지정하지 않고 `limit`만 지정하는 경우, 리소스에 대한 `request` 기본 값을 설정하는 admission이 없는 경우 k8s는 `limit` 값을 `request` 값으로 사용한다.
+`limit`은 `request`와 다르게 동작한다. cpu와 memory의 `limit`은 kubelet과 container runtime에 의해 적용되며 궁극적으로는 kernel에 의해 강제된다. linux no의 경우 kernel은 cgroups을 이용해 강제한다. cpu와 memory에 대한 `limit`은 다르게 동작한다.
+
+cpu `limit`은 CPU throttling에 의해 강제된다. container가 cpu `limit`에 다다른 경우 kernel은 해당 container의 CPU 접근에 대해 제한한다. cpu `limit`은 kernel이 강제하는 hard limit이며, container의 `limit`보다 더 많은 CPU를 사용할 수 없다.
+
+memory `limit`은 kernel의 out of memory(OOM) kills에 의해 강제된다. 
+
+> **Note**:  
+> There is an alpha feature MemoryQoS which attempts to add more preemptive limit enforcement for memory (as opposed to reactive enforcement by the OOM killer). However, this effort is stalled due to a potential livelock situation a memory hungry can cause.
+
+> **Note**:  
+> 리소스에 대한 `request`를 지정하지 않고 `limit`만 지정하는 경우, 리소스에 대한 `request` 기본 값을 설정하는 admission이 없는 경우 k8s는 `limit` 값을 `request` 값으로 사용한다.
 
 ## Resource types
 CPU, 메모리는 각각의 리소스 타입이다. 리소스 타입은 기본 단위룰 갖는다. 리눅스의 경우 huge page 리소스를 명시할 수 있다. huge page는 kernel이 기본 page 크기 보다 훨씬 큰 메모리 블록을 할당하는 리눅스 관련 기능이다.

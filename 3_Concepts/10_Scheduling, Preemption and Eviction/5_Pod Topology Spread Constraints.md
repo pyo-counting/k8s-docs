@@ -41,7 +41,7 @@ spec:
   > **Note**:  
   > k8s v1.30 이전에서 `minDomains` 필드는 MinDomainsInPodTopologySpread feature gate(v1.28부터 기본 활성화)가 활성화된 경우에만 사용할 수 있다. 이 전 버전에서는 비활성화 됐기 때문에 기본적으로 사용이 불가하다.
   - 값은 0보다 커야하며 `whenUnsatisfiable: DoNotSchedule`일 경우에만 사용할 수 있다.
-  - topology key와 매칭되는 eligible domain 개수가 `minDomains`보다 작으면 global minimum을 0으로 간주해 skew를 계산한다(global minimum은 eligible domain에서 매칭되는 po의 최소 개수를 나타내며, 만약 eligible domain이 `minDomains`보다 작으면 0으로 간주된다).
+  - topology key와 매칭되는 eligible domain 개수가 `minDomains`보다 작으면 global minimum을 0으로 간주해 skew를 계산한다(global minimum은 eligible domain에서 매칭되는 po의 최소 개수).
   - topology key와 매칭되는 eligible domain 개수가 `minDomains`와 같거나 더 크면 scheduling에 영향을 주지 않는다.
   - `minDomains`을 명시하지 않으면 값이 1인 것으로 간주된다.
 - `maxSkew`: (required) po가 고르지 않게 분포될 수 있는 정도를 나타낸다. 이 필드는 필수이며 0 보다 큰 숫자를 사용해야 한다. 이 필드의 의미는 `whenUnsatisfiable` 필드 값에 따라 바뀐다.
@@ -72,7 +72,7 @@ spec:
   > **Note**:  
   > nodeAffinityPolicy는 1.26 버전부터 기본 활성화되며 beta-level 필드이다. NodeInclusionPolicyInPodTopologySpread feature gate를 비활성화해 해당 필드를 비활성화할 수 있다.
 - `nodeTaintsPolicy`: topology spread skew를 계산할 때 no의 taints를 어떻게 처리할지 설정한다. 기본 값은 `Ignore`다.
-  - `Honor`: taints가 없는 no, po의 toleration이 있는 경우 관련 tainted no에 대한 skew를 계산한다.
+  - `Honor`: taints가 없는 no와 tainted no지만 po의 toleration이 있는 no에 대해 skew를 계산한다.
   - `Ignore`: 모든 no에 대한 skew를 계산한다.
     > **Note**:  
   > nodeTaintsPolicy는 1.26 버전부터 기본 활성화되며 beta-level 필드이다. NodeInclusionPolicyInPodTopologySpread feature gate를 비활성화해 해당 필드를 비활성화할 수 있다.
