@@ -14,7 +14,7 @@ scheduling cyle은 내부적으로 크게 filtering, scoring 단계로 수행된
 
 위처럼 cluster에서 po의 스케줄링 요구 사항을 충족(filtering 단계)하는 no를 feasible no라고 한다. feasible no가 없는 경우 scheduler가 po를 배치할 수 있을 때까지 po는 unscheduled 상태로 유지된다.
 
-scheduler는 po에 대한 feasible no를 모두 찾은 다음, 각 feasible no에 대해 일련의 함수를 실행해 점수를 계산하고, 가장 높은 점수를 받은 feasible no를 선택해 po를 할당한다. 동일한 점수를 가진 no가 여러 개인 경우 kube-scheduler는 이들 중 하나를 무작위로 선택한다. 그리고 scheduler는 이러한 결정을 `binding`이라는 프로세스에서 kube-apiserver에 통지한다.
+scheduler는 po에 대한 feasible no를 모두 찾은 다음, 각 feasible no에 대해 일련의 함수를 실행해 점수를 계산하고, 가장 높은 점수를 받은 feasible no를 선택해 po를 할당한다. 동일한 점수를 가진 no가 여러 개인 경우 kube-scheduler는 이들 중 하나를 무작위로 선택한다. 그리고 scheduler는 이러한 결정을 `binding`이라는 프로세스에서 kube-apiserver에 통지한다. k8s 1.7 이전에는 k8s binding 내장 리소스를 사용했지만 1.7에서 deprecated 됐으며 대신 po의 binding subresource를 사용한다. binding subresource를 통해 po와 no다 연결(binding)되고, 이로 인해 po의 `.spec.nodeName` 필드에 해당 no의 이름이 설정된다.
 
 스케줄링 결정에 고려해야 할 요소에는 리소스 요구 사항, 하드웨어/소프트웨어/policy constrains, affinity와 anti-affinity, data locality, workload 간 간섭 등이 포함된다.
 

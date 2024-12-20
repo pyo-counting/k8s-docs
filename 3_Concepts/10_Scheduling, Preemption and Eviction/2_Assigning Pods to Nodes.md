@@ -348,7 +348,7 @@ spec:
 - cloud 환경에서 no의 이름은 항상 예측할 수 없다.
 
 > **Warning**:  
-> `.spec.nodeName`은 custom scheduler, scheduler를 무시시해야 하는 advanced use case를 위한 목적으로 존재한다. Bypassing the schedulers might lead to failed Pods if the assigned Nodes get oversubscribed. scheduler를 패스하지 않고 특정 no에 po를 할당하기 위해서는 node affinity, nodSelector를 사용한다.
+> `.spec.nodeName`은 custom scheduler, scheduler를 무시시해야 하는 advanced use case를 위한 목적으로 존재한다. Bypassing the schedulers might lead to failed Pods if the assigned Nodes get oversubscribed. scheduler를 패스하지 않고 특정 no에 po를 할당하기 위해서는 node affinity, nodSelector를 사용한다. 빈 값일 경우 kube-scheduler의 스케줄링 대상 po로 인식되며, kube-scheduler는 스케줄링을 위한 no를 결정한 경우 po의 binding subresource를 통해 해당 필드를 no의 이름으로 설정되도록 한다.
 
 다음은 예시다.
 ``` yaml
