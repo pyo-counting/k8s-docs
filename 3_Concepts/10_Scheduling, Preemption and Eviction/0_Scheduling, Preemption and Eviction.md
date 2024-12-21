@@ -1,4 +1,4 @@
-k8s에서 scheduling은 kubelet이 po를 실행할 수 있도록 적절한 no를 찾는 것을 말한다. preemption(선점)은 우선 순위가 높은 po가 no에 스케줄링 될 수 있도록 우선 순위가 낮은 po를 종료하는 것을 말한다. eviction은 no에서 po를 종료하는 것을 말한다.
+k8s에서 scheduling은 kubelet이 po를 실행할 수 있도록 적절한 no를 찾는 것을 말한다. preemption(선점)은 cluster 내 resource가 부족한 상황에서 우선 순위가 높은 po가 no에 스케줄링 될 수 있도록 우선 순위가 낮은 po를 종료하는 것을 말한다. eviction은 no에서 po를 종료하는 것을 말한다.
 
 ## Scheduling
 - Kubernetes Scheduler
