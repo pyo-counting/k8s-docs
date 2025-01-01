@@ -1,5 +1,8 @@
 node-pressure eviction은 kubelet이 no의 리소스를 회수하기 위해 po를 사전에 종료하는 프로세스다.
 
+> **Note**:  
+> containerfs(container 파일시스템)에 대한 지원을 활성화하는 split image filesystem 기능은 새로운 eviction signals, thresholds, metrics을 추가한다. containerfs를 사용하려면 Kubernetes v1.32에서 `KubeletSeparateDiskGC` feature gate를 활성화해야 한다. 현재 containerfs 지원은 CRI-O(v1.29 이상)에서만 제공된다.
+
 kubelet은 cluster의 no에 있는 메모리, 디스크 공간, 파일 시스템 inode와 같은 리소스를 모니터링한다. 이러한 리소스 중 하나 이상이 특정 소비 레벨에 도달하면 kubelet은 no에 있는 하나 이상의 po를 선제적으로 실패시켜 리소스를 회수하고 기아(starvation)를 방지할 수 있다.
 
 node-pressure eviction 동안 kubelet은 선택한 po의 `.status.phase`를 Failed로 설정하고 po를 종료시킨다.
@@ -28,18 +31,30 @@ kubelet은 아래와 같은 다양한 파라미터를 사용해 eviction 결정�
 eviction signal은 특정 시점의 리소스 상태를 나타낸다. kubelet은 no에서 필요로하는 최소한의 available 리소스를 나타내는 eviction threshold과 eviction signal을 비교해 eviction을 결정한다.
 
 linux에서 kubelet은 아래 eviction signal을 사용한다.
-| Eviction Signal    | Description                                                                     |
-|--------------------|---------------------------------------------------------------------------------|
-| memory.available   | memory.available := node.status.capacity[memory] - node.stats.memory.workingSet |
-| nodefs.available   | nodefs.available := node.stats.fs.available                                     |
-| nodefs.inodesFree  | nodefs.inodesFree := node.stats.fs.inodesFree                                   |
-| imagefs.available  | imagefs.available := node.stats.runtime.imagefs.available                       |
-| imagefs.inodesFree | imagefs.inodesFree := node.stats.runtime.imagefs.inodesFree                     |
-| pid.available      | pid.available := node.stats.rlimit.maxpid - node.stats.rlimit.curproc           |
+| Eviction Signal        | Description                                                                     | Linux Only |
+|------------------------|---------------------------------------------------------------------------------|------------|
+| memory.available       | memory.available := node.status.capacity[memory] - node.stats.memory.workingSet |            |
+| nodefs.available       | nodefs.available := node.stats.fs.available                                     |            |
+| nodefs.inodesFree      | nodefs.inodesFree := node.stats.fs.inodesFree                                   | •          |
+| imagefs.available      | imagefs.available := node.stats.runtime.imagefs.available                       |            |
+| imagefs.inodesFree     | imagefs.inodesFree := node.stats.runtime.imagefs.inodesFree                     | •          |
+| containerfs.available  | containerfs.available := node.stats.runtime.containerfs.available               |            |
+| containerfs.inodesFree | containerfs.inodesFree := node.stats.runtime.containerfs.inodesFree             | •          |
+| pid.available          | pid.available := node.stats.rlimit.maxpid - node.stats.rlimit.curproc           | •          |
 
-signal은 퍼센티지 또는 값을 지원한다. kubelet은 siganl과 관련있는 리소스의 총 capacity를 기준으로 퍼센티지 값을 계산한다.
+위 표에서 Description 필드는 kubelet이 signal의 값을 계산하는 방법을 나타낸다. 각 signal은 퍼센티지 또는 값을 지원한다. kubelet은 siganl과 관련있는 리소스의 총 capacity를 기준으로 퍼센티지 값을 계산한다.
 
-`memory.available`의 값은 `free -m`와 같은 도구 대신 cgroupfs의 값을 사용한다. `free -m`은 container에 대해 동작하지 않으며, and if users use the [node allocatable](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#node-allocatable) feature, out of resource decisions are made local to the end user Pod part of the cgroup hierarchy as well as the root node. [script](), [cgroupv2 script]()는 kubelet이 `memory.available`을 계산하는 과정을 보여준다. kubelet은 inactive_file(inactive LRU 목록에서 파일 백업 메모리 byte)을 계산에서 제외한다.
+#### Memory signals
+linux no에서 `memory.available` 값은 `free -m`와 같은 도구 대신 cgroupfs의 값을 사용한다. `free -m`은 container에 대해 동작하지 않으며, and if users use the [node allocatable](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#node-allocatable) feature, out of resource decisions are made local to the end user Pod part of the cgroup hierarchy as well as the root node. [script](), [cgroupv2 script]()는 kubelet이 `memory.available`을 계산하는 과정을 보여준다. kubelet은 inactive_file(inactive LRU 목록에서 파일 백업 메모리 byte)을 계산에서 제외한다.
+
+
+또한 사용자가 노드 할당 가능(node allocatable) 기능을 사용하는 경우, 리소스 부족 판단은 cgroup 계층 구조의 사용자 파드 영역 및 루트 노드에서 로컬로 이루어집니다.
+
+memory.available를 계산하기 위해 Kubelet이 수행하는 단계는 특정 스크립트 또는 cgroupv2 스크립트를 통해 재현할 수 있습니다. 이 계산에서 Kubelet은 inactive_file(비활성 LRU 목록에 있는 파일 지원 메모리의 바이트 수)을 제외합니다. 이는 압박 상황에서 해당 메모리가 회수 가능하다고 가정하기 때문입니다.
+
+이 방식은 노드 리소스를 효율적으로 관리하고, 리소스 부족 시 올바른 축출 결정을 내리기 위한 핵심적인 계산 과정입니다.
+
+
 
 filesystem과 관련해 kubelet은 두 식별자만 사용한다.
 1. `nodefs.*`: no의 main filesystem을 나타내며 local disk volume, emptyDir volume, log storage 등에 사용된다. 예를 들어 `nodefs`는 `/var/lib/kubelet/`을 포함한다.

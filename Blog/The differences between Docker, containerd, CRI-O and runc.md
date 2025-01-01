@@ -13,7 +13,29 @@ container 생테계는 많은 흥미로운 기술, 전문 용어, 회사들이 �
 
 container와 관련된 큰 두개의 표준이 있다.
 - `Open Container Initiative(OCI)`: container에 대한 표준. image format, runtime, distribution과 관련 있다.
-- `Container Runtime Interface(CRI) in k8s`: k8s 환경에서 다양한 container runtime을 사용하기 위한 API 표준
+    - OCI는 container runtime, image의 표준화를 목표로 하는 오픈 표준화 프로젝트
+    - 목표
+        - container의 호환성과 이식성을 높이기 위해 image, runtime 표준을 정의
+        - container 기술이 공급업체에 종속되지 않도록 보장
+    - 구성 요소
+        - Runtime Specification (runtime-spec)
+            - container 실행 환경(예: runc)에서 사용하는 표준을 정의(container의 생성을 위한 기본 명령 및 설정 포함)
+        - Image Specification (image-spec):
+            - container image의 형식과 배포 방법을 정의(Docker image와 호환성을 유지하며, image의 layer 구조와 메타데이터를 표준화)
+    - 예시 
+        - Docker, Podman, CRI-O 등에서 OCI 표준을 기반으로 container를 빌드 및 실행
+        - runc는 OCI runtime-spec을 구현한 대표적인 runtime
+- `Container Runtime Interface(CRI)`: k8s 환경에서 다양한 container runtime을 사용하기 위한 API 표준
+    - CRI는 kubernetes의 container runtime과 kubelet 간 통신을 표준화하기 위한 API 인터페이스
+    - 목표
+        - kubernetes가 다양한 container runtime을 쉽게 통합할 수 있도록 표준 인터페이스(API)를 제공
+        - kubernetes에서 container runtime을 교체하거나 추가할 때 코드 변경을 최소화
+    - 구성 요소
+        - gRPC 기반 API(CRI는 gRPC 기반으로 설계되어 kubernetes와 container runtime 간 효율적인 통신이 가능)
+        - 두 가지 주요 API: RuntimeService API(컨테이너 생성, 시작, 정지 등의 작업 처리), ImageService API(container image 다운로드, 캐싱, 삭제 처리)
+    - 예시
+        - Docker를 사용하던 kubernetes가 CRI-O, containerd 등으로 전환할 수 있게 지원
+        - CRI-O와 containerd는 CRI를 준수하는 runtime으로 kubernetes와 쉽게 통합 가능
 
 아래에서는 Docker, Kubernetes, CRI, OCI, containerd, runc가 생테계에서 어떤 역할을 수행하는지 알아본다.
 ![](../image/container-ecosystem.drawio.webp)
@@ -34,10 +56,10 @@ docker cli는 docker api를 사용해 dockerd에게 명령어를 요청한다. �
 
 ### What are the lower-level tools in the Docker stack?
 아래는 docker 명령어가 container 실행을 위해 사용하는 도구다.
-- docker CLI 명령어([docker-cli](https://github.com/docker/cli)): container를 제어하기 위한 여러 복잡한 도구에 대한 이해 없이 사용자가 쉽게 container를 제어할 수 있는 명령어다.
-- docker daemon([dockerd](https://docs.docker.com/reference/cli/dockerd/)): CRI가 아닌 docker를 위한 API를 제공하고 container runtime과 상호 작용하는 daemon 프로세스
-- high-level container runtime([containerd](https://containerd.io/)): low-level 위에 존재하는 container runtime으로 image 전송, 저장, 네트워킹과 같은 기능을 제공한다. OCI 표준을 따른다.
 - low-level container runtime([runc](https://github.com/opencontainers/runc)): low-level container runtime이다. 리눅스의 기본 기능을 사용해 container를 생성하고 실행한다. OCI 표준을 따르며 container를 생성하기 위한 go library인 [libcontainer](https://pkg.go.dev/github.com/opencontainers/runc/libcontainer)가 포함되어 있다.
+- high-level container runtime([containerd](https://containerd.io/)): low-level 위에 존재하는 container runtime으로 image 전송, 저장, 네트워킹과 같은 기능을 제공한다. OCI 표준을 따른다.
+- docker daemon([dockerd](https://docs.docker.com/reference/cli/dockerd/)): CRI가 아닌 docker를 위한 API를 제공하고 container runtime과 상호 작용하는 daemon 프로세스
+- docker CLI 명령어([docker-cli](https://github.com/docker/cli)): container를 제어하기 위한 여러 복잡한 도구에 대한 이해 없이 사용자가 쉽게 container를 제어할 수 있는 명령어다.
 
 ### Does Kubernetes use Docker?
 kubernetes는 이전에 Docker Engine을 사용해 container를 사용했다.

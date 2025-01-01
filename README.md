@@ -256,6 +256,7 @@
   - `.preemptionPolicy` 필드의 기본 값은 낮은 우선 순위를 갖는 po를 preempt할 수 있는 `PreemptLowerPriority`이다. `Never` 값일 경우 pc를 갖는 po는 우선 순위가 낮은 po보다 scheduling queue에서 더 앞에 위치하게 되지만 다른 po를 preempt할 수 없다. 이러한 non-preempting po는 충분한 resource가 확보될 때까지 scheduling queue에 대기한다. non-preempting po는 다른 po와 마찬가지로 scheduler의 back-off의 대상이 된다.
   - non-preempting po는 다른 po를 preempt할 수 없지만 우선 순위가 높은 po에 의해 자신은 preempt될 수 있다.
   - po를 생성할 때 `.spec.priorityClassName` 필드를 통해 pc를 참조함으로써 po의 우선 순위를 명시할 수 있다. priority admission controller는 이 필드를 사용해 실제 우선 순위를 나타내는 정수 값을 `.spec.priority` 필드에 할당한다. 만약 po가 유효하지 않은 pc를 참조하는 경우 po는 reject된다.
+- containerfs(container 파일시스템)에 대한 지원을 활성화하는 split image filesystem 기능은 새로운 eviction signals, thresholds, metrics을 추가한다. containerfs를 사용하려면 Kubernetes v1.32에서 `KubeletSeparateDiskGC` feature gate를 활성화해야 한다. 현재 containerfs 지원은 CRI-O(v1.29 이상)에서만 제공된다.
 ---
 
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
