@@ -163,7 +163,7 @@ profiles:
                   - foo
 ```
 
-addedAffinity는 .spec.schedulerName을 foo-scheduler로 설정하는 모든 po에 적용되며 PodSpec에 지정된 NodeAffinity도 적용된다. 즉, 이 po를 실행하기 위해 no는 addedAffinity, .spec.NodeAffinity를 모두 충족해야 한다.
+addedAffinity는 `.spec.schedulerName`을 foo-scheduler로 설정하는 모든 po에 적용되며 PodSpec에 지정된 NodeAffinity도 적용된다. 즉, 이 po를 실행하기 위해 no는 addedAffinity, `.spec.NodeAffinity`를 모두 충족해야 한다.
 
 addedAffinity는 엔드 유저에게 표시되지 않으므로, 예상치 못한 동작이 일어날 수 있다. scheduler profile 이름과 명확한 상관 관계가 있는 no label을 사용해야 한다.
 

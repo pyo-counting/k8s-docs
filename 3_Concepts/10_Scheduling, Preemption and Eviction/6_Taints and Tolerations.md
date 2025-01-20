@@ -128,7 +128,7 @@ node controller는 특정 조건이 만족될 때 pod eviction을 위해 자동�
 - `node.kubernetes.io/unschedulable`: no를 스케줄할 수 없다(예를 들어 no의 `.spec.unschedulable` 필드가 false일 때).
 - `node.cloudprovider.kubernetes.io/uninitialized`: kubelet의 "external" cloud provider와 같이 실행되는 경우 사용 불가능한 no로 표기하기 위해 taint를 추가한다. 이후, cloud-controller-manager의 controller가 이 no를 초기화하면 kubelet은 taint를 제거한다.
 
-no가 drain 되어야 하는 경우 node controller 또는 kubelet은 NoExecute effect를 추가한다. effect는 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가된다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다.
+no가 drain 되어야 하는 경우 node controller 또는 kubelet은 NoExecute effect를 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` taint에 추가한다. 장애 상태가 정상으로 돌아오면 kubelet 또는 no controller가 관련 taint를 제거한다.
 
 no에 unreachable이면 kube-apiserver가 no의 kubelet과 통신에 실패할 수 있다. 그렇기 때문에 po에 대한 삭제를 kubelet에 통보할 수 없다. 그렇기 때문에 해당 no에 po는 계속해서 실행중일 수 있다.
 
