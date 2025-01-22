@@ -273,6 +273,10 @@
 
 - k8s object의 status를 노출하는 kube-state-metrics 설치 고려 ([Metrics for Kubernetes Object States](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/))
 
+## EKS
+- control plane은 aws가 관리하며 kube-apiserver의 엔드포인트는 EKS endpoint를 통해 사용자에게 노출된다.
+- etcd node의 모든 저장 데이터는 aws ebs volume를 통해 저장되며 kms로 암호화된다.
+
 ## 요약
 - k8s의 autoscaling 옵션: pod hpa, vpa, cluster autoscaler, addon resizer
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
