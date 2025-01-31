@@ -274,8 +274,43 @@
 - k8s object의 status를 노출하는 kube-state-metrics 설치 고려 ([Metrics for Kubernetes Object States](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/))
 
 ## EKS
-- control plane은 aws가 관리하며 kube-apiserver의 엔드포인트는 EKS endpoint를 통해 사용자에게 노출된다.
-- etcd node의 모든 저장 데이터는 aws ebs volume를 통해 저장되며 kms로 암호화된다.
+- control plane은 kube-apiserver, etcd 등 k8s control plane을 구성하는 구성 요소들로 이뤄지며 aws가 관리하는 ec2 인스턴스로 구성된다. control plane은 multi az에 provision되며 nlb를 통해 kube-apiserver를 노출한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
+- eks는 elastic network interface를 사용자 vpc subnet에 provision함으로써 control plane에서 no에 접근(예를 들어 사용자의 `kubectl exec`, `kubectl logs`, `kubectl proxy` 명령어)이 가능하도록 한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
+- etcd node의 모든 저장 데이터는 aws ebs volume를 통해 저장되며 kms로 암호화된다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
+- eks는 etcd storage 크기를 8GiB로 설정한다. 이는 일반적인 환경에서 etcd의 최대 권장 사이즈다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
+
+- 
+- cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc, 인터넷에서 kube-apiserver 엔드포인트에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#modify-endpoint-access))
+  - enabled/disabled
+    - 
+
+- eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
+- vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
+  - vpc는 cluster, no, k8s resource를 위한 충분한 ip주소가 있어야 한다. 만약 vpc의 cidr보다 더 많은 ip가 필요할 경우 vpc에 cidr block을 추가할 수 있다.
+  - cluster 생성 시 명시한 subnet과 security group을 변경 해 더 많은 ip를 사용할 수 있도록 할 수 있다. 하지만 cluster 생성 시 사용한 az 내에서만 변경 가능하다.
+  - vpc의 DNS option(hostname, resoulution)이 모두 활성화되어야 한다. 그렇지 않으면 no가 cluster에 자신을 등록하지 못한다.
+- cluster 생성 시 eks는 2-4개의 elastic network interface를 사용자 vpc subnet에 자동 생성한다. cluster의 k8s 버전을 업데이트하는 경우 cluster 생성 시 만든 network interface를 삭제하고 동일 subnet 또는 다른 subnet에 새로운 network interface를 만든다. network interface가 생성되는 subnet을 제어하기 위해 2개의 subnet만 사용하면 된다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
+- cluster을 위한 subnet 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
+  - 각 subnet은 최소 6개의 ip가 필요하지만 최소 16개를 권장한다.
+  - 서로 다른 az에 존재하는 최소 2개의 subnet을 명시해야 한다.
+  - public/private subnet 모두 가능하지만 private subnet을 권장한다.
+- no를 위한 subnet 요구 사항은 다음과 같다. eks cluster 생성 시 명시한 subnet에 no, k8s resource를 배포하지 않아도 된다. 이 경우 eks는 해당 subnet에 elastic network interface를 생성하지는 않는다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
+  - no와 k8s resource 배포를 위한 충분한 ip 개수가 필요하다.
+  - 인터넷 -> po inbound 접근이 필요한 경우 elb 배포를 위한 최소 1개의 subnet이 필요하다. 가능하다면 no는 private subnet에 배포하는 것을 권장한다.
+  - no를 public subnet에 배포하는 경우 subnet은 public ip를 할당해야 한다.
+  - no를 인터넷 outbound 접근이 불가능한 private subnet(nat 불가)에 배포하는 경우 no, po를 위한 vpc endpoint를 추가해야 한다(예를 들어 ecr, cloudwatch, sts, s3 등).
+  - subnet에 elb를 배포하길 원하는 경우 private subnet에는 `kubernetes.io/role/internal-elb` key와 `1` value를 갖는 tag, public subnet에는 `kubernetes.io/role/elb` key와 `1` value를 갖는 tag를 추가해야 한다.
+- eks cluster 생성 시 `eks-cluster-${EKS_NAME}-${UNIQUE_ID}` 이름을 갖는 cluster security group을 생성한다. 특징은 다음과 같다. ([Security group requirements](https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html))
+  - 아래 기본 inbound/outbound rule을 포함한다. inbound rule의 삭제할 경우 cluster 업데이트 시 자동으로 다시 생성한다.
+    | Rule type | Protocol | Ports | Source | Destination                    |
+    |-----------|----------|-------|--------|--------------------------------|
+    | Inbound   | All      | All   | Self   |                                |
+    | Outbound  | All      | All   |        | 0.0.0.0/0(IPv4) or ::/0 (IPv6) |
+  - 3개의 기본 tag를 추가한다. 삭제할 경우 cluster 업데이트 시 자동으로 다시 생성한다.
+  - 
+- cluster를 위한 security group 요구 사항은 다음과 같다. ([Security group requirements](https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html))
+  - 
+
 
 ## 요약
 - k8s의 autoscaling 옵션: pod hpa, vpa, cluster autoscaler, addon resizer
