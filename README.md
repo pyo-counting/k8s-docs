@@ -1,8 +1,9 @@
 ## about docs
 - v1.31 버전 기준 작성
 - 3_Concepts/4_Workloads부터 정리 필요
+- eks publci/private endpoint 설정에 따라 nlb가 실제로 생성되는지?
 
-## configure cluster
+## Kubernetes
 ### general
 - k8s의 모든 구성 요소를 k8s cluster 내에서 container로 관리(static pod)하는 것을 권장한다. 하지만 container 실행을 담당하는 kubelet은 container로 실행할 수 없다. ([Getting started](https://kubernetes.io/docs/setup/))
 - k8s의 control plane은 linux에서 실행되도록 디자인됐다. 물론 cluster 내에서 애플리케이션은 windows를 포함한 다른 os에서 실행할 수도 있다. ([Getting started](https://kubernetes.io/docs/setup/#what-s-next))
@@ -274,15 +275,37 @@
 - k8s object의 status를 노출하는 kube-state-metrics 설치 고려 ([Metrics for Kubernetes Object States](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/))
 
 ## EKS
-- control plane은 kube-apiserver, etcd 등 k8s control plane을 구성하는 구성 요소들로 이뤄지며 aws가 관리하는 ec2 인스턴스로 구성된다. control plane은 multi az에 provision되며 nlb를 통해 kube-apiserver를 노출한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
+- control plane은 kube-apiserver, etcd 등 k8s control plane을 구성하는 구성 요소들로 이뤄지며 aws가 관리하는 ec2 인스턴스에서 실행된다. control plane은 multi az에 provision되며 nlb를 통해 kube-apiserver endpoint를 노출한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks는 elastic network interface를 사용자 vpc subnet에 provision함으로써 control plane에서 no에 접근(예를 들어 사용자의 `kubectl exec`, `kubectl logs`, `kubectl proxy` 명령어)이 가능하도록 한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - etcd node의 모든 저장 데이터는 aws ebs volume를 통해 저장되며 kms로 암호화된다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks는 etcd storage 크기를 8GiB로 설정한다. 이는 일반적인 환경에서 etcd의 최대 권장 사이즈다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
-
-- 
-- cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc, 인터넷에서 kube-apiserver 엔드포인트에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#modify-endpoint-access))
+- eks cluster insight는 eks, k8s의 best practice를 따를 수 있도록 권장 사항을 제공한다. 이를 위해 eks cluster에 대해 반복적으로 검사를 수행한다. eks를 업데이트하 기전에 cluster insight를 확인하는 것이 필요하다 ([Cluster insights](https://docs.aws.amazon.com/eks/latest/userguide/cluster-insights.html))
+- cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc와 인터넷에서 kube-apiserver endpoint에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. kube-apiserver가 no에 대한 접근을 위해서 기본적으로 cluster 생성시 명시한 subnet에 eks-managed eni을 생성하며 이는 public/pricate endpoint access 옵션과 관련 없다. ([AWS Blogs](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
+- eks public/private endpoint는 aws privatelink endpoint가 아니다. private access endpoint를 활성화하면 aws eks는 route 53 private hosted zone을 사용자 대신 생성하고 cluster가 생성된 vpc와 연결한다. 이 private hosted zone은 사용자가 조회할 수 없으며 eks가 대신 관리한다. vpc에서 private hosted zone을 통해 kube-apiserver pirvate endpoint에 접근하기 위해 vpc는 `enableDnsHostnames`, `enableDnsSupport`을 true로 설정하고 DHCP optionset은 dns server 목록에 `AmazonProvidedDNS`을 포함해야 한다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#cluster-endpoint-private))
+- public/rpivate endpoint 활성화/비활성화 여부에 따른 특징은 다음과 같다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#modify-endpoint-access))
   - enabled/disabled
-    - 
+    - eks의 기본 설정 값이다. cluster vpc 내에서 kube-apiserver에 대한 요청은 vpc를 벗어나지만 aws 네트워크를 벗어나지는 않는다.
+    - 인터넷에서 public endpoint를 통해 kube-apiserver에 접근할 수 있다. public endpoint에 대해 CIDR block을 이용한 접근 제어가 가능하다.
+  - enabled/enabled
+    - cluster vpc 내에서 kube-apiserver에 대한 요청은 vpc 내 eks가 생성한 eks-managed eni를 향한다.
+    - 인터넷에서 public endpoint를 통해 kube-apiserver에 접근할 수 있다. public endpoint에 대해 CIDR block을 이용한 접근 제어가 가능하다.
+  - disabled/enabled
+    - kube-apiserver에 대한 모든 요청은 vpc 내부 또는 connected network 내부에서만 가능하다.
+    - 인터넷에서 kube-apiserver에 접근할 수 없다.
+    - cluster의 kube-apiserver endpoint는 public DNS에 의해 vpc 내 private ip 주소로 resolving된다.
+- outbound internet access가 필요없는 eks를 배포하기 위해 아래 조건을 만족해야한다.
+  - cluster는 container image를 vpc 내 registry에서 pull할 수 있어야 한다.
+  - eks는 private endpoint가 활성화 돼야한다. public endpoint 활성화는 optional이다.
+  - self-managed node의 bootstrap argument를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
+  - cluster의 `aws-auth` cm은 vpc 내에서 생성돼야 한다.
+  - irsa를 사용하는 경우 po는 aws sts API 호출을 통해 credential을 획득한다. 접근할 수 있도록 sts에 대한 vpc endpoint를 생성해야 한다. 대부분의 v1 sdk는 global aws sts endpoint를 기본 값으로 `sts.amazonaws.com`로 사용하며 aws sts vpc endpoint를 사용하지 않는다. aws sts vpc endpoint 사용을 위해 sdk의 설정을 변경해야 한다.
+  - po가 aws service에 접근할 수 있도록 vpc endpoint가 있어야 한다.
+  - self-managed node는 vpc endpoint가 존재하는 subnet에 배포돼야 한다. managed node group의 경우 vpc endpoint의 security group inbound rule에 managed node group이 배포된 subnet을 추가해야 한다.
+  - efs volume을 사용하는 경우 aws-efs-csi-driver의 container image가 eks cluster와 동일한 region을 사용하도록 변경해야 한다.
+  - aws-load-balancer-controller를 배포할 때 `enable-shield`, `enable-waf`, `enable-wafv2` flag를 false로 설정해야 한다. 그리고 certificate discovery 기능도 사용할 수 없다. 왜냐하면 aws certificate manager가 vpc endpoint를 지원하지 않기 때문이다. 
+  - cluster autoscaler po를 배포할 때 `--aws-use-static-instance-list=true` flag를 포함해야 한다. 그리고 vpc는 sts vpc endpoint, autoscaling vpc endpoint를 포함해야 한다.
+  - 일부 container software의 경우 사용량 모니터링을 위해 aws marketplace metering server 접근을 위한 API 호출을 수행한다. private cluster에서 해당 호출을 허용하지 않기 때문에 이러한 유형의 container는 private cluster에서 사용이 불가하다.
+- eks platform version은 eks control plane의 기능을 나타내며 kube-apiserver의 flag 활성화, k8s patch 버전 등을 포함한다. k8s minor version마다 1개 이상의 eks platform version을 갖는다. k8s minor version 별로 eks platform version은 독립적이다. k8s 1.32 version의 첫 eks platform version은 `eks.1`이다. eks는 주기적으로 새로운 platform version을 release해 control plane의 새로운 설정 활성화, 보안 수정을 제공한다. eks는 기존 cluster의 platform version을 자동으로 업그레이드 한다. cluster가 최신 platform version 보다 두 개 이상 차이나면 자동으로 업데이트 하지 못할 수도 있다. eks는 새로운 ami를 같이 release할 수 있지만 동일한 k8s minor version 내에서는 eks control plane과 no의 ami 간 호환성을 보장한다. 새로운 platform version은 기존 서비스에 영향을 주지 변경 사항을 도입하지 않는다. 새로운 cluster 생성 시 해당 k8s minor version 내에서 가장 최신의 eks platform 버전으로 자동 생성된다.
 
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
