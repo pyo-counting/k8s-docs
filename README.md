@@ -293,7 +293,7 @@
     - kube-apiserver에 대한 모든 요청은 vpc 내부 또는 connected network 내부에서만 가능하다.
     - 인터넷에서 kube-apiserver에 접근할 수 없다.
     - cluster의 kube-apiserver endpoint는 public DNS에 의해 vpc 내 private ip 주소로 resolving된다.
-- outbound internet access가 필요없는 eks를 배포하기 위해 아래 조건을 만족해야한다.
+- outbound internet access가 필요없는 eks를 배포하기 위해 아래 조건을 만족해야한다. ([Private clusters](https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html))
   - cluster는 container image를 vpc 내 registry에서 pull할 수 있어야 한다.
   - eks는 private endpoint가 활성화 돼야한다. public endpoint 활성화는 optional이다.
   - self-managed node의 bootstrap argument를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
@@ -305,7 +305,9 @@
   - aws-load-balancer-controller를 배포할 때 `enable-shield`, `enable-waf`, `enable-wafv2` flag를 false로 설정해야 한다. 그리고 certificate discovery 기능도 사용할 수 없다. 왜냐하면 aws certificate manager가 vpc endpoint를 지원하지 않기 때문이다. 
   - cluster autoscaler po를 배포할 때 `--aws-use-static-instance-list=true` flag를 포함해야 한다. 그리고 vpc는 sts vpc endpoint, autoscaling vpc endpoint를 포함해야 한다.
   - 일부 container software의 경우 사용량 모니터링을 위해 aws marketplace metering server 접근을 위한 API 호출을 수행한다. private cluster에서 해당 호출을 허용하지 않기 때문에 이러한 유형의 container는 private cluster에서 사용이 불가하다.
-- eks platform version은 eks control plane의 기능을 나타내며 kube-apiserver의 flag 활성화, k8s patch 버전 등을 포함한다. k8s minor version마다 1개 이상의 eks platform version을 갖는다. k8s minor version 별로 eks platform version은 독립적이다. k8s 1.32 version의 첫 eks platform version은 `eks.1`이다. eks는 주기적으로 새로운 platform version을 release해 control plane의 새로운 설정 활성화, 보안 수정을 제공한다. eks는 기존 cluster의 platform version을 자동으로 업그레이드 한다. cluster가 최신 platform version 보다 두 개 이상 차이나면 자동으로 업데이트 하지 못할 수도 있다. eks는 새로운 ami를 같이 release할 수 있지만 동일한 k8s minor version 내에서는 eks control plane과 no의 ami 간 호환성을 보장한다. 새로운 platform version은 기존 서비스에 영향을 주지 변경 사항을 도입하지 않는다. 새로운 cluster 생성 시 해당 k8s minor version 내에서 가장 최신의 eks platform 버전으로 자동 생성된다.
+- eks platform version은 eks control plane의 기능을 나타내며 kube-apiserver의 flag 활성화, k8s patch 버전 등을 포함한다. k8s minor version마다 1개 이상의 eks platform version을 갖는다. k8s minor version 별로 eks platform version은 독립적이다. k8s 1.32 version의 첫 eks platform version은 `eks.1`이다. eks는 주기적으로 새로운 platform version을 release해 control plane의 새로운 설정 활성화, 보안 수정을 제공한다. eks는 기존 cluster의 platform version을 자동으로 업그레이드 한다. cluster가 최신 platform version 보다 두 개 이상 차이나면 자동으로 업데이트 하지 못할 수도 있다. eks는 새로운 ami를 같이 release할 수 있지만 동일한 k8s minor version 내에서는 eks control plane과 no의 ami 간 호환성을 보장한다. 새로운 platform version은 기존 서비스에 영향을 주지 변경 사항을 도입하지 않는다. 새로운 cluster 생성 시 해당 k8s minor version 내에서 가장 최신의 eks platform 버전으로 자동 생성된다. ([Platform versions](https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html))
+- hybrid node를 제외하고 node는 cluster 생성 시 명시한 subnet과 동일한 vpc에 존재해야 한다(동일한 subnet에 존재할 필요는 없다). ([Manage compute](https://docs.aws.amazon.com/eks/latest/userguide/eks-compute.html))
+- 
 
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
