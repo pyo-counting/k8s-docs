@@ -279,9 +279,9 @@
 - eks는 elastic network interface를 사용자 vpc subnet에 provision함으로써 control plane에서 no에 접근(예를 들어 사용자의 `kubectl exec`, `kubectl logs`, `kubectl proxy` 명령어)이 가능하도록 한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - etcd node의 모든 저장 데이터는 aws ebs volume를 통해 저장되며 kms로 암호화된다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks는 etcd storage 크기를 8GiB로 설정한다. 이는 일반적인 환경에서 etcd의 최대 권장 사이즈다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
-- eks cluster insight는 eks, k8s의 best practice를 따를 수 있도록 권장 사항을 제공한다. 이를 위해 eks cluster에 대해 반복적으로 검사를 수행한다. eks를 업데이트하 기전에 cluster insight를 확인하는 것이 필요하다 ([Cluster insights](https://docs.aws.amazon.com/eks/latest/userguide/cluster-insights.html))
-- cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc와 인터넷에서 kube-apiserver endpoint에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. kube-apiserver가 no에 대한 접근을 위해서 기본적으로 cluster 생성시 명시한 subnet에 eks-managed eni을 생성하며 이는 public/pricate endpoint access 옵션과 관련 없다. ([AWS Blogs](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
-- eks public/private endpoint는 aws privatelink endpoint가 아니다. private access endpoint를 활성화하면 aws eks는 route 53 private hosted zone을 사용자 대신 생성하고 cluster가 생성된 vpc와 연결한다. 이 private hosted zone은 사용자가 조회할 수 없으며 eks가 대신 관리한다. vpc에서 private hosted zone을 통해 kube-apiserver pirvate endpoint에 접근하기 위해 vpc는 `enableDnsHostnames`, `enableDnsSupport`을 true로 설정하고 DHCP optionset은 dns server 목록에 `AmazonProvidedDNS`을 포함해야 한다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#cluster-endpoint-private))
+- eks cluster insight는 eks, k8s의 best practice를 따를 수 있도록 권장 사항을 제공한다. 이를 위해 eks cluster에 대해 반복적으로 검사를 수행한다. eks를 업데이트 하기 전에 cluster insight를 확인하는 것을 권장한다. ([Cluster insights](https://docs.aws.amazon.com/eks/latest/userguide/cluster-insights.html))
+- cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc와 인터넷에서 kube-apiserver endpoint에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. kube-apiserver가 no에 대한 접근을 위해서 기본적으로 cluster 생성시 명시한 subnet에 eks-managed eni을 생성하며 이는 public/private endpoint access 옵션과 관련 없다. ([AWS Blogs](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
+- eks public/private endpoint는 aws privatelink endpoint를 의미하는 것이 아니다. private access endpoint를 활성화하면 aws eks는 route 53 private hosted zone을 사용자 대신 생성하고 cluster가 생성된 vpc와 연결한다. 이 private hosted zone은 사용자가 조회할 수 없으며 eks가 대신 관리한다. vpc에서 private hosted zone을 통해 kube-apiserver pirvate endpoint에 접근하기 위해 vpc는 `enableDnsHostnames`, `enableDnsSupport`을 true로 설정하고 DHCP optionset은 dns server 목록에 `AmazonProvidedDNS`을 포함해야 한다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#cluster-endpoint-private))
 - public/rpivate endpoint 활성화/비활성화 여부에 따른 특징은 다음과 같다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#modify-endpoint-access))
   - enabled/disabled
     - eks의 기본 설정 값이다. cluster vpc 내에서 kube-apiserver에 대한 요청은 vpc를 벗어나지만 aws 네트워크를 벗어나지는 않는다.
@@ -293,10 +293,10 @@
     - kube-apiserver에 대한 모든 요청은 vpc 내부 또는 connected network 내부에서만 가능하다.
     - 인터넷에서 kube-apiserver에 접근할 수 없다.
     - cluster의 kube-apiserver endpoint는 public DNS에 의해 vpc 내 private ip 주소로 resolving된다.
-- outbound internet access가 필요없는 eks를 배포하기 위해 아래 조건을 만족해야한다. ([Private clusters](https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html))
+- outbound internet access가 필요없는 eks(private cluster)를 배포하기 위해 아래 조건을 만족해야 한다. ([Private clusters](https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html))
   - cluster는 container image를 vpc 내 registry에서 pull할 수 있어야 한다.
   - eks는 private endpoint가 활성화 돼야한다. public endpoint 활성화는 optional이다.
-  - self-managed node의 bootstrap argument를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
+  - self-managed node의 bootstrap argument(kubelet의 `--apiserver-endpoint`, `--b64-cluster-ca` flag)를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
   - cluster의 `aws-auth` cm은 vpc 내에서 생성돼야 한다.
   - irsa를 사용하는 경우 po는 aws sts API 호출을 통해 credential을 획득한다. 접근할 수 있도록 sts에 대한 vpc endpoint를 생성해야 한다. 대부분의 v1 sdk는 global aws sts endpoint를 기본 값으로 `sts.amazonaws.com`로 사용하며 aws sts vpc endpoint를 사용하지 않는다. aws sts vpc endpoint 사용을 위해 sdk의 설정을 변경해야 한다.
   - po가 aws service에 접근할 수 있도록 vpc endpoint가 있어야 한다.
