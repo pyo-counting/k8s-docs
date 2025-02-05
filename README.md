@@ -306,7 +306,7 @@
   - cluster autoscaler po를 배포할 때 `--aws-use-static-instance-list=true` flag를 포함해야 한다. 그리고 vpc는 sts vpc endpoint, autoscaling vpc endpoint를 포함해야 한다.
   - 일부 container software의 경우 사용량 모니터링을 위해 aws marketplace metering server 접근을 위한 API 호출을 수행한다. private cluster에서 해당 호출을 허용하지 않기 때문에 이러한 유형의 container는 private cluster에서 사용이 불가하다.
 - eks platform version은 eks control plane의 기능을 나타내며 kube-apiserver의 flag 활성화, k8s patch 버전 등을 포함한다. k8s minor version마다 1개 이상의 eks platform version을 갖는다. k8s minor version 별로 eks platform version은 독립적이다. k8s 1.32 version의 첫 eks platform version은 `eks.1`이다. eks는 주기적으로 새로운 platform version을 release해 control plane의 새로운 설정 활성화, 보안 수정을 제공한다. eks는 기존 cluster의 platform version을 자동으로 업그레이드 한다. cluster가 최신 platform version 보다 두 개 이상 차이나면 자동으로 업데이트 하지 못할 수도 있다. eks는 새로운 ami를 같이 release할 수 있지만 동일한 k8s minor version 내에서는 eks control plane과 no의 ami 간 호환성을 보장한다. 새로운 platform version은 기존 서비스에 영향을 주지 변경 사항을 도입하지 않는다. 새로운 cluster 생성 시 해당 k8s minor version 내에서 가장 최신의 eks platform 버전으로 자동 생성된다. ([Platform versions](https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html))
-- node group은 k8s의 native resource는 아니며 여러 특성을 공유하는 no의 집합을 의미하는 추상적인 개념이다. eks는 managed node group과 self-managed node 개념을 사용한다. managed node group은 autoscaling group을 사용하며 no의 관리 편의성을 위한 추가적인 기능(no 버전 업그레이드, graceful no termination)을 제공한다. self-managed node는 managed node group을 사용하지 않은 형태로 사용자가 구현하는 방식에 따라 다르다. 예를 들어 auto scaliing group을 통해 no로 사용될 ec2 집합을 관리하거나 ec2 인스턴스를 직접 관리할 수도 있다. self-managed node의 경우 eks를 위한 필수 tag를 추가해야 한다. `eksctl`을 통해 두 유형의 node group을 모두 쉽게 관리할 수 있다. ([Cluster Autoscaler](https://docs.aws.amazon.com/eks/latest/best-practices/cas.html#_overview))
+- node group은 k8s의 native resource는 아니며 여러 특성을 공유하는 no의 집합을 의미하는 추상적인 개념이다. eks는 managed node group과 self-managed node 개념을 사용한다. managed node group은 autoscaling group을 사용하며 no의 관리 편의성을 위한 추가적인 기능(no 버전 업그레이드, graceful no termination)을 제공한다. self-managed node는 managed node group을 사용하지 않은 형태로 사용자가 구현하는 방식에 따라 다르다. 예를 들어 auto scaliing group을 통해 no로 사용될 ec2 집합을 관리하거나 ec2 인스턴스를 직접 관리할 수도 있다. self-managed node의 경우 eks를 위한 필수 tag를 추가해야 한다. `eksctl`을 통해 두 유형의 node group을 쉽게 관리할 수 있다. ([Cluster Autoscaler](https://docs.aws.amazon.com/eks/latest/best-practices/cas.html#_overview))
 - aws는 k8s cluster autoscaler가 autoscaling group의 `.DesiredReplicas`를 제어해 scaling을 수행하도록 구현했다. karpenter가 존재하기 전 사용자는 no의 scaling을 제어하기 위해 autoscaling group이나 k8s cluster autoscaler에 의존해야 했다. karpenter는 autoscaling group과 managed node group을 사용하지 않으며 k8s native API와 더 밀접하게 스케일링 관리를 수행한다. autoscaling group과 managed node group는 aws-native 추상화 계층 역할을 수행해 ec2 cpu 부하와 같은 aws 수준의 metric을 기반으로 스케일링을 수행한다. cluster autoscaler는 k8s의 추상화를 aws 추상화로 변환하는 역할을 하지만 특정 az에 대한 스케줄링과 같은 유연성을 제공하지 않는다. karpenter는 aws의 한 계층을 제거해 k8s 내에서 직접 유연성을 제공할 수 있도록 한다. 이는 급격한 수요 변화가 발생하거나 다양한 컴퓨팅 요구 사항이 있는 워크로드를 실행하는 cluster에서 가장 효과적으로 사용할 수 있다. 반면, autoscaling group과 managed node group은 보다 정적이고 일관된 워크로드를 실행하는 cluster에 적합하다. ([Karpenter](https://docs.aws.amazon.com/eks/latest/best-practices/karpenter.html#_karpenter_best_practices))
 - hybrid node를 제외하고 node는 cluster 생성 시 명시한 subnet과 동일한 vpc에 존재해야 한다(동일한 subnet에 존재할 필요는 없다). ([Manage compute](https://docs.aws.amazon.com/eks/latest/userguide/eks-compute.html))
 - eks는 eks optimized ami를 제공한다. 이 ami은 eks 관련 `containerd`, `kubelet`, `aws iam authenticator` 구성요소를 포함하며, eks control plane을 찾아 연결을 시도하는 특별한 bootstrap script를 포함한다. ami 사용자는 script의 argument를 이용해 kubelet의 flag를 설정할 수 있다. ([Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html))
@@ -314,7 +314,16 @@
   - no의 업데이트, 종료시 사용자 대신 자동으로 drain을 수행한다.
   - auto scaling group을 이용해 no가 사용자가 정의한 az에 고루 분포되도록 실행한다.
   - no의 health 모니터링 및 auto repair와 같은 기능도 제공한다.
-  - managed node group의 no는 cluster autoscaler에 의해 auto-discovery 대상이 될 수 있도록 자동으로 tag가 추가된다.
+  - eks는 managed node group의 no가 cluster autoscaler에 의해 auto-discovery 대상이 될 수 있도록 자동으로 tag를 추가한다.
+  - managed node 생성 시 사용자의 launch template을 사용할 수 있다. 사용하지 않을 경우 launch template이 자동 생성된다. 해당 launch template을 수정하는 것을 권장하지 않으며 오류가 발생할 수 있다.
+  - eks optimized ami를 사용하는 경우 새로운 릴리즈가 있을 경우 사용자가 변경된 ami를 사용하도록 managed node group 업데이트를 수행해야 한다.
+  - aws outpost, wavelength에 배포할 수 없으며(self-managed node는 가능) local zone에는 가능하다.
+  - ec2 instsance status check에 실패하는 경우 eks는 에러 코드를 반환한다.
+  - eks는 `eks.amazonaws.com` label을 no에 추가한다.
+  -
+  -
+  - managed node group의 업데이트는 po의 pdb를 존중한다.
+  - 
 
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
@@ -328,7 +337,7 @@
   - public/private subnet 모두 가능하지만 private subnet을 권장한다.
 - no를 위한 subnet 요구 사항은 다음과 같다. eks cluster 생성 시 명시한 subnet에 no, k8s resource를 배포하지 않아도 된다. 이 경우 eks는 해당 subnet에 elastic network interface를 생성하지는 않는다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
   - no와 k8s resource 배포를 위한 충분한 ip 개수가 필요하다.
-  - 인터넷 -> po inbound 접근이 필요한 경우 elb 배포를 위한 최소 1개의 subnet이 필요하다. 가능하다면 no는 private subnet에 배포하는 것을 권장한다.
+  - 인터넷 -> po inbound 접근이 필요한 경우 elb 배포를 위한 최소 1개의 public subnet이 필요하다. 가능하다면 no는 private subnet에 배포하는 것을 권장한다.
   - no를 public subnet에 배포하는 경우 subnet은 public ip를 할당하도록 설정돼야 한다.
   - no를 인터넷 outbound 접근이 불가능한 private subnet(nat 불가)에 배포하는 경우 no, po를 위한 vpc endpoint를 추가해야 한다(예를 들어 ecr, cloudwatch, sts, s3 등).
   - subnet에 elb를 배포하길 원하는 경우 private subnet에는 `kubernetes.io/role/internal-elb` key와 `1` value를 갖는 tag, public subnet에는 `kubernetes.io/role/elb` key와 `1` value를 갖는 tag를 추가해야 한다.
