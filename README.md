@@ -315,15 +315,15 @@
   - auto scaling group을 이용해 no가 사용자가 정의한 az에 고루 분포되도록 실행한다.
   - no의 health 모니터링 및 auto repair와 같은 기능도 제공한다.
   - eks는 managed node group의 no가 cluster autoscaler에 의해 auto-discovery 대상이 될 수 있도록 자동으로 tag를 추가한다.
-  - managed node 생성 시 사용자의 launch template을 사용할 수 있다. 사용하지 않을 경우 launch template이 자동 생성된다. 해당 launch template을 수정하는 것을 권장하지 않으며 오류가 발생할 수 있다.
+  - managed node 생성 시 사용자의 launch template을 사용할 수 있다. 사용하지 않을 경우 launch template이 자동 생성된다. 자동 생성된 launch template을 수정하는 것을 권장하지 않으며 오류가 발생할 수 있다.
   - eks optimized ami를 사용하는 경우 새로운 릴리즈가 있을 경우 사용자가 변경된 ami를 사용하도록 managed node group 업데이트를 수행해야 한다.
   - aws outpost, wavelength에 배포할 수 없으며(self-managed node는 가능) local zone에는 가능하다.
   - ec2 instsance status check에 실패하는 경우 eks는 에러 코드를 반환한다.
   - eks는 `eks.amazonaws.com` label을 no에 추가한다.
   -
-  -
+  - spot instance interruption notification, capacity rebalance notification을 수신한 후 drain 프로세스를 실행하기 위해 `CapacityRebalance`가 반드시 true여야 한다.
   - managed node group의 업데이트는 po의 pdb를 존중한다.
-  - 
+  - launch template을 이용해 no의 ebs를 암호화할 수 있다.
 
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
