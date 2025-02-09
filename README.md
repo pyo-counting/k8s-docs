@@ -320,10 +320,18 @@
   - aws outpost, wavelength에 배포할 수 없으며(self-managed node는 가능) local zone에는 가능하다.
   - ec2 instsance status check에 실패하는 경우 eks는 에러 코드를 반환한다.
   - eks는 `eks.amazonaws.com` label을 no에 추가한다.
-  -
-  - spot instance interruption notification, capacity rebalance notification을 수신한 후 drain 프로세스를 실행하기 위해 `CapacityRebalance`가 반드시 true여야 한다.
+  - eks는 no의 termination, upgrade을 위해 k8s API를 사용해 drain한다.
+  - 
+  - spot interruption notification, capacity rebalance notification(rebalance recommendation)을 수신한 후 no drain 과정이 정상적으로 수행되기 위해 auto scaling group의 capacity rebalance 기능을 활성화 할 수 있다.
+    - capacity rebalance 기능은 instance purchage option에서 spot instance의 비율(managed node group의 경우 on-demand와 spot을 같이 지정할 수 없다)을 지정할 경우에만 사용할 수 있다. aws ec2 서비스는 인스턴스를 interruption 하기 전에 항상 spot two-minute instance interruption notice과 rebalance recommendation(중단 위험이 높은 경우)를 제공한다. capacity rebalancing은 rebalance recommendation을 받은 spot 인스턴스를 사전에 교체하려고 시도한다. 이를 통해 새로운 spot 인스턴스로 부하를 분산할 수 있는 기회를 제공한다. 새로운 spot 인스턴스의 health check를 통과한 후에 기존 spot 인스턴스를 종료하기 시작한다. capacity rebalancing을 사용하지 않으면 auto scaling group은 ec2 spot 서비스가 인스턴스를 중단시키고 health check에 실패한 후에야 spot 인스턴스를 교체한다.
+    - spot two-minute instance interruption notice를 수신했을 때, 새롭게 실행한 교체 spot node가 아직 Ready 상태가 아니라면 rebalance recommendation을 수신한 spot 인스턴스를 drain한다. eks는 최선을 다하지만 기존 no를 drain하기 전에 교체 node가 cluster에 조인할 때까지 기다린다는 보장은 없다.
+    - 교체 spot node가 Ready 상태가 되면 eks는 기존 node를 cordon, drain한다.
   - managed node group의 업데이트는 po의 pdb를 존중한다.
   - launch template을 이용해 no의 ebs를 암호화할 수 있다.
+  - capacity type을 spot으로 지정하는 경우 managed node gorup은 사용자 대신 아래와 같은 설정을 적용한다.
+    - spot capacity pool(동일 az와 인스턴스 타입을 갖는 사용되지 않는 ec2 인스턴스 집합)에서 최적의 spot node를 provision하기 위해 k8s 1.28 이후 버전부터는 allocation strategy을 pco(`price-capacity-optimized`)로 설정한다.
+  - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입을 사용한다.
+  - on-domand node group의 경우 no에 `eks.amazonaws.com/capacityType: ON_DEMAND` label을 추가한다. spot node group의 경우 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
 
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
