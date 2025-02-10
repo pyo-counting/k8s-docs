@@ -296,7 +296,7 @@
 - outbound internet access가 필요없는 eks(private cluster)를 배포하기 위해 아래 조건을 만족해야 한다. ([Private clusters](https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html))
   - cluster는 container image를 vpc 내 registry에서 pull할 수 있어야 한다.
   - eks는 private endpoint가 활성화 돼야한다. public endpoint 활성화는 optional이다.
-  - self-managed node의 bootstrap argument(kubelet의 `--apiserver-endpoint`, `--b64-cluster-ca` flag)를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
+  - self-managed node의 bootstrap.sh argument(kubelet의 `--apiserver-endpoint`, `--b64-cluster-ca` flag)를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
   - cluster의 `aws-auth` cm은 vpc 내에서 생성돼야 한다.
   - irsa를 사용하는 경우 po는 aws sts API 호출을 통해 credential을 획득한다. 접근할 수 있도록 sts에 대한 vpc endpoint를 생성해야 한다. 대부분의 v1 sdk는 global aws sts endpoint를 기본 값으로 `sts.amazonaws.com`로 사용하며 aws sts vpc endpoint를 사용하지 않는다. aws sts vpc endpoint 사용을 위해 sdk의 설정을 변경해야 한다.
   - po가 aws service에 접근할 수 있도록 vpc endpoint가 있어야 한다.
@@ -306,22 +306,23 @@
   - cluster autoscaler po를 배포할 때 `--aws-use-static-instance-list=true` flag를 포함해야 한다. 그리고 vpc는 sts vpc endpoint, autoscaling vpc endpoint를 포함해야 한다.
   - 일부 container software의 경우 사용량 모니터링을 위해 aws marketplace metering server 접근을 위한 API 호출을 수행한다. private cluster에서 해당 호출을 허용하지 않기 때문에 이러한 유형의 container는 private cluster에서 사용이 불가하다.
 - eks platform version은 eks control plane의 기능을 나타내며 kube-apiserver의 flag 활성화, k8s patch 버전 등을 포함한다. k8s minor version마다 1개 이상의 eks platform version을 갖는다. k8s minor version 별로 eks platform version은 독립적이다. k8s 1.32 version의 첫 eks platform version은 `eks.1`이다. eks는 주기적으로 새로운 platform version을 release해 control plane의 새로운 설정 활성화, 보안 수정을 제공한다. eks는 기존 cluster의 platform version을 자동으로 업그레이드 한다. cluster가 최신 platform version 보다 두 개 이상 차이나면 자동으로 업데이트 하지 못할 수도 있다. eks는 새로운 ami를 같이 release할 수 있지만 동일한 k8s minor version 내에서는 eks control plane과 no의 ami 간 호환성을 보장한다. 새로운 platform version은 기존 서비스에 영향을 주지 변경 사항을 도입하지 않는다. 새로운 cluster 생성 시 해당 k8s minor version 내에서 가장 최신의 eks platform 버전으로 자동 생성된다. ([Platform versions](https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html))
-- node group은 k8s의 native resource는 아니며 여러 특성을 공유하는 no의 집합을 의미하는 추상적인 개념이다. eks는 managed node group과 self-managed node 개념을 사용한다. managed node group은 autoscaling group을 사용하며 no의 관리 편의성을 위한 추가적인 기능(no 버전 업그레이드, graceful no termination)을 제공한다. self-managed node는 managed node group을 사용하지 않은 형태로 사용자가 구현하는 방식에 따라 다르다. 예를 들어 auto scaliing group을 통해 no로 사용될 ec2 집합을 관리하거나 ec2 인스턴스를 직접 관리할 수도 있다. self-managed node의 경우 eks를 위한 필수 tag를 추가해야 한다. `eksctl`을 통해 두 유형의 node group을 쉽게 관리할 수 있다. ([Cluster Autoscaler](https://docs.aws.amazon.com/eks/latest/best-practices/cas.html#_overview))
-- aws는 k8s cluster autoscaler가 autoscaling group의 `.DesiredReplicas`를 제어해 scaling을 수행하도록 구현했다. karpenter가 존재하기 전 사용자는 no의 scaling을 제어하기 위해 autoscaling group이나 k8s cluster autoscaler에 의존해야 했다. karpenter는 autoscaling group과 managed node group을 사용하지 않으며 k8s native API와 더 밀접하게 스케일링 관리를 수행한다. autoscaling group과 managed node group는 aws-native 추상화 계층 역할을 수행해 ec2 cpu 부하와 같은 aws 수준의 metric을 기반으로 스케일링을 수행한다. cluster autoscaler는 k8s의 추상화를 aws 추상화로 변환하는 역할을 하지만 특정 az에 대한 스케줄링과 같은 유연성을 제공하지 않는다. karpenter는 aws의 한 계층을 제거해 k8s 내에서 직접 유연성을 제공할 수 있도록 한다. 이는 급격한 수요 변화가 발생하거나 다양한 컴퓨팅 요구 사항이 있는 워크로드를 실행하는 cluster에서 가장 효과적으로 사용할 수 있다. 반면, autoscaling group과 managed node group은 보다 정적이고 일관된 워크로드를 실행하는 cluster에 적합하다. ([Karpenter](https://docs.aws.amazon.com/eks/latest/best-practices/karpenter.html#_karpenter_best_practices))
+- node group은 k8s의 native resource는 아니며 여러 특성을 공유하는 no의 집합을 의미하는 추상적인 개념이다. eks는 managed node group과 self-managed node 개념을 사용한다. managed node group은 auto scaling group을 사용하며 no의 관리 편의성을 위한 추가적인 기능(no 버전 업그레이드, graceful no termination)을 제공한다. self-managed node는 managed node group을 사용하지 않은 형태로 사용자가 구현하는 방식에 따라 다르다. 예를 들어 auto scaliing group을 통해 no로 사용될 ec2 집합을 관리하거나 ec2 인스턴스를 직접 관리할 수도 있다. self-managed node의 경우 eks를 위한 필수 tag를 추가해야 한다. `eksctl`을 통해 두 유형의 node group을 쉽게 관리할 수 있다. ([Cluster Autoscaler](https://docs.aws.amazon.com/eks/latest/best-practices/cas.html#_overview))
+- aws는 k8s cluster autoscaler가 auto scaling group의 `.DesiredReplicas`를 제어해 scaling을 수행하도록 구현했다. karpenter가 존재하기 전 사용자는 no의 scaling을 제어하기 위해 auto scaling group이나 k8s cluster autoscaler에 의존해야 했다. karpenter는 auto scaling group과 managed node group을 사용하지 않으며 k8s native API와 더 밀접하게 스케일링 관리를 수행한다. auto scaling group과 managed node group는 aws-native 추상화 계층 역할을 수행해 ec2 cpu 부하와 같은 aws 수준의 metric을 기반으로 스케일링을 수행한다. cluster autoscaler는 k8s의 추상화를 aws 추상화로 변환하는 역할을 하지만 특정 az에 대한 스케줄링과 같은 유연성을 제공하지 않는다. karpenter는 aws의 한 계층을 제거해 k8s 내에서 직접 유연성을 제공할 수 있도록 한다. 이는 급격한 수요 변화가 발생하거나 다양한 컴퓨팅 요구 사항이 있는 워크로드를 실행하는 cluster에서 가장 효과적으로 사용할 수 있다. 반면, auto scaling group과 managed node group은 보다 정적이고 일관된 워크로드를 실행하는 cluster에 적합하다. ([Karpenter](https://docs.aws.amazon.com/eks/latest/best-practices/karpenter.html#_karpenter_best_practices))
 - hybrid node를 제외하고 node는 cluster 생성 시 명시한 subnet과 동일한 vpc에 존재해야 한다(동일한 subnet에 존재할 필요는 없다). ([Manage compute](https://docs.aws.amazon.com/eks/latest/userguide/eks-compute.html))
-- eks는 eks optimized ami를 제공한다. 이 ami은 eks 관련 `containerd`, `kubelet`, `aws iam authenticator` 구성요소를 포함하며, eks control plane을 찾아 연결을 시도하는 특별한 bootstrap script를 포함한다. ami 사용자는 script의 argument를 이용해 kubelet의 flag를 설정할 수 있다. ([Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html))
+- eks는 eks optimized ami를 제공한다. 이 ami은 eks 관련 `containerd`, `kubelet`, `aws iam authenticator` 구성요소를 포함하며, eks control plane을 찾아 연결을 시도하는 특별한 bootstrap.sh script를 포함한다. ami 사용자는 script의 argument를 이용해 kubelet의 flag를 설정할 수 있다. ([Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html))
 - managed node group의 특성은 다음과 같다.
   - no의 업데이트, 종료시 사용자 대신 자동으로 drain을 수행한다.
   - auto scaling group을 이용해 no가 사용자가 정의한 az에 고루 분포되도록 실행한다.
   - no의 health 모니터링 및 auto repair와 같은 기능도 제공한다.
   - eks는 managed node group의 no가 cluster autoscaler에 의해 auto-discovery 대상이 될 수 있도록 자동으로 tag를 추가한다.
-  - managed node 생성 시 사용자의 launch template을 사용할 수 있다. 사용하지 않을 경우 launch template이 자동 생성된다. 자동 생성된 launch template을 수정하는 것을 권장하지 않으며 오류가 발생할 수 있다.
+  - managed node 생성 시 사용자의 launch template을 사용할 수 있다. 사용하지 않을 경우 launch template이 자동 생성된다. 자동 생성된 launch template을 수정하는 것, 나중에 node group 생성시 사용하는 것을 권장하지 않으며 오류가 발생할 수 있다.
   - eks optimized ami를 사용하는 경우 새로운 릴리즈가 있을 경우 사용자가 변경된 ami를 사용하도록 managed node group 업데이트를 수행해야 한다.
   - aws outpost, wavelength에 배포할 수 없으며(self-managed node는 가능) local zone에는 가능하다.
   - ec2 instsance status check에 실패하는 경우 eks는 에러 코드를 반환한다.
   - eks는 `eks.amazonaws.com` label을 no에 추가한다.
   - eks는 no의 termination, upgrade을 위해 k8s API를 사용해 drain한다.
-  - 
+  - Pod disruption budgets aren’t respected when terminating a node with AZRebalance or reducing the desired node count. These actions try to evict Pods on the node. But if it takes more than 15 minutes, the node is terminated regardless of whether all Pods on the node are terminated. To extend the period until the node is terminated, add a lifecycle hook to the Auto Scaling group.
+    - auto scaling group은 rebalance와 관련해 az rebalance(기본 기능), capacity rebalance(활성화 필요) 기능을 제공한다. az rebalance는 각 az에 대한 ec2 배포가 고르지 않을 경우 발생한다. 기본적으로 기존 ec2를 종료하기 전에 새로운 ec2를 띄우는 작업을 수행한다.
   - spot interruption notification, capacity rebalance notification(rebalance recommendation)을 수신한 후 no drain 과정이 정상적으로 수행되기 위해 auto scaling group의 capacity rebalance 기능을 활성화 할 수 있다.
     - capacity rebalance 기능은 instance purchage option에서 spot instance의 비율(managed node group의 경우 on-demand와 spot을 같이 지정할 수 없다)을 지정할 경우에만 사용할 수 있다. aws ec2 서비스는 인스턴스를 interruption 하기 전에 항상 spot two-minute instance interruption notice과 rebalance recommendation(중단 위험이 높은 경우)를 제공한다. capacity rebalancing은 rebalance recommendation을 받은 spot 인스턴스를 사전에 교체하려고 시도한다. 이를 통해 새로운 spot 인스턴스로 부하를 분산할 수 있는 기회를 제공한다. 새로운 spot 인스턴스의 health check를 통과한 후에 기존 spot 인스턴스를 종료하기 시작한다. capacity rebalancing을 사용하지 않으면 auto scaling group은 ec2 spot 서비스가 인스턴스를 중단시키고 health check에 실패한 후에야 spot 인스턴스를 교체한다.
     - spot two-minute instance interruption notice를 수신했을 때, 새롭게 실행한 교체 spot node가 아직 Ready 상태가 아니라면 rebalance recommendation을 수신한 spot 인스턴스를 drain한다. eks는 최선을 다하지만 기존 no를 drain하기 전에 교체 node가 cluster에 조인할 때까지 기다린다는 보장은 없다.
@@ -330,8 +331,11 @@
   - launch template을 이용해 no의 ebs를 암호화할 수 있다.
   - capacity type을 spot으로 지정하는 경우 managed node gorup은 사용자 대신 아래와 같은 설정을 적용한다.
     - spot capacity pool(동일 az와 인스턴스 타입을 갖는 사용되지 않는 ec2 인스턴스 집합)에서 최적의 spot node를 provision하기 위해 k8s 1.28 이후 버전부터는 allocation strategy을 pco(`price-capacity-optimized`)로 설정한다.
-  - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입을 사용한다.
+  - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입 사용을 권장한다.
   - on-domand node group의 경우 no에 `eks.amazonaws.com/capacityType: ON_DEMAND` label을 추가한다. spot node group의 경우 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
+  - launch template을 지정하지 않거나 launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우 max-pods-calculator.sh(기본적으로 vCPU 개수에 따라 최대 값을 제한한다. vCPU가 30개 미만일 경우 110, 30개 이상일 경우 250이다. 110은 k8s의 권장 사항이며 250은 aws eks 팀에서 테스트를 통해 도출한 값)을 사용해 모든 인스턴스 타입에 대한 계산 값 중 가장 작은 값을 모든 node kubelet의 `.maxPods`에 사용한다.
+  - 
+- pod가 imds(ec2 instance metadata service)에 대한 접근을 방지하는 것을 권장한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#_install_kubernetes_add_ons))
 
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
