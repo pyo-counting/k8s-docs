@@ -335,7 +335,14 @@
   - on-domand node group의 경우 no에 `eks.amazonaws.com/capacityType: ON_DEMAND` label을 추가한다. spot node group의 경우 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
   - launch template을 지정하지 않거나 launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우 max-pods-calculator.sh(기본적으로 vCPU 개수에 따라 최대 값을 제한한다. vCPU가 30개 미만일 경우 110, 30개 이상일 경우 250이다. 110은 k8s의 권장 사항이며 250은 aws eks 팀에서 테스트를 통해 도출한 값)을 사용해 모든 인스턴스 타입에 대한 계산 값 중 가장 작은 값을 모든 node kubelet의 `.maxPods`에 사용한다.
   - 
+  - managed node group을 삭제하면 eks는 가장 먼저 auto scaling group의 minimum, maximum, desired size를 0으로 설정한다. 각 인스턴스가 terminate 되기 전에 eks는 drain을 수행한다. po가 몇 분이 지나도 drain되지 않으면 eks는 auto scaling group을 통해 인스턴스를 종료한다. 모든 인스턴스가 terminate되고 auto scaling group이 삭제된다.
 - pod가 imds(ec2 instance metadata service)에 대한 접근을 방지하는 것을 권장한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#_install_kubernetes_add_ons))
+- 여러 ec2 인스턴스 타입에 대한 지원을 위해 eks optimized ami의 여러 release를 제공한다. eks에서 지원하는 인스턴스 타입을 선택하기 위해 아래 내용을 고려한다. ([Amazon EC2 instance types](https://docs.aws.amazon.com/eks/latest/userguide/choosing-instance-type.html))
+  - Number of instances in a node group: 일반적으로 ds가 많은 경우 큰 인스턴스를 적게 운영하는 것이 좋다.
+  - Hardware architecture: eks optimized ami에서 지원하는지 확인한다.
+  - Maximum number of Pods: vpc cni를 사용하는 경우 각 po는 ip를 할당받는다. 인스턴스 타입마다 제공하는 ip의 개수가 인스턴스어세 실행할 수 있는 최대 po의 개수를 결정하는 요소다. max-pods-calculator.sh를 사용헤 이를 직접 계산할 수 있다. aws nitro system은 일반적으로 non-nitro system 인스턴스 타입보다 더 많은 ip를 할당할 수 있다. vpc cni의 ip prefix 기능을 사용해 더 많은 ip를 사용할 수도 있다.
+  - Version of the Amazon VPC CNI add-on that you’re running: vpc cni 버전마다 지원하는 인스턴스 타입이 다르다.
+  - Whether you’re using security groups for Pods: security groups for pods를 모든 인스턴스 타입이 지원하는 것은 아니다.
 
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
