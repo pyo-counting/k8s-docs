@@ -153,7 +153,7 @@
 - no당 최대 po 실행 갯수는 110개 ([Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/))
 - no가 시작되면 각 no의 kubelet은 no object에 zone과 관련된 label(`topology.kubernetes.io/region`, `topology.kubernetes.io/zone` 등)을 추가한다. ([Running in multiple zones](https://kubernetes.io/docs/setup/best-practices/multiple-zones/#node-behavior), [Node Labels Populated By The Kubelet](https://kubernetes.io/docs/reference/node/node-labels/))
 - no가 k8s cluster의 no에 join하기 위한 요구 사항을 검증을 위해 node conformance test를 수행할 수 있다. ([Validate node setup](https://kubernetes.io/docs/setup/best-practices/node-conformance/))
-- kube-proxy는 각 no에서 네트워크 규칙을 이용해 svc의 구현을 담당한다. ([Cluster Architecture](https://kubernetes.io/docs/concepts/architecture/#kube-proxy))
+- kube-proxy는 각 no에서 네트워크 규칙을 이용해 svc의 구현을 담당(userspace, iptables, ipvs mode를 지원)한다. ([Cluster Architecture](https://kubernetes.io/docs/concepts/architecture/#kube-proxy))
 - kubelet의 대부분 flag는 deprecated이며 대신 config file을 통해 설정하는 것을 권장한다. control plane 구성 요소의 경우 아직은 flag를 이용한 설정을 사용하는 것 같다. ([kubelet](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/))
 - kube-apiserver에 no를 등록하는 방법은 관리자가 no object를 생성하기(`.registerNode`가 false), kubelet이 kube-apiserver에 자신을 등록하기(`registerNode`가 true) 2가지다. 만약 no가 healthy 상태라면(즉, 필요한 모든 서비스가 실행 중) po를 실행할 자격이 있다. healthy 상태가 아니라면 healthy 상태가 되기 전까지 해당 no는 cluster와 관련된 행동에서 제외된다. k8s는 유효하지 않은 no의 object를 보존하면서 healthy 상태가 될때까지 게속 체크한다. health check를 멈추기 위해 no object를 직접 또는 controller가 삭제해야 한다. no를 교체하거나 업데이트해야 하는 경우 기존 no object를 먼저 kube-apiserver에서 제거하고 업데이투 후 다시 추가해야 한다. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#management))
 - k8s no가 보내는 heartbeat는 cluster가 각 no의 가용성을 파악하고 failure가 감지되면 조치를 취할 수 있도록 도와준다. 2가지 형태의 heartbeat(no object의 `.status` 필드 업데이트, `kube-node-lease` ns의 lease obejct 업데이트)가 있다. heartbeat와 관련된 kubelet의 설정은 다음과 같다. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#self-registration-of-nodes))
@@ -192,7 +192,7 @@
       2. preStop hook 실행이 완료된 후, kubelet은 container runtime을 트리거해 각 container 내부 1번 프로세스에 TERM signal을 전송한다.
   3. kubelet이 graceful shutdown을 실행하는 것과 동시에 control plane은 svc의 ep에서 해당 po를 제거한다. rs과 같은 workload resoucre는 더 이상 해당 po를 유효하다고 판단하지 않는다.
   4. kubelet은 po가 완전히 종료되는 것을 보장하기 위해 다음과 같은 동작을 수행한다.
-      1. grace period가 완료됐음에도 실행 중인 container가 있는 경우 forcible shutdown을 트리거한다. container runtime은 container내 실행 중인 모든 프로세스에 SIGKILL signal을 전송한다. 또한 kubelet은 pause container가 있는 container runtime에 대해 해당 container도 정리한다.
+      1. grace period가 완료 됐음에도 실행 중인 container가 있는 경우 forcible shutdown을 트리거한다. container runtime은 container내 실행 중인 모든 프로세스에 SIGKILL signal을 전송한다. 또한 kubelet은 pause container가 있는 container runtime에 대해 해당 container도 정리한다.
       2. po를 terminal phase(`Failed` 또는 `Succeeded`)로 변경한다.
       3. kubelet은 grace period를 0로 변경함으로써 po를 force deletion한다.
       4. kube-apiserver는 po object를 삭제한다.
