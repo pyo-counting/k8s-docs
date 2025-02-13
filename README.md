@@ -327,7 +327,7 @@
   - pdb는 node group 업데이트와 다르게 auto scaling group의 azbalance 작업, 사용자가 desired capacity를 줄이는 작업을 수행할 때 지켜지지 않는다. 이러한 작업은 auto scaling group의 scale-down call을 통해 즉시 node를 종료되게끔 한다. 이로인해 pdb와 관계 없이 pod도 즉시 eviction되며 만약 pod eviction에 15분이 경과한 경우 pod의 종료 여부와 관계 없이 node가 종료된다. node의 종료 시간을 늘리기 위해 lifecycle hook을 추가할 수 있다.
     - auto scaling group은 rebalance와 관련해 az rebalance(기본 기능), capacity rebalance(활성화 필요) 기능을 제공한다. az rebalance는 각 az에 대한 ec2 배포가 고르지 않을 경우 발생한다. 기본적으로 기존 ec2를 종료하기 전에 새로운 ec2를 띄우는 작업을 수행한다.
   - spot interruption notification, capacity rebalance notification(rebalance recommendation)을 수신한 후 no drain 과정이 정상적으로 수행되기 위해 auto scaling group의 capacity rebalance 기능을 활성화 할 수 있다.
-    - capacity rebalance 기능은 instance purchage option에서 spot instance의 비율(managed node group의 경우 on-demand와 spot을 같이 지정할 수 없다)을 지정할 경우에만 사용할 수 있다. aws ec2 서비스는 인스턴스를 interruption 하기 전에 항상 spot two-minute instance interruption notice과 rebalance recommendation(중단 위험이 높은 경우)를 제공한다. capacity rebalancing은 rebalance recommendation을 받은 spot 인스턴스를 사전에 교체하려고 시도한다. 이를 통해 새로운 spot 인스턴스로 부하를 분산할 수 있는 기회를 제공한다. 새로운 spot 인스턴스의 health check를 통과한 후에 기존 spot 인스턴스를 종료하기 시작한다. capacity rebalancing을 사용하지 않으면 auto scaling group은 ec2 spot 서비스가 인스턴스를 중단시키고 health check에 실패한 후에야 spot 인스턴스를 교체한다.
+    - capacity rebalance 기능은 instance purchage option에서 spot instance의 비율(managed node group의 경우 on-demand와 spot을 같이 지정할 수 없다)을 지정할 경우에만 사용할 수 있다. aws ec2 서비스는 인스턴스를 interruption 하기 전에 항상 spot two-minute instance interruption notice과 rebalance recommendation(중단 위험이 높은 경우)를 제공한다(ec2 서비스는 항상 spot interruption notification보다 rebalance recommendation을 먼저 보낸다는 보장은 없으며 동시에 도착할 수도 있다). capacity rebalancing은 rebalance recommendation을 받은 spot 인스턴스를 사전에 교체하려고 시도한다. 이를 통해 새로운 spot 인스턴스로 부하를 분산할 수 있는 기회를 제공한다. 새로운 spot 인스턴스의 health check를 통과한 후에 기존 spot 인스턴스를 종료하기 시작한다. capacity rebalancing을 사용하지 않으면 auto scaling group은 ec2 spot 서비스가 인스턴스를 중단시키고 health check에 실패한 후에야 spot 인스턴스를 교체한다.
     - spot two-minute instance interruption notice를 수신했을 때, 새롭게 실행한 교체 spot node가 아직 Ready 상태가 아니라면 rebalance recommendation을 수신한 spot 인스턴스를 drain한다. eks는 최선을 다하지만 기존 no를 drain하기 전에 교체 node가 cluster에 조인할 때까지 기다린다는 보장은 없다.
     - 교체 spot node가 Ready 상태가 되면 eks는 기존 node를 cordon, drain한다.
   - managed node group의 업데이트는 po의 pdb를 존중한다.
@@ -340,12 +340,12 @@
     - 모든 no에 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
   - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입 사용을 권장한다.
   - launch template을 지정하지 않거나 launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우 `max-pods-calculator.sh`(vCPU 개수에 따라 최대 값을 제한한다. vCPU가 30개 미만일 경우 110, 30개 이상일 경우 250이다. 110은 k8s의 권장 사항이며 250은 aws eks 팀에서 테스트를 통해 도출한 값)을 사용해 모든 인스턴스 타입에 대한 계산 값 중 가장 작은 값을 모든 node kubelet의 `.maxPods`에 사용한다.
-  - 아래와 같은 상황에서 managed node gorup 업데이트를 수행한다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node gorup은 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
+  - 다음 상황에서 managed node gorup 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node gorup은 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
   - managed node group의 업그레이드는 4개의 phase를 수행한다.
     - setup phase
       - 새로운 launch template을 생성한다.
       - auto scaling group이 새로운 launch template 버전을 사용하도록 수정한다.
-      - managed node group의 updage 설정을 참고해 병렬로 업그레이드 수행할 최대 no의 개수를 결정한다.
+      - managed node group의 updage 설정을 고려해 병렬로 업그레이드 수행할 최대 no의 개수를 결정한다.
     - scale up phase: 관리형 노드 그룹의 노드를 업그레이드할 때, 업그레이드된 노드는 기존 노드와 동일한 가용 영역(Availability Zone, AZ)에서 실행됩니다. 이를 보장하기 위해 Amazon EC2의 가용 영역 리밸런싱(Availability Zone Rebalancing) 기능을 사용합니다.
     - upgrade phase:
     - scale down phase
