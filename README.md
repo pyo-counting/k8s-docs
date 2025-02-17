@@ -306,6 +306,7 @@
   - cluster autoscaler po를 배포할 때 `--aws-use-static-instance-list=true` flag를 포함해야 한다. 그리고 vpc는 sts vpc endpoint, autoscaling vpc endpoint를 포함해야 한다.
   - 일부 container software의 경우 사용량 모니터링을 위해 aws marketplace metering server 접근을 위한 API 호출을 수행한다. private cluster에서 해당 호출을 허용하지 않기 때문에 이러한 유형의 container는 private cluster에서 사용이 불가하다.
 - eks platform version은 eks control plane의 기능을 나타내며 kube-apiserver의 flag 활성화, k8s patch 버전 등을 포함한다. k8s minor version마다 1개 이상의 eks platform version을 갖는다. k8s minor version 별로 eks platform version은 독립적이다. k8s 1.32 version의 첫 eks platform version은 `eks.1`이다. eks는 주기적으로 새로운 platform version을 release해 control plane의 새로운 설정 활성화, 보안 수정을 제공한다. eks는 기존 cluster의 platform version을 자동으로 업그레이드 한다. cluster가 최신 platform version 보다 두 개 이상 차이나면 자동으로 업데이트 하지 못할 수도 있다. eks는 새로운 ami를 같이 release할 수 있지만 동일한 k8s minor version 내에서는 eks control plane과 no의 ami 간 호환성을 보장한다. 새로운 platform version은 기존 서비스에 영향을 주지 변경 사항을 도입하지 않는다. 새로운 cluster 생성 시 해당 k8s minor version 내에서 가장 최신의 eks platform 버전으로 자동 생성된다. ([Platform versions](https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html))
+- Managed Access 정리
 - node group은 k8s의 native resource는 아니며 여러 특성을 공유하는 no의 집합을 의미하는 추상적인 개념이다. eks는 managed node group과 self-managed node 개념을 사용한다. managed node group은 auto scaling group을 사용하며 no의 관리 편의성을 위한 추가적인 기능(no 버전 업그레이드, graceful no termination)을 제공한다. self-managed node는 managed node group을 사용하지 않은 형태로 사용자가 구현하는 방식에 따라 다르다. 예를 들어 auto scaliing group을 통해 no로 사용될 ec2 집합을 관리하거나 ec2 인스턴스를 직접 관리할 수도 있다. self-managed node의 경우 eks를 위한 필수 tag를 추가해야 한다. `eksctl`을 통해 두 유형의 node group을 쉽게 관리할 수 있다. ([Cluster Autoscaler](https://docs.aws.amazon.com/eks/latest/best-practices/cas.html#_overview))
 - aws는 k8s cluster autoscaler가 auto scaling group의 `.DesiredReplicas`를 제어해 scaling을 수행하도록 구현했다. karpenter가 존재하기 전 사용자는 no의 scaling을 제어하기 위해 auto scaling group이나 k8s cluster autoscaler에 의존해야 했다. karpenter는 auto scaling group과 managed node group을 사용하지 않으며 k8s native API와 더 밀접하게 스케일링 관리를 수행한다. auto scaling group과 managed node group는 aws-native 추상화 계층 역할을 수행해 ec2 cpu 부하와 같은 aws 수준의 metric을 기반으로 스케일링을 수행한다. cluster autoscaler는 k8s의 추상화를 aws 추상화로 변환하는 역할을 하지만 특정 az에 대한 스케줄링과 같은 유연성을 제공하지 않는다. karpenter는 aws의 한 계층을 제거해 k8s 내에서 직접 유연성을 제공할 수 있도록 한다. 이는 급격한 수요 변화가 발생하거나 다양한 컴퓨팅 요구 사항이 있는 워크로드를 실행하는 cluster에서 가장 효과적으로 사용할 수 있다. 반면, auto scaling group과 managed node group은 보다 정적이고 일관된 워크로드를 실행하는 cluster에 적합하다. ([Karpenter](https://docs.aws.amazon.com/eks/latest/best-practices/karpenter.html#_karpenter_best_practices))
   - karpenter는 k8s의 표준 pod scheduling constraints(resource request, node selector, node affinity, pod affinity/anti-affinity, topology spread)을 지원하며 nodepool의 제약 조건에 매칭되어야 node가 provision될 수 있다. 아래는 karpenter가 no를 provision 하기 위해 pod scheduling constraints을 다루는 방법이다. ([Scheduling](https://karpenter.sh/docs/concepts/scheduling/))
@@ -314,7 +315,7 @@
     - karpenter는 preferred affinities가 pod topology와 같이 있을 경우 required affinities로 간주하지 않는다.
 - hybrid node를 제외하고 node는 cluster 생성 시 명시한 subnet과 동일한 vpc에 존재해야 한다(동일한 subnet에 존재할 필요는 없다). ([Manage compute](https://docs.aws.amazon.com/eks/latest/userguide/eks-compute.html))
 - eks는 eks optimized ami를 제공한다. 이 ami은 eks 관련 `containerd`, `kubelet`, `aws iam authenticator` 구성요소를 포함하며, eks control plane을 찾아 연결을 시도하는 특별한 `bootstrap.sh`(`max-pods-calculator.sh`도 포함) script를 포함한다. ami 사용자는 script의 argument를 이용해 kubelet의 flag를 설정할 수 있다. ([Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html))
-- managed node group의 특성은 다음과 같다.
+- managed node group의 특성은 다음과 같다. ([Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html))
   - 사용자 대신 no의 provision과 lifecycle 관리를 수행한다. 뿐만 아니라 ec2의 업데이트와 종료 시 사용자 대신 자동으로 no를 drain한다.
   - auto scaling group을 이용해 no가 사용자가 정의한 az에 고루 분포되도록 실행한다.
   - no의 health 모니터링 및 auto repair와 같은 기능을 제공한다.
@@ -324,41 +325,77 @@
   - aws outpost, wavelength에 배포할 수 없으며(self-managed node는 가능) local zone에는 가능하다.
   - ec2 instsance status check에 실패하는 경우 eks는 에러 코드를 반환한다.
   - eks는 `eks.amazonaws.com` label을 no에 추가한다.
+  - managed node group의 업데이트는 po의 pdb를 존중한다.
   - pdb는 node group 업데이트와 다르게 auto scaling group의 azbalance 작업, 사용자가 desired capacity를 줄이는 작업을 수행할 때 지켜지지 않는다. 이러한 작업은 auto scaling group의 scale-down call을 통해 즉시 node를 종료되게끔 한다. 이로인해 pdb와 관계 없이 pod도 즉시 eviction되며 만약 pod eviction에 15분이 경과한 경우 pod의 종료 여부와 관계 없이 node가 종료된다. node의 종료 시간을 늘리기 위해 lifecycle hook을 추가할 수 있다.
     - auto scaling group은 rebalance와 관련해 az rebalance(기본 기능), capacity rebalance(활성화 필요) 기능을 제공한다. az rebalance는 각 az에 대한 ec2 배포가 고르지 않을 경우 발생한다. 기본적으로 기존 ec2를 종료하기 전에 새로운 ec2를 띄우는 작업을 수행한다.
   - spot interruption notification, capacity rebalance notification(rebalance recommendation)을 수신한 후 no drain 과정이 정상적으로 수행되기 위해 auto scaling group의 capacity rebalance 기능을 활성화 할 수 있다.
     - capacity rebalance 기능은 instance purchage option에서 spot instance의 비율(managed node group의 경우 on-demand와 spot을 같이 지정할 수 없다)을 지정할 경우에만 사용할 수 있다. aws ec2 서비스는 인스턴스를 interruption 하기 전에 항상 spot two-minute instance interruption notice과 rebalance recommendation(중단 위험이 높은 경우)를 제공한다(ec2 서비스는 항상 spot interruption notification보다 rebalance recommendation을 먼저 보낸다는 보장은 없으며 동시에 도착할 수도 있다). capacity rebalancing은 rebalance recommendation을 받은 spot 인스턴스를 사전에 교체하려고 시도한다. 이를 통해 새로운 spot 인스턴스로 부하를 분산할 수 있는 기회를 제공한다. 새로운 spot 인스턴스의 health check를 통과한 후에 기존 spot 인스턴스를 종료하기 시작한다. capacity rebalancing을 사용하지 않으면 auto scaling group은 ec2 spot 서비스가 인스턴스를 중단시키고 health check에 실패한 후에야 spot 인스턴스를 교체한다.
-    - spot two-minute instance interruption notice를 수신했을 때, 새롭게 실행한 교체 spot node가 아직 Ready 상태가 아니라면 rebalance recommendation을 수신한 spot 인스턴스를 drain한다. eks는 최선을 다하지만 기존 no를 drain하기 전에 교체 node가 cluster에 조인할 때까지 기다린다는 보장은 없다.
-    - 교체 spot node가 Ready 상태가 되면 eks는 기존 node를 cordon, drain한다.
-  - managed node group의 업데이트는 po의 pdb를 존중한다.
+    - 교체 spot node가 Ready 상태가 되면 eks는 기존 node를 cordon, drain하는 정상적인 과정을 거치지만 새롭게 교체할 spot no가 Ready 상태가 되기전에 spot two-minute instance interruption notice를 수신하면 rebalance recommendation을 수신한 spot 인스턴스를 drain한다. eks는 최선을 다하지만 기존 no를 drain하기 전에 교체 node가 cluster에 조인할 때까지 기다린다는 보장은 없다.
   - launch template을 이용해 no의 ebs를 암호화할 수 있다.
-  - capacity type을 on-demand로 지정(기본 값)하는 경우 managed node gorup은 사용자 대신 아래와 같은 설정을 적용한다.
+  - capacity type을 on-demand로 지정(기본 값)하는 경우 managed node group은 사용자 대신 아래와 같은 설정을 적용한다.
     - prioritized allocation strategy를 사용한다. 사용자가 인스턴스 타입 목록으로 c5.large, c4.large, c3.large으로 지정하는 경우 먼저 명시된 타입부터 사용한다.
     - 모든 no에 `eks.amazonaws.com/capacityType: ON_DEMAND` label을 추가한다.
-  - capacity type을 spot으로 지정하는 경우 managed node gorup은 사용자 대신 아래와 같은 설정을 적용한다.
+  - capacity type을 spot으로 지정하는 경우 managed node group은 사용자 대신 아래와 같은 설정을 적용한다.
     - spot capacity pool(동일 az와 인스턴스 타입을 갖는 사용되지 않는 ec2 인스턴스 집합)에서 최적의 spot node를 provision하기 위해 k8s 1.28 이후 버전부터는 allocation strategy을 pco(`price-capacity-optimized`)로 설정한다.
     - 모든 no에 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
   - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입 사용을 권장한다.
-  - launch template을 지정하지 않거나 launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우 `max-pods-calculator.sh`(vCPU 개수에 따라 최대 값을 제한한다. vCPU가 30개 미만일 경우 110, 30개 이상일 경우 250이다. 110은 k8s의 권장 사항이며 250은 aws eks 팀에서 테스트를 통해 도출한 값)을 사용해 모든 인스턴스 타입에 대한 계산 값 중 가장 작은 값을 모든 node kubelet의 `.maxPods`에 사용한다.
-  - 다음 상황에서 managed node gorup 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node gorup은 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
-  - managed node group의 업그레이드는 4개의 phase를 수행한다.
+  - launch template을 지정하지 않거나 launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우 `bootstrap.sh`에서 `max-pods-calculator.sh`(vCPU 개수에 따라 최대 값을 제한한다. vCPU가 30개 미만일 경우 110, 30개 이상일 경우 250이다. 110은 k8s의 권장 사항이며 250은 aws eks 팀에서 테스트를 통해 도출한 값)을 사용해 모든 인스턴스 타입에 대한 계산 값 중 가장 작은 값을 모든 node kubelet의 `.maxPods`에 사용한다.
+  - pod가 imds(ec2 instance metadata service)에 대한 접근을 방지하는 것을 권장한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#_install_kubernetes_add_ons))
+  - 다음 상황에서 managed node group 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node group은 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
+  - managed node group의 업그레이드는 4개의 phase를 수행한다. ([Update behavior details](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-update-behavior.html))
     - setup phase
       - 새로운 launch template을 생성한다.
       - auto scaling group이 새로운 launch template 버전을 사용하도록 수정한다.
       - managed node group의 updage 설정을 고려해 병렬로 업그레이드 수행할 최대 no의 개수를 결정한다.
-    - scale up phase: 관리형 노드 그룹의 노드를 업그레이드할 때, 업그레이드된 노드는 기존 노드와 동일한 가용 영역(Availability Zone, AZ)에서 실행됩니다. 이를 보장하기 위해 Amazon EC2의 가용 영역 리밸런싱(Availability Zone Rebalancing) 기능을 사용합니다.
-    - upgrade phase:
+    - scale up phase: 새롭게 생성되는 no를 기존 no와 동일한 az에 배치하기 위해 auto scaling g~r~oup의 az reblanace 기능을 사용한다. managed node group의 update strategy가 default일 경우 scale up phase을 수행하지만 minimal일 경우에는 scale up phase는 수행되지 않는다.
+      - auto scaling group의 maximum size, desired size에 max(auto scaling group의 az 수 * 2, maxUnavailable) 값을 더한 값으로 변경한다. 계산식 중 az 수 * 2의 의미는 az rebalance를 보장하기 위해 각 az에 최소 2개의 추가 no 생성한다.
+      - maximum size, desired size 값을 변경한 후 새로운 no가 존재하는지 확인한다. 이 단계는 아래 조건들을 만족하는 경우 성공한다.
+        - 각 az에 적어도 1개의 새로운 no가 실행됐다.
+        - 새로운 no가 모두 `Ready` 상태이다.
+        - 새로운 no가 아래 label을 갖는다.
+          - 일반적인 node group의 경우 eks는 아래 label을 추가한다.
+            - `eks.amazonaws.com/nodegroup-image=$amiName`
+            - `eks.amazonaws.com/nodegroup=$nodeGroupName`
+          - custom launch template이나 custom ami를 사용하는 node group의 경우 eks는 아래 label을 추가한다.
+            - `eks.amazonaws.com/nodegroup-image=$amiName`
+            - `eks.amazonaws.com/nodegroup=$nodeGroupName`
+            - `eks.amazonaws.com/sourceLaunchTemplateId=$launchTemplateId`
+            - `eks.amazonaws.com/sourceLaunchTemplateVersion=$launchTemplateVersion`
+      - 기존 no에 po가 스케줄링되지 않도록 taint를 추가하고 no를 종료하기 전에 load balancer에서 제거하기 위해 `node.kubernetes.io/exclude-from-external-load-balancers=true` label을 추가한다.
+    - upgrade phase: managed node group의 update strategy에 따라 다르게 동작한다. default strategy는 기존 no를 종료하기 전에 새로운 no를 먼저 생성(scale up phase)해 가용성을 보장한다는 장점이 있다. minimal strategy의 경우에는 no를 먼저 생성하지 않으며 새로운 no를 생성하기 전에 기존 no를 종료한다.
+      - default update strategy
+	      1. auto scaling group의 desired count를 증가하여 새 no를 생성한다(scale up phase).
+	      2. 업그레이드가 필요한(죵료) no를 랜덤하게 선택한다. (최대 maxUnavailable 값까지)
+	      3. 해당 no를 drain해 po를 종료한다. po가 15분 내에 모두 종료되지 않으면(예를 들어 pdb로 인해) `PodEvictionFailure` 오류 발생한다. 이를 방지하기 위해 managed node upgrade 요청 시 강제(force) 옵션을 사용할 수 있다.
+	      4. 모든 po가 종료된 후 no를 cordon(예약 불가 상태)으로 설정하고 60초 대기한다. This is done so that the service controller doesn’t send any new requests to this node and removes this node from its list of active nodes.
+	      5. auto scaling group에 no 종료 요청을 전송한다.
+	      6. 위 단계를 반복해 이전 버전의 no가 모두 교체될 때까지 진행된다.
+      - minimal update strategy
+	      1. 업그레이드할 no를 랜덤하게 선택한다. (최대 maxUnavailable 값까지)
+	      2. 해당 no를 drain해 po를 종료한다. po가 15분 내에 모두 종료되지 않으면(예를 들어 pdb로 인해) `PodEvictionFailure` 오류 발생한다. 이를 방지하기 위해 managed node upgrade 요청 시 강제(force) 옵션을 사용할 수 있다.
+	      3. 모든 po가 종료된 후 no를 cordon(예약 불가 상태)으로 설정하고 60초 대기한다. This is done so that the service controller doesn’t send any new requests to this node and removes this node from its list of active nodes.
+	      4. auto scaling group에 no 종료 요청을 전송한다. 그리고 auto scaling group은 새로운 no를 생성한다.
+	      5. 위 단계를 반복해 이전 버전의 no가 모두 교체될 때까지 진행된다.
     - scale down phase
-      - 
+      - 업데이트 전의 상태로 되돌리기 위해 auto scaling group의 maximum size, desired size를 원래 값으로 변경한다. If the Upgrade workflow determines that the Cluster Autoscaler is scaling up the node group during the scale down phase of the workflow, it exits immediately without bringing the node group back to its original size.
   - managed node group을 삭제하면 eks는 가장 먼저 auto scaling group의 minimum, maximum, desired size를 0으로 설정한다. 각 인스턴스가 terminate 되기 전에 eks는 drain을 수행한다. po가 몇 분이 지나도 drain되지 않으면 eks는 auto scaling group을 통해 인스턴스를 종료한다. 모든 인스턴스가 terminate되고 auto scaling group이 삭제된다. ([Delete](https://docs.aws.amazon.com/eks/latest/userguide/delete-managed-node-group.html))
-- pod가 imds(ec2 instance metadata service)에 대한 접근을 방지하는 것을 권장한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#_install_kubernetes_add_ons))
+  - 사용자 launch template을 사용해 managed node group을 배포할 수 있다. 이를 통해 사용자는 kubelet의 flag(eks optimized ami) 설정, no가 속한 subnet과 다른 cidr를 통한 po ip 할당, 사용자 정의 ami 설정, 사용자 정의 cni 배포를 수행할 수 있다. 뿐만 아니라 다른 버전의 launch template로 변경해 managed node group을 업데이트할 수 있다. 기본적으로 사용자 launch template을 명시하지 않을 경우 eks는 기본 값을 갖는 launch template을 생성하며 이는 사용자가 직접 수정하지 않는 것을 권장한다. 뿐만 아니라 이렇게 생성된 managed node group은 직접 업데이트를 수행할 수 없으며 사용자 launch template을 가즌 새로운 managed node group을 생성해야 한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html))
+  - 사용자 launch template을 사용하는 경우 일부 설정이 managed node group 설정과 대응되는 부분이 있다. 그렇기 때문에 사용자는 launch template 또는 managed node group에 설정해야 하는 정보를 알아야 하며 두 곳에 모두 설정 가능한 경우 한 곳에만 설정해야 한다. 이를 어길 경우 managed node group의 생성, 업데이트가 실패하게 된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
+  - 사용자 launch template에 인스턴스 타입을 0~1개만 지정할 수 있다. managed node group 설정에서는 0~20개의 인스턴스 타입을 지정할 수 있다. 만약 두 곳에서 모두 지정하지 않으면 기본적으로 t3.medium을 사용하게 된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
+  - managed node group의 no에서 실행되는 container가 instance metadata service version 2을 사용하는 경우 launch template에 Metadata response hop limit을 2로 제한해야 한다. 사용자 launch template을 사용하지 않는 경우 생성되는 launch template에는 해당 설정이 자동적으로 적용된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
+  - launch template은 인스턴스 레벨의 공통 security group 또는 eni 레벨의 security group 각각 지정할 수 있다. 만약 launch template에 security group을 설정할 경우 eks는 cluster security group을 추가하지 않기 때문에 eks control plane과의 정상적인 통신을 위해 security group에 관련 규칙도 추가해야 한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-security-groups))
+  - managed node group에 사용할 launch template에 user data는 ami(amazon linux ami의 경우 MIME multi-part archive, bottlerocket ami의 경우 toml)에 맞는 형식으로 작성해야 한다. 왜냐하면 no가 cluster에 join하는 데 필요한 eks user data와 자동으로 병합되기 때문이다. 추가적으로 사용하는 kubelet을 시작하거나 수정하는 명령어를 사용하면 안된다(예를 들어 eks optimized ami의 bootstrap.sh). kubelet 관련 작업은 eks가 병합하는 user data에서 자동으로 수행하기 때문이다. launch template에 ami를 설정하는 경우에는 eks가 user data를 병합하지 않기 때문에 no가 cluster에 join할 수 있도록 user data에 kubelet 실행 관련 명령어를 지정해야 한다. 이 경우 사용자는 kubelet 명령어에 여러 flag를 설정할 수 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-user-data))
+  - launch template에 ami를 지정하는 경우 아래와 같은 제한이 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#mng-ami-id-conditions))
+    - launch template 내 ami를 지정과 지정하지 않는 것에 대한 변경은 불가하며 새로운 node group을 만들어야 한다.
+    - aws console에서 새로운 ami 버전에 대한 알림을 받을 수 없다.
+    - managed node group의 taint 설정이 비동기적으로 설정될 수 있다. no가 cluster에 join하기 전에 taint를 적용하기 위해서는 kubelet 명령어에 `--register-with-taints` flag를 사용해야 한다.
 - 여러 ec2 인스턴스 타입에 대한 지원을 위해 eks optimized ami의 여러 release를 제공한다. eks에서 지원하는 인스턴스 타입을 선택하기 위해 아래 내용을 고려한다. ([Amazon EC2 instance types](https://docs.aws.amazon.com/eks/latest/userguide/choosing-instance-type.html))
   - Number of instances in a node group: 일반적으로 ds가 많은 경우 큰 인스턴스를 적게 운영하는 것이 좋다.
   - Hardware architecture: eks optimized ami에서 지원하는지 확인한다.
   - Maximum number of Pods: vpc cni를 사용하는 경우 각 po는 ip를 할당받는다. 인스턴스 타입마다 제공하는 ip의 개수가 인스턴스어세 실행할 수 있는 최대 po의 개수를 결정하는 요소다. max-pods-calculator.sh를 사용헤 이를 직접 계산할 수 있다. aws nitro system은 일반적으로 non-nitro system 인스턴스 타입보다 더 많은 ip를 할당할 수 있다. vpc cni의 ip prefix 기능을 사용해 더 많은 ip를 사용할 수도 있다.
   - Version of the Amazon VPC CNI add-on that you’re running: vpc cni 버전마다 지원하는 인스턴스 타입이 다르다.
   - Whether you’re using security groups for Pods: security groups for pods를 모든 인스턴스 타입이 지원하는 것은 아니다.
-
+- node health 정리
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
   - vpc는 cluster, no, k8s resource를 위한 충분한 ip주소가 있어야 한다. 만약 vpc의 cidr보다 더 많은 ip가 필요할 경우 vpc에 cidr block을 추가할 수 있다.
@@ -382,10 +419,20 @@
     | Inbound   | All      | All   | Self   |                                |
     | Outbound  | All      | All   |        | 0.0.0.0/0(IPv4) or ::/0 (IPv6) |
   - 3개의 기본 tag를 추가한다. 삭제할 경우 cluster 업데이트 시 자동으로 다시 생성한다.
-  - 
-- cluster를 위한 security group 요구 사항은 다음과 같다. ([Security group requirements](https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html))
-  - 
-
+  - eks는 cluster security group을 eks-managed eni, managed node group으로 관리되는 ec2 인스턴스 eni에 할당한다.
+  - eks control plane과 managed node gorup의 no 사이 트래픽을 위한 inbound, outound rule이다. eks 생성 시 사용자 security group도 설정할 수 있는데 이 security group은 eks-managed eni에 할당되지만 node group의 ec2 인스턴스 eni에는 할당하지 않는다.
+- cluster security group의 inbound rule을 더 제한적으로 설정하기 위해 기본 생성 규칙을 삭제하고 필요한 최소 규칙만 추가할 수 있다.
+  | Rule type      | Protocol    | Port  | Destination            |
+  |----------------|-------------|-------|------------------------|
+  | Outbound       | TCP         | 443   | Cluster security group |
+  | Outbound       | TCP         | 10250 | Cluster security group |
+  | Outbound (DNS) | TCP and UDP | 53    | Cluster security group |
+  - 추가적으로 아래 규칙도 고려해야 한다.
+    - no 간 통신을 위한 protocol과 port
+    - no의 실행 시 cluster introspection, registration을 위해 접근하는 eks api에 대한 인커넷 접근 규칙
+    - ecr, docker hub와 같은 image registry에 대한 접근 규칙
+    - aws s3 접근
+    - ipv4, ipv6 주소에 대해 별도의 규칙 관리 필요
 
 ## 요약
 - k8s의 autoscaling 옵션: pod hpa, vpa, cluster autoscaler, addon resizer
