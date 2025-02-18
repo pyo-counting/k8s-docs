@@ -295,7 +295,7 @@
 - outbound internet access가 필요없는 eks(private cluster)를 배포하기 위해 아래 조건을 만족해야 한다. ([Private clusters](https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html))
   - cluster는 container image를 vpc 내 registry에서 pull할 수 있어야 한다.
   - eks는 private endpoint가 활성화 돼야한다. public endpoint 활성화는 optional이다.
-  - self-managed node의 `bootstrap.sh` argument(kubelet의 `--apiserver-endpoint`, `--b64-cluster-ca` flag)를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
+  - self-managed node의 경우 kubelet의 `--apiserver-endpoint`, `--b64-cluster-ca` flag를 사용해 aws eks API에 대한 접근, eks introspection 과정을 생략한다.
   - cluster의 `aws-auth` cm은 vpc 내에서 생성돼야 한다.
   - irsa를 사용하는 경우 po는 aws sts API 호출을 통해 credential을 획득한다. 접근할 수 있도록 sts에 대한 vpc endpoint를 생성해야 한다. 대부분의 v1 sdk는 global aws sts endpoint를 기본 값으로 `sts.amazonaws.com`로 사용하며 aws sts vpc endpoint를 사용하지 않는다. aws sts vpc endpoint 사용을 위해 sdk의 설정을 변경해야 한다.
   - po가 aws service에 접근할 수 있도록 vpc endpoint가 있어야 한다.
