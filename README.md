@@ -338,10 +338,10 @@
     - 모든 no에 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
   - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입 사용을 권장한다.
   - launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우(즉 managed node group 생성 시 ami 타입을 지정해서 사용하는 경우) `bootstrap.sh`에서 `max-pods-calculator.sh`(vCPU 개수에 따라 최대 값을 제한한다. vCPU가 30개 미만일 경우 110, 30개 이상일 경우 250이다. 110은 k8s의 권장 사항이며 250은 aws eks 팀에서 테스트를 통해 도출한 값)을 사용해 모든 인스턴스 타입에 대한 계산 값 중 가장 작은 값을 모든 node kubelet의 `.maxPods`에 사용한다. managed node group의 ami 타입 설정을 사용하지 않고 launch template에 ami id를 명시하는 경우 사용자는 `bootstrap.sh` 또는 kubelet 명령어를 사용해 cluster에 join할 수 있도록 해야 한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
-  - 다음 상황에서 managed node group 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node group은 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
-  - managed node group의 업그레이드는 4개의 phase를 수행한다. ([Update behavior details](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-update-behavior.html))
+  - 다음 상황에서 managed node group 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node group을 새로운 launch template 버전을 사용하도록 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
+  - managed node group의 업그레이드는 4개의 phase를 수행한다. managed node group의 모든 변경이 아래 단계를 수행하는 것은 아니다. 예를 들어 label 수정과 같은 작업은 launch template 버전을 새롭게 생성하지만 새로운 node를 띄우는 작업부터는 수행하지 않으며 기존 node에 수정된 label 정보를 반영한다. ([Update behavior details](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-update-behavior.html))
     - setup phase
-      - 새로운 launch template을 생성한다.
+      - auto scaling group의 launch template 버전을 새로 생성한다.
       - auto scaling group이 새로운 launch template 버전을 사용하도록 수정한다.
       - managed node group의 updage 설정을 고려해 병렬로 업그레이드 수행할 최대 no의 개수를 결정한다.
     - scale up phase: 새롭게 생성되는 no를 기존 no와 동일한 az에 배치하기 위해 auto scaling g~r~oup의 az reblanace 기능을 사용한다. managed node group의 update strategy가 default일 경우 scale up phase을 수행하지만 minimal일 경우에는 scale up phase는 수행되지 않는다.
@@ -376,12 +376,12 @@
     - scale down phase
       - 업데이트 전의 상태로 되돌리기 위해 auto scaling group의 maximum size, desired size를 원래 값으로 변경한다. If the Upgrade workflow determines that the Cluster Autoscaler is scaling up the node group during the scale down phase of the workflow, it exits immediately without bringing the node group back to its original size.
   - managed node group을 삭제하면 eks는 가장 먼저 auto scaling group의 minimum, maximum, desired size를 0으로 설정한다. 각 인스턴스가 terminate 되기 전에 eks는 drain을 수행한다. po가 몇 분이 지나도 drain되지 않으면 eks는 auto scaling group을 통해 인스턴스를 종료한다. 모든 인스턴스가 terminate되고 auto scaling group이 삭제된다. ([Delete](https://docs.aws.amazon.com/eks/latest/userguide/delete-managed-node-group.html))
-  - 사용자 launch template을 사용해 managed node group을 배포할 수 있다. 이를 통해 사용자는 kubelet의 flag(eks optimized ami) 설정, no가 속한 subnet과 다른 cidr를 통한 po ip 할당, 사용자 정의 ami 설정, 사용자 정의 cni 배포를 수행할 수 있다. 뿐만 아니라 다른 버전의 launch template로 변경해 managed node group을 업데이트할 수 있다. 기본적으로 사용자 launch template을 명시하지 않을 경우 eks는 기본 값을 갖는 launch template을 생성하며 이는 사용자가 직접 수정하지 않는 것을 권장한다. 뿐만 아니라 이렇게 생성된 managed node group은 직접 업데이트를 수행할 수 없으며 사용자 launch template을 갖는 새로운 managed node group을 생성해야 한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html))
+  - 사용자 launch template을 사용해 managed node group을 배포할 수 있다. 이를 통해 사용자는 kubelet의 flag(eks optimized ami) 설정, no가 속한 subnet과 다른 cidr를 통한 po ip 할당, 사용자 정의 ami 설정, 사용자 정의 cni 배포를 수행할 수 있다. 뿐만 아니라 다른 버전의 launch template로 변경해 managed node group을 업데이트할 수 있다. 기본적으로 사용자 launch template을 명시하지 않을 경우 eks는 기본 값을 갖는 launch template을 생성하며 이는 사용자가 직접 수정하지 않는 것을 권장한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html))
   - 사용자 launch template을 사용하는 경우 일부 설정이 managed node group 설정과 대응되는 부분이 있다. 그렇기 때문에 사용자는 launch template 또는 managed node group에 설정해야 하는 정보를 알아야 하며 두 곳에 모두 설정 가능한 경우 한 곳에만 설정해야 한다. 이를 어길 경우 managed node group의 생성, 업데이트가 실패하게 된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
   - 사용자 launch template에 인스턴스 타입을 0-1개만 지정할 수 있다. managed node group 설정에서는 0-20개의 인스턴스 타입을 지정할 수 있다. 만약 두 곳에서 모두 지정하지 않으면 기본적으로 t3.medium을 사용하게 된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
   - 기본적으로 pod가 imds(ec2 instance metadata service)에 대한 접근을 방지하는 것을 권장한다(hop limit을 1로 설정). no에서 실행되는 container가 imds에 접근이 필요한 경우 hop limit을 2로 설정한다. 사용자 launch template을 사용하지 않는 경우 생성되는 launch template에는 해당 설정이 자동적으로 적용된다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#_install_kubernetes_add_ons), [Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
   - launch template은 인스턴스 레벨의 security group 또는 eni 레벨의 security group을 지정할 수 있다. 만약 launch template에 security group을 설정할 경우 eks는 managed node group의 node에 cluster security group을 추가하지 않기 때문에 eks control plane과의 정상적인 통신을 위해 security group에 관련 규칙도 추가해야 한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-security-groups))
-  - managed node group에 사용할 launch template에 ami id를 지정하지 않는 경우 user data는 ami(amazon linux ami의 경우 MIME multi-part archive, bottlerocket ami의 경우 toml)에 맞는 형식으로 작성해야 한다. 왜냐하면 eks가 no가 cluster에 join하는 데 필요한 eks user data와 병합하기 때문이다(launch template 없이 managed node group을 생성해서 자동으로 생성되는 launch template을 확인하면 eks user data를 확인할 수 있다). 추가적으로 사용하는 kubelet을 시작하거나 수정하는 명령어를 사용하면 안된다(예를 들어 eks optimized ami의 bootstrap.sh). kubelet 관련 작업은 eks user data에서 자동으로 수행하기 때문이다. launch template에 ami를 설정하는 경우에는 eks user data를 병합하지 않기 때문에 no가 cluster에 join할 수 있도록 user data에 kubelet 실행 관련 명령어를 지정해야 한다(위 ami와 형식을 맞출 필요도 없다). 이 경우 사용자는 kubelet 명령어에 여러 flag를 설정할 수 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-user-data))
+  - managed node group에 사용할 launch template에 ami id를 지정하지 않는 경우 user data는 ami(amazon linux ami의 경우 MIME multi-part archive, bottlerocket ami의 경우 toml)에 맞는 형식으로 작성해야 한다. 왜냐하면 eks가 no가 cluster에 join하는 데 필요한 eks user data와 병합하기 때문이다(launch template 없이 managed node group을 생성해서 자동으로 생성되는 launch template을 확인하면 eks user data를 확인할 수 있다). 추가적으로 kubelet을 시작하거나 수정하는 명령어를 사용하면 안된다(예를 들어 eks optimized ami의 bootstrap.sh). kubelet 관련 작업은 eks user data에서 자동으로 수행하기 때문이다. launch template에 ami를 설정하는 경우에는 eks user data를 병합하지 않기 때문에 no가 cluster에 join할 수 있도록 user data에 kubelet 실행 관련 명령어를 실행해야 한다(위 ami와 형식을 맞출 필요도 없다). 이 경우 사용자는 kubelet 명령어에 여러 flag를 설정할 수 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-user-data))
   - launch template에 ami를 지정하는 경우 아래와 같은 제한이 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#mng-ami-id-conditions))
     - launch template 내 ami를 지정과 지정하지 않는 것에 대한 변경은 불가하며 새로운 node group을 만들어야 한다.
     - aws console에서 새로운 ami 버전에 대한 알림을 받을 수 없다.
@@ -395,10 +395,9 @@
 - node health 정리
 - eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
-  - vpc는 cluster, no, k8s resource를 위한 충분한 ip주소가 있어야 한다. 만약 vpc의 cidr보다 더 많은 ip가 필요할 경우 vpc에 cidr block을 추가할 수 있다.
-  - cluster 생성 시 명시한 subnet과 security group을 변경 해 더 많은 ip를 사용할 수 있도록 할 수 있다. 하지만 cluster 생성 시 사용한 az 내에서만 변경 가능하다.
+  - vpc는 cluster, no, k8s resource를 위한 충분한 ip주소가 있어야 한다. 만약 vpc의 cidr보다 더 많은 ip가 필요할 경우 vpc에 cidr block을 추가할 수 있다. cluster 설정을 통해 cluster 생성 시 명시한 subnet과 security group을 변경 해 더 많은 ip를 사용할 수 있도록 할 수 있다. 하지만 cluster 생성 시 사용한 az 내에서만 변경 가능하다.
   - vpc의 DNS option(hostname, resoulution)이 모두 활성화되어야 한다. 그렇지 않으면 no가 cluster에 자신을 등록하지 못한다.
-- cluster 생성 시 eks는 2-4개의 elastic network interface를 cluster vpc subnet에 자동 생성한다. cluster의 k8s 버전을 업데이트하는 경우 cluster 생성 시 만든 network interface를 삭제하고 동일 subnet 또는 다른 subnet에 새로운 network interface를 만든다. network interface가 생성되는 subnet을 제어하기 위해 2개의 subnet만 사용하면 된다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
+- cluster 생성 시 eks는 2-4개의 elastic network interface를 랜덤한 cluster vpc subnet에 자동 생성한다. cluster의 k8s 버전을 업데이트하는 경우 cluster 생성 시 만든 network interface를 삭제하고 동일 subnet 또는 다른 subnet에 새로운 network interface를 만든다. network interface가 생성되는 subnet을 제한하기 위해서는 2개의 subnet만 사용하면 된다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
 - cluster을 위한 subnet 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
   - 각 subnet은 최소 6개의 ip가 필요하지만 최소 16개를 권장한다.
   - 서로 다른 az에 존재하는 최소 2개의 subnet을 명시해야 한다.
@@ -418,7 +417,7 @@
   - 3개의 기본 tag를 추가한다. 삭제할 경우 cluster 업데이트 시 자동으로 다시 생성한다.
   - eks는 cluster security group을 eks-managed eni, managed node group으로 관리되는 ec2 인스턴스 eni에 할당한다.
   - eks control plane과 managed node gorup의 no 사이 트래픽을 위한 inbound, outound rule이다. eks 생성 시 사용자 security group도 설정할 수 있는데 이 security group은 eks-managed eni에 할당되지만 node group의 ec2 인스턴스 eni에는 할당하지 않는다.
-- cluster security group의 inbound rule을 더 제한적으로 설정하기 위해 기본 생성 규칙을 삭제하고 필요한 최소 규칙만 추가할 수 있다.
+- cluster security group의 outbound rule을 더 제한적으로 설정하기 위해 기본 생성 규칙을 삭제하고 아래 필요한 최소 규칙만 추가할 수 있다.
   | Rule type      | Protocol    | Port  | Destination            |
   |----------------|-------------|-------|------------------------|
   | Outbound       | TCP         | 443   | Cluster security group |
@@ -426,12 +425,12 @@
   | Outbound (DNS) | TCP and UDP | 53    | Cluster security group |
   - 추가적으로 아래 규칙도 고려해야 한다.
     - no 간 통신을 위한 protocol과 port
-    - no의 실행 시 cluster introspection, registration을 위해 접근하는 eks api에 대한 인커넷 접근 규칙
+    - no의 실행 시 cluster introspection, registration을 위해 접근하는 eks api에 대한 인터넷 접근 규칙
     - ecr, docker hub와 같은 image registry에 대한 접근 규칙
     - aws s3 접근
     - ipv4, ipv6 주소에 대해 별도의 규칙 관리 필요
 - eks cluster 생성 시 `AmazonEKSClusterPolicy` policy를 permission으로 갖는 eks cluster iam role이 있어야 한다. ([Cluster IAM role](https://docs.aws.amazon.com/eks/latest/userguide/cluster-iam-role.html))
-- eks ec2 instance를 node로 사용하는 경우 instance profile을 사용하며 kubelet은 cluster에 no를 등록하기 위해 aws api를 호출한다. node 생성 시 `AmazonEKSWorkerNodePolicy`, `AmazonEC2ContainerRegistryPullOnly` policy를 permission으로 갖는 eks cluster iam role이 있어야 한다. ([Node IAM role](https://docs.aws.amazon.com/eks/latest/userguide/create-node-role.html))
+- eks ec2 instance를 node로 사용하는 경우 kubelet은 instance profile을 사용해 aws api를 호출해 얻은 정볼르 사용해 cluster에 join한다. node 생성 시 `AmazonEKSWorkerNodePolicy`, `AmazonEC2ContainerRegistryPullOnly` policy를 permission으로 갖는 eks node iam role이 있어야 한다. ([Node IAM role](https://docs.aws.amazon.com/eks/latest/userguide/create-node-role.html))
 
 ## 요약
 - k8s의 autoscaling 옵션: pod hpa, vpa, cluster autoscaler, addon resizer
