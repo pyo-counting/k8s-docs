@@ -432,6 +432,8 @@
 - eks cluster 생성 시 `AmazonEKSClusterPolicy` policy를 permission으로 갖는 eks cluster iam role이 있어야 한다. ([Cluster IAM role](https://docs.aws.amazon.com/eks/latest/userguide/cluster-iam-role.html))
 - eks ec2 instance를 node로 사용하는 경우 kubelet은 instance profile을 사용해 aws api를 호출해 얻은 정볼르 사용해 cluster에 join한다. node 생성 시 `AmazonEKSWorkerNodePolicy`, `AmazonEC2ContainerRegistryPullOnly` policy를 permission으로 갖는 eks node iam role이 있어야 한다. ([Node IAM role](https://docs.aws.amazon.com/eks/latest/userguide/create-node-role.html))
 
+## EKS best practice
+
 ## 요약
 - k8s의 autoscaling 옵션: pod hpa, vpa, cluster autoscaler, addon resizer
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
