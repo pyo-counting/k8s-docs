@@ -280,13 +280,14 @@
 - eks는 etcd storage 크기를 8GiB로 설정한다. 이는 일반적인 환경에서 etcd의 최대 권장 사이즈다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks cluster insight는 eks, k8s의 best practice를 따를 수 있도록 권장 사항을 제공한다. 이를 위해 eks cluster에 대해 반복적으로 검사를 수행한다. eks를 업데이트 하기 전에 cluster insight를 확인하는 것을 권장한다. ([Cluster insights](https://docs.aws.amazon.com/eks/latest/userguide/cluster-insights.html))
 - cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc와 인터넷에서 kube-apiserver에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. kube-apiserver가 no에 대한 접근(예를 들어 사용자의 `kubectl exec`, `kubectl logs`, `kubectl proxy` 명령어)을 위해서 기본적으로 cluster 생성시 명시한 subnet에 eks-managed eni을 생성하며 이는 public/private endpoint access 옵션과 관련 없다. ([AWS Blogs](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
+- eks의 control plane 구성 요소는 aws가 관리하는 vpc에서 생성되며 kube-apiserver의 엔드포인트 역할을 수행하는 eks-managed eni는 eks 생성 시 설정한 subnet에 랜덤하게 생성된다. ([AWS blog](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
 - eks private endpoint는 aws privatelink endpoint가 아니기 때문에 privatelink endpoint 목록에서 조회 불가능하다. private access endpoint를 활성화하면 aws eks는 route 53 private hosted zone을 사용자 대신 생성하고 cluster가 생성된 vpc와 연결한다. 이 private hosted zone은 사용자가 조회할 수 없으며 eks가 대신 관리한다. vpc에서 private hosted zone을 통해 kube-apiserver에 접근하기 위해 사용자 vpc는 `enableDnsHostnames`, `enableDnsSupport`을 true로 설정하고 DHCP optionset은 dns server 목록에 `AmazonProvidedDNS`을 포함해야 한다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#cluster-endpoint-private))
 - public/private endpoint 활성화/비활성화 여부에 따른 특징은 다음과 같다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#modify-endpoint-access))
   - enabled/disabled
-    - eks의 기본 설정 값이다. cluster vpc 내에서 kube-apiserver에 대한 요청은 vpc를 벗어나지만 aws 네트워크를 벗어나지는 않는다.
+    - eks의 기본 설정 값이다. vpc 내에서 kube-apiserver에 대한 요청은 vpc를 벗어나지만 aws 네트워크를 벗어나지는 않는다.
     - 인터넷에서 public endpoint를 통해 kube-apiserver에 접근할 수 있다. public endpoint에 대해 CIDR block을 이용한 접근 제어가 가능하다.
   - enabled/enabled
-    - cluster vpc 내에서 kube-apiserver에 대한 요청은 vpc 내 eks가 생성한 eks-managed eni를 향한다.
+    - vpc 내에서 kube-apiserver에 대한 요청은 vpc 내 eks가 생성한 eks-managed eni를 향한다.
     - 인터넷에서 public endpoint를 통해 kube-apiserver에 접근할 수 있다. public endpoint에 대해 CIDR block을 이용한 접근 제어가 가능하다.
   - disabled/enabled
     - kube-apiserver에 대한 모든 요청은 vpc 내부 또는 connected network 내부에서만 가능하다.
@@ -393,11 +394,10 @@
   - Version of the Amazon VPC CNI add-on that you’re running: vpc cni 버전마다 지원하는 인스턴스 타입이 다르다.
   - Whether you’re using security groups for Pods: security groups for pods를 모든 인스턴스 타입이 지원하는 것은 아니다.
 - node health 정리
-- eks cluster는 vpc 내에서 생성되며 po 간 네트워크는 aws vpc cni plugin을 통해 제공된다. ([Configure networking](https://docs.aws.amazon.com/eks/latest/userguide/eks-networking.html))
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
   - vpc는 cluster, no, k8s resource를 위한 충분한 ip주소가 있어야 한다. 만약 vpc의 cidr보다 더 많은 ip가 필요할 경우 vpc에 cidr block을 추가할 수 있다. cluster 설정을 통해 cluster 생성 시 명시한 subnet과 security group을 변경 해 더 많은 ip를 사용할 수 있도록 할 수 있다. 하지만 cluster 생성 시 사용한 az 내에서만 변경 가능하다.
   - vpc의 DNS option(hostname, resoulution)이 모두 활성화되어야 한다. 그렇지 않으면 no가 cluster에 자신을 등록하지 못한다.
-- cluster 생성 시 eks는 2-4개의 elastic network interface를 랜덤한 cluster vpc subnet에 자동 생성한다. cluster의 k8s 버전을 업데이트하는 경우 cluster 생성 시 만든 network interface를 삭제하고 동일 subnet 또는 다른 subnet에 새로운 network interface를 만든다. network interface가 생성되는 subnet을 제한하기 위해서는 2개의 subnet만 사용하면 된다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
+- cluster 생성 시 eks는 2-4개의 elastic network interface를 랜덤한 subnet에 자동 생성한다. cluster의 k8s 버전을 업데이트하는 경우 cluster 생성 시 만든 network interface를 삭제하고 동일 subnet 또는 다른 subnet에 새로운 network interface를 만든다. network interface가 생성되는 subnet을 제한하기 위해서는 2개의 subnet만 사용하면 된다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
 - cluster을 위한 subnet 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
   - 각 subnet은 최소 6개의 ip가 필요하지만 최소 16개를 권장한다.
   - 서로 다른 az에 존재하는 최소 2개의 subnet을 명시해야 한다.
