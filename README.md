@@ -338,7 +338,7 @@
     - spot capacity pool(동일 az와 인스턴스 타입을 갖는 사용되지 않는 ec2 인스턴스 집합)에서 최적의 spot node를 provision하기 위해 k8s 1.28 이후 버전부터는 allocation strategy을 pco(`price-capacity-optimized`)로 설정한다.
     - 모든 no에 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
   - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입 사용을 권장한다.
-  - launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우(즉 managed node group 생성 시 ami 타입을 지정해서 사용하는 경우) `bootstrap.sh`에서 `max-pods-calculator.sh`(vCPU 개수에 따라 최대 값을 제한한다. vCPU가 30개 미만일 경우 110, 30개 이상일 경우 250이다. 110은 k8s의 권장 사항이며 250은 aws eks 팀에서 테스트를 통해 도출한 값)을 사용해 모든 인스턴스 타입에 대한 계산 값 중 가장 작은 값을 모든 node kubelet의 `.maxPods`에 사용한다. managed node group의 ami 타입 설정을 사용하지 않고 launch template에 ami id를 명시하는 경우 사용자는 `bootstrap.sh` 또는 kubelet 명령어를 사용해 cluster에 join할 수 있도록 해야 한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
+  - launch template에 eks optimized ami를 지정하지 않고 managed node group을 만드는 경우(즉 managed node group 생성 시 ami 타입을 지정해서 사용하는 경우) `bootstrap.sh`에서 인스턴스 타입에 따른 `.maxPods`을 계산한다. managed node group의 ami 타입 설정을 사용하지 않고 launch template에 ami id를 명시하는 경우 사용자는 `bootstrap.sh` 또는 kubelet 명령어를 사용해 cluster에 join할 수 있도록 해야 한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
   - 다음 상황에서 managed node group 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node group을 새로운 launch template 버전을 사용하도록 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
   - managed node group의 업그레이드는 4개의 phase를 수행한다. managed node group의 모든 변경이 아래 단계를 수행하는 것은 아니다. 예를 들어 label 수정과 같은 작업은 launch template 버전을 새롭게 생성하지만 새로운 node를 띄우는 작업부터는 수행하지 않으며 기존 node에 수정된 label 정보를 반영한다. ([Update behavior details](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-update-behavior.html))
     - setup phase
@@ -390,7 +390,7 @@
 - 여러 ec2 인스턴스 타입에 대한 지원을 위해 eks optimized ami의 여러 release를 제공한다. eks에서 지원하는 인스턴스 타입을 선택하기 위해 아래 내용을 고려한다. ([Amazon EC2 instance types](https://docs.aws.amazon.com/eks/latest/userguide/choosing-instance-type.html))
   - Number of instances in a node group: 일반적으로 ds가 많은 경우 큰 인스턴스를 적게 운영하는 것이 좋다.
   - Hardware architecture: eks optimized ami에서 지원하는지 확인한다.
-  - Maximum number of Pods: vpc cni를 사용하는 경우 각 po는 ip를 할당받는다. 인스턴스 타입마다 제공하는 ip의 개수가 인스턴스어세 실행할 수 있는 최대 po의 개수를 결정하는 요소다. max-pods-calculator.sh를 사용헤 이를 직접 계산할 수 있다. aws nitro system은 일반적으로 non-nitro system 인스턴스 타입보다 더 많은 ip를 할당할 수 있다. vpc cni의 ip prefix 기능을 사용해 더 많은 ip를 사용할 수도 있다.
+  - Maximum number of Pods: vpc cni를 사용하는 경우 각 po는 ip를 할당받는다. 인스턴스 타입마다 제공하는 ip의 개수가 인스턴스어세 실행할 수 있는 최대 po의 개수를 결정하는 요소다. `max-pods-calculator.sh`를 사용헤 이를 직접 계산할 수 있다. aws nitro system은 일반적으로 non-nitro system 인스턴스 타입보다 더 많은 ip를 할당할 수 있다. vpc cni의 ip prefix 기능을 사용해 더 많은 ip를 사용할 수도 있다.
   - Version of the Amazon VPC CNI add-on that you’re running: vpc cni 버전마다 지원하는 인스턴스 타입이 다르다.
   - Whether you’re using security groups for Pods: security groups for pods를 모든 인스턴스 타입이 지원하는 것은 아니다.
 - node health 정리
