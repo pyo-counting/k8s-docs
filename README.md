@@ -313,6 +313,14 @@
     - 기본적으로 karpenter는 preference(node affinity, pod affinity/anti-affinity의 `preferredDuringSchedulingIgnoredDuringExecution`, pod topology의 `ScheduleAnyway`)를 요구 사항(각각 `requiredDuringSchedulingIgnoredDuringExecution`, `DoNotSchedule`)으로 간주해 pod scheduling을 생각한다.
     - karpenter는 preferred affinities(node affinity, pod affinity/anti-affinity의 `preferredDuringSchedulingIgnoredDuringExecution`)을 required affinities로 간주하지만 scheduling이 불가능한 경우 weight가 낮은 조건부터 1개씩 완화하면서 다시 scheduling 가능한지 고려한다.
     - karpenter는 preferred affinities가 pod topology와 같이 있을 경우 required affinities로 간주하지 않는다.
+    - disruption controller는 automated method(drift -> consolidation 순서)를 실행해 disruptable node를 찾는다. consolidation은 node를 삭제(deletion)/교체(replace)하는 작업을 수행한다. 3가지 메커니즘을 순서대로 실행해 작업을 수행한다.
+      1. empty node consolidation: 빈 node(ds가 아닌 po가 존재하지 않는 경우)를 삭제
+      2. multi node consolidation: 여러 node를 가격이 더 낮은 1개의 node로 교체. 여러 node에 대한 consolidation은 모든 가능한 조합을 검토하는 것은 비현실적이기 때문에 heuristic(경험)을 사용해 consolidation이 가능성이 높은 여러 node를 식별한다. 여러 node가 삭제 또는 교체될 수 있는 경우 사용자의 workload를 최소화하는 node를 우선적으로 선택한다.
+        - 실행 중인 po가 적은 node
+        - 곧 만료 예정인 node
+        - 우선 순위가 낮은 po를 실행 중인 node
+      3. single node consolidation: 1개의 node를 가격이 더 낮은 1개의 node로 교체
+    - consolidation은 node를 통합하는 작업이다. karpenter는 1개의 node를 총합의 가격이 낮은 여러개의 node로 분리하는 작업은 수행하지 않는다. ([GitHub Issuse](https://github.com/aws/karpenter-provider-aws/issues/5304))
 - hybrid node를 제외하고 node는 cluster 생성 시 명시한 subnet과 동일한 vpc에 존재해야 한다(동일한 subnet에 존재할 필요는 없다). ([Manage compute](https://docs.aws.amazon.com/eks/latest/userguide/eks-compute.html))
 - eks는 eks optimized ami를 제공한다. 이 ami은 eks 관련 `containerd`, `kubelet`, `aws iam authenticator` 구성요소를 포함하며, eks control plane을 찾아 연결을 시도하는 특별한 `bootstrap.sh`(`max-pods-calculator.sh`도 포함) script를 포함한다. ami 사용자는 script의 argument를 이용해 kubelet의 flag를 설정할 수 있다. ([Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html))
 - managed node group의 특성은 다음과 같다. ([Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html))
