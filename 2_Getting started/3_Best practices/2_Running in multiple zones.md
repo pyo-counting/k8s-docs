@@ -18,7 +18,7 @@ k8s는 cluster의 여러 no에 workload resource(예를 들어 deploy, sts) po�
 
 no가 시작되면 각 no의 kubelet은 no object에 label을 추가한다. 이러한 label은 [zone information](https://kubernetes.io/docs/reference/labels-annotations-taints/#topologykubernetesiozone)을 포함한다.
 
-cluster가 여러 zone 또는 region에 있는 경우 no label와 [Pod topology spread constrains](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)를 사용해 region, zone, 특정 no 간에 po의 분산 방법을 제어할 수 있다. kube-scheduler는 해당 정보를 사용해 po를 배치하며 이를 통해 전체 workload에 대한 영향도를 줄일 수 있다. 
+cluster가 여러 zone 또는 region에 있는 경우 no label와 [Pod topology spread constrains](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)를 사용해 region, zone, 특정 no 간에 po의 분산 방법을 제어할 수 있다. kube-scheduler는 해당 정보를 사용해 po를 배치하며 이를 통해 전체 workload에 대한 영향도를 줄일 수 있다.
 
 예를 들어 sts의 replica 3개가 모두 서로 다른 zone에서 실행되고 있는지 확인하는 제약조건을 설정할 수 있다. You can define this declaratively without explicitly defining which availability zones are in use for each workload.
 

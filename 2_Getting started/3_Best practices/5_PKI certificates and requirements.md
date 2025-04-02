@@ -15,7 +15,7 @@ k8s는 아래 동작을 위해 PKI가 필요하다.
 ### Client certificates
 - kube-apiserver에 인증을 위해 kubelet이 사용하는 client certificate
 - etcd에 인증을 위해 kube-apiserver가 사용하는 client certificate
-- kube-apiserver와 안정하게 통신하기 위해 kube-controller-manager가 사용하는 client certificate
+- kube-apiserver와 안전하게 통신하기 위해 kube-controller-manager가 사용하는 client certificate
 - kube-apiserver와 안전하게 통신하기 위해 kube-scheduler가 사용하는 client certificate
 - kube-apiserver에 인증을 위해 kube-proxy가 사용하는 client certificate
 - kube-apiserver에 인증을 위해 관리자가 사용하는 client certificate
