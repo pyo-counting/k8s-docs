@@ -16,7 +16,7 @@ k8s 1.31에서는 CRI(Container Runtime Interface)를 따르는 runtime을 사�
 
 ## Install and configure prerequisites
 ### Network configuration
-기본적으로 linux kernel은 IPv4 패킷이 network interface 간 라우팅되는 것을 허용하지 않는다. 대부분의 k8s cluster netwokring 구현은 필요한 경우 이 설정을 변경하지만 일부는 관리자가 직접 변경해야 한다(Some might also expect other sysctl parameters to be set, kernel modules to be loaded, etc; consult the documentation for your specific network implementation).
+기본적으로 linux kernel은 IPv4 패킷이 network interface 간 라우팅되는 것을 허용하지 않는다. 대부분의 k8s cluster netwokring 구현은 필요한 경우 이 설정을 변경하지만 이외의 경우에는 관리자가 직접 변경해야 한다(Some might also expect other sysctl parameters to be set, kernel modules to be loaded, etc; consult the documentation for your specific network implementation).
 
 ### Enable IPv4 packet forwarding
 아래 명령어를 실행한다.
@@ -44,7 +44,7 @@ kublet과 container runtime 모두 control group을 통해 po, container에 대�
 - cgroupfs
 - systemd
 
-cgroup driver는 cgroup을 관리하는 모듈을 의미한다. cgroup driver는 cgroupfs driver와 systemd driver가 존재한다. cgroupfs driver는 자신이 직접 cgroupfs을 통해서 cgroup을 제어한다. 반면 systemd driver는 systemd를 통해서 cgroup을 제어합니다.
+cgroup driver는 cgroup을 관리하는 모듈을 의미한다. cgroup driver는 cgroupfs driver와 systemd driver가 존재한다. cgroupfs driver는 자신이 직접 cgroupfs을 통해서 cgroup을 제어한다. 반면 systemd driver는 systemd를 통해서 cgroup을 제어한다.
 
 참고
 - https://tech.kakao.com/2020/06/29/cgroup-driver/
