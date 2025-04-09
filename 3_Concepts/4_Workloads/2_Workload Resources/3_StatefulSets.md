@@ -189,5 +189,11 @@ k8s control plane은 이전 업데이트된 po가 Running, Ready 상태까지 �
 template 되돌린 이후에는 추가적으로 sts이 잘못된 설정을 통해 생성 및 실행하려고 시도한 모든 po를 삭제해야 한다. 그러면 sts은 되돌린 template을 사용해서 po를 다시 생성하기 시작한다.
 
 ## PersistentVolumeClaim retention
+`.spec.persistentVolumeClaimRetentionPolicy` 필드는 sts의 lifecycle 동안 pvc를 어떻게 관리할지 제어한다. 이 기능을 사용하기 위해서는 `StatefulSetAutoDeletePVC` feature gate가 kube-apiserver, kube-controller-manager에 활성화돼야 한다(기본 활성화).
+
+- `.spec.persistentVolumeClaimRetentionPolicy.whenDeleted`: sts가 삭제될 때의 volume retention 정책을 설정
+- `.spec.persistentVolumeClaimRetentionPolicy.whenScaled`: sts의 po가 scale in될 때의 volume retention 정책을 설정
+
+위 두 필드에 `Delete`, `Retain` 값 모두 사용할 수 있다.
 
 ### Replicas
