@@ -23,11 +23,11 @@ kube-apiserver에 no를 추가하기 위한 두 가지 방법이 있다.
 }
 ```
 
-k8s는 내부적으로 no object를 생성한다. Kubernetes checks that a kubelet has registered to the API server that matches the `.metadata.name`   field of the Node. 만약 no가 healthy 상태라면(즉, 필요한 모든 서비스가 실행 중) po를 실행할 자격이 있다. healthy 상태가 아니라면 healthy 상태가 되기 전까지 해당 no는 cluster와 관련된 행동에서 제외된다.
+k8s는 내부적으로 no object를 생성한다. Kubernetes checks that a kubelet has registered to the API server that matches the `.metadata.name` field of the Node. 만약 no가 healthy 상태라면(즉, 필요한 모든 서비스가 실행 중) po를 실행할 자격이 있다. healthy 상태가 아니라면 healthy 상태가 되기 전까지 해당 no는 cluster와 관련된 행동에서 제외된다.
 
 > **Note**:  
 > k8s는 유효하지 않은 no의 object를 보존하면서 healthy 상태가 될때까지 게속 체크한다.
-> 
+>
 > health check를 멈추기 위해 no object를 직접 또는 controller가 삭제해야 한다.
 
 no object의 이름은 DNS subdomain name 규칙을 따라야한다.
@@ -45,15 +45,15 @@ kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설�
 - `.registerWithTaints`: no의 taints 목록(`<key>=<value>:<effect>`를 ,로 구분). `.registerNode`가 false일 경우 동작하지 않는다.
 - `--node-ip`: (Optional) no의 ip 주소. no의 여러 ip주소를 사용할 수 있으며 dual-stack cluster의 경우 [configure IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#configure-ipv4-ipv6-dual-stack)를 참고한다. 이 flag를 명시하지 않으면 no의 기본 ipv4 주소를 사용하고 ipv4 주소가 없으면 ipv6 주소를 사용한다.
 - `--node-labels`: no의 label ([NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)에 의해 강제되는 label 규칙도 있다)
-- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
-- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. But if `.nodeStatusUpdateFrequency` is set explicitly, `.nodeStatusReportFrequency`'s default value will be set to `.nodeStatusUpdateFrequency` for backward compatibility.
+- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인(변화가 있는지)하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
+- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. 기본 값은 5m이지만 이전 버전과의 호환성을 위해 `.nodeStatusUpdateFrequency` 가 명시적으로 설정된 경우 해당 값과 동일한 값으로 설정된다(이는 lease 개념이 없어 `.nodeStatusReportFrequency` 설정만 있던 이전 버전에서 사용자가 `.nodeStatusReportFrequency`를 설정하는 경우의 호환성을 위해 지원한다).
 - `.nodeLeaseDurationSeconds`: (기본값 40) kubelet이 no의 lease object `.spec.renewTime`을 통해 no의 상태를 업데이트하는 주기. 해당 설정 값은 실제 시간을 나타내지 않으며 기본 값 40은 10s를 나타낸다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
-[Node authorization mode](https://kubernetes.io/docs/reference/access-authn-authz/node/), [NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)가 활성화된 경우, kubelet은 자체 no의 resource만 생성/수정할 수 있는 권한이 있다. 
+[Node authorization mode](https://kubernetes.io/docs/reference/access-authn-authz/node/), [NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)가 활성화된 경우, kubelet은 자체 no의 resource만 생성/수정할 수 있는 권한이 있다.
 
 > **Note**:  
 > no의 설정 변경이 필요한 경우 kube-apiserver에 no를 다시 등록하는 것이 권장 방법이다. 예를 들어 kubelet이 새로운 `--node-labels` flag를 사용해 재시작 되지만 동일한 no의 이름이 사용되는 경우, kube-apiserver에 대한 no 등록 시기에만 label이 설정되기 때문에 변경 사항이 적용되지 않는다.
-> 
+>
 > kubelet 재시작 시 no의 설정이 변경되는 경우 해당 no에 스케줄링된 po는 오작동하거나 문제를 일으킬 수 있다. For example, already running Pod may be tainted against the new labels assigned to the Node, while other Pods, that are incompatible with that Pod will be scheduled based on this new label. Node re-registration ensures all Pods will be drained and properly re-scheduled.
 
 ### Manual Node administration
@@ -107,7 +107,7 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 - no가 등록될 때 CIDR 블락을 할당한다(`--allocate-node-cidrs=true`일 경우). kube-controller-manager는 po 네트워킹을 위한 cluster의 CIDR 중 no CIDR를 각 no 별로 할당한다. CIDR 크기는 `--node-cidr-mask-size`을 통해 설정한다.
 - controller의 내부 no 목록을 cloud provider의 사용 가능한 시스템 목록을 참고해 최신 상태로 유지하는 것이다. 클라우드 환경에서 실행할 때 no가 unhealthy 상태가 되면, node controller는 no에 대한 시스템이 이용 가능한지 cloud provider에 확인한다. 이용이 불가할 경우 node controller는 no 목록에서 해당 no를 삭제한다.
 - no의 상태를 모니터링한다. node controller는 다음과 같은 책임이 있다.
-    - no가 unreachable 상태가 될 경우, no의 .status 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
+    - no가 unreachable 상태가 될 경우, no의 `.status` 필드의 Ready condition을 업데이트 한다. 이 경우 node controller는 Ready condition을 `Unknown`으로 변경한다.
     - no가 unreachable(Unknown condition) 상태로 남아있는 경우, unreachable no에 있는 po를 eviction 하기 위해 `node.kubernetes.io/unreachable` taint key를 추가한다. k8s는 po에 명시적으로 `node.kubernetes.io/not-ready`, `node.kubernetes.io/unreachable` toleration key를 설정하지 않으면 해당 toleration과 `tolerationSeconds=300`을 설정하기 때문에 첫 eviction까지 5분을 기다린다. ([Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions))
       > **Note**:  
       > 해당 페이지에서는 node controller가 pod eviction을 위해 API-initiated eviction(Eviction 리소스)을 사용한다고 되어있지만 [Taint based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions) 페이지를 확인해보면 node controller는 pod eviction을 위해 taint를 사용하는 것처럼 보인다.
@@ -156,3 +156,5 @@ kubelet에 TopologyManager [feature gate](https://kubernetes.io/docs/reference/c
 
 ## Swap memory management
 no에 swap을 활성화하기 위해 kubelet의 `NodeSwap` feature gate 활성화(기본 값 true), kubelet의 `.failSwapOn`이 false(기본 값 true)어야한다. po가 swap을 사용하기 위해서는 kubelet의 `.swapBehavior`이 NoSwap (기본 값)이면 안된다.
+
+swap은 cgroup v2에서만 지원한다.
