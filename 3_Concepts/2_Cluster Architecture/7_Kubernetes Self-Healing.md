@@ -1,0 +1,3 @@
+### Self-Healing capabilities
+
+### Considerations
