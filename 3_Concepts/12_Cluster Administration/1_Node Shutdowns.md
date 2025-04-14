@@ -1,7 +1,7 @@
-k8s cluster에서 no는 계획대로 graceful shutdown하거나 예상치 않게 shutdown될 수 있다. shutdown 전에 no가 drain되지 않으면 worklod failure를 유발할 수 있다.
+k8s cluster에서 no는 계획대로 graceful shutdown되거나 예상치 않게 shutdown될 수 있다. shutdown 전에 no가 drain되지 않으면 worklod failure를 유발할 수 있다.
 
 ## Graceful node shutdown
-kubelet은 node system의 shutdown 감지를 시도하고 실행 중인 po를 종료한다. 
+kubelet은 node system의 shutdown 감지를 시도하고 실행 중인 po를 종료한다.
 
 kubelet은 node shutdown 동안 일반적인 [pod termination process](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination)를 보장한다. shutdown 중에 kubelet은 새로운 po를 허용하지 않는다(po가 이미 no에 bound되어 있더라도).
 
