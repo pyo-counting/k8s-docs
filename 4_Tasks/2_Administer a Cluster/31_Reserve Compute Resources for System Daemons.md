@@ -46,7 +46,7 @@ system daemon에 `.systemReserved`를 선택적으로 강제하려면, `.systemR
 OS system daemon은 최상위 control group 아래에 배치하는 것이 권장된다 (예: systemd 머신에서는 system.slice).
 
 
-kubelet은 `.systemReservedCgroup`가 존재하지 않으면 생성하지 않는다는 점에 유의해야 한다. 유효하지 않은 cgroup이 지정되면 kubelet은 실패한다. 따라서 cluster 관리자는 필요하다면 kubelet을 시작하기 전에 해당 cgroup 경로를 호스트 시스템에 미리 생성해야한다. systemd cgroup driver은 cgroup 이름에 패 턴이 있다(이름에 `.slice` 접두사가 붙는다).
+kubelet은 `.systemReservedCgroup`가 존재하지 않으면 생성하지 않는다는 점에 유의해야 한다. 유효하지 않은 cgroup이 지정되면 kubelet은 실패한다. 따라서 cluster 관리자는 필요하다면 kubelet을 시작하기 전에 해당 cgroup 경로를 호스트 시스템에 미리 생성해야한다. systemd cgroup driver은 cgroup 이름에 패턴이 있다(이름에 `.slice` 접두사가 붙는다).
 
 ### Explicitly Reserved CPU List
 `.reservedSystemCPUs`는 OS system daemon과 k8s system daemon을 위한 명시적인 CPU set을 정의하기 위한 것이다. `.reservedSystemCPUs`는 cpuset resource와 관련하여 OS system daemon과 k8s system daemon을 위해 별도의 최상위 cgroup을 정의할 의도가 없는 시스템을 위한 것이다. 만약 kubelet 설정에 `.kubeReservedCgroup`와 `.systemReservedCgroup`가 설정되어 있지 않다면, `.reservedSystemCPUs`에 지정된 CPU set이 system daemon이 사용할 CPU를 결정하는 데 있어 우선권을 가진다. 하지만 `.kubeReservedCgroup`와 `.systemReservedCgroup`가 설정되고 해당 cgroup에 cpuset이 정의되어 있다면, cgroup 설정이 우선 순위가 높을 수도 있다.
@@ -54,14 +54,14 @@ kubelet은 `.systemReservedCgroup`가 존재하지 않으면 생성하지 않는
 이 옵션은 제어되지 않는 interrupts/timers가 workload 성능에 영향을 미칠 수 있는 Telco/NFV 사용 사례를 위해 특별히 설계되었다. 이 옵션을 사용하여 system/k8s daemon뿐만 아니라 interrupts/timers를 위한 명시적인 cpuset을 정의할 수 있으며, 이를 통해 시스템의 나머지 CPU들을 workload 전용으로 사용하여 제어되지 않는 interrupts/timers의 영향을 덜 받을 수 있다. `.reservedSystemCPUs` 설정은 어떤 CPU를 예약할지를 kubelet에게 알려주는 역할만 한다. 실제로 OS system daemon, k8s daemon, 그리고 interrupts/timers를 해당 예약된 CPU set으로 이동시키고 고정하는 작업은 kubelet 스스로 수행하지 않는다. system daemon, k8s daemon 및 interrupts/timers를 이 옵션에 의해 정의된 명시적인 cpuset으로 이동시키려면 k8s 외부의 다른 메커니즘을 사용해야 한다. 예를 들어: Centos에서는 tuned 도구 세트를 사용하여 이를 수행할 수 있다.
 
 ### Eviction Thresholds
-no 수준의 memory pressure는 system OOM(Out-Of-Memory)으로 이어지며 이는 no와 그 위에서 실행되는 모든 po에 영향을 미친다(이는 운영체제 kernel 수준의 문제로 no가 응답 불능 상태가 되거나 재부팅되는 등 심각한 장애로 이어질 수 있다). no는 memory가 회수될 때까지 일시적으로 오프라인 상태가 될 수 있다. system OOM을 피하기 (또는 발생 확률을 줄이기) 위해 kubelet은 out of resource(node-pressure eviction) 관리 기능을 제공한다. eviction은 memory와 ephemeral-storage에 대해서만 지원된다. `.evictionHard` 설정을 통해 일부 memory를 예약함으로써, node의 memory 가용성이 예약된 값 아래로 떨어질 때마다 kubelet은 po를 eviction시키려고 시도한다. 만약 no에 system daemon이 존재하지 않는다면 pod는 capacity - eviction-hard 값까지 리소스를 사용할 수 있다. 즉, eviction을 위해 예약된 리소스는 po가 사용할 수 없게된다.
+no 수준의 memory pressure는 system OOM(Out-Of-Memory)으로 이어지며 이는 no와 그 위에서 실행되는 모든 po에 영향을 미친다(이는 운영체제 kernel 수준의 문제로 no가 응답 불능 상태가 되거나 재부팅되는 등 심각한 장애로 이어질 수 있다). no는 memory가 회수될 때까지 일시적으로 오프라인 상태가 될 수 있다. system OOM을 피하기 (또는 발생 확률을 줄이기) 위해 kubelet은 out of resource(node-pressure eviction) 관리 기능을 제공한다. eviction은 memory와 ephemeral-storage에 대해서만 지원된다. `.evictionHard` 설정을 통해 일부 memory를 예약함으로써, node의 memory 가용성이 예약된 값 아래로 떨어질 때마다 kubelet은 po를 eviction시키려고 시도한다. 만약 no에 system daemon이 존재하지 않는다면 pod는 capacity - eviction-hard 값까지 리소스를 사용할 수 있다. 즉, eviction을 위해 예약된 리소스는 po가 사용할 수 없다.
 
 ### Enforcing Node Allocatable
 scheduler는 'Allocatable'을 po가 사용할 수 있는 가용 capacity로 취급한다.
 
 kubelet은 기본적으로 모든 po에 대해 'Allocatable'을 강제한다(enforce). 강제는 모든 po의 전체 사용량이 'Allocatable'을 초과할 때마다 po를 eviction 시키는 방식으로 수행된다. eviction 정책에 대한 자세한 내용은 [node pressure eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/)을 참고한다. 이 강제 적용은 kubelet의 `.enforceNodeAllocatable` 설정에 pods 값을 지정하면 된다.
 
-선택적으로, 동일한 설정에 kube-reserved, system-reserved 값을 지정하여 kubelet이 `.kubeReserved`, `.systemReserved`를 강제하도록 할 수 있다. `.kubeReserved`, `.systemReserved`를 강제하려면 각각 `.kubeReservedCgroup`, `.systemReservedCgroup`가 지정되어야 한다는 점에 유의해야 한다.
+선택적으로, 동일한 설정에 kube-reserved, system-reserved 값을 지정하여 kubelet이 `.kubeReserved`, `.systemReserved`를 강제하도록 할 수 있다. `.kubeReserved`, `.systemReserved`를 강제하려면 각각 `.kubeReservedCgroup`, `.systemReservedCgroup`가 지정되어야 한다는 점에 유의해야 한다. kubelet은 각 cgroup 경로에 대해 자원 제한을 kernel의 cgroup 인터페이스를 통해 설정한다. 즉, `.enforceNodeAllocatable`에 system-reserved 또는 kube-reserved를 포함시키는 것은 kubelet에게 system daemon들이 사용하는 특정 cgroup 경로에 대해 명시적인 자원 제한(limits)을 설정하라고 지시하는 것이다. 이를 통해 OS 및 k8s system daemon의 자원 사용을 제약하여, Pod가 사용할 'Allocatable' 영역을 확실하게 보호하는 역할을 한다.
 
 ## General Guidelines
 system daemon(OS system daemon과 k8s system daemon )은 Guaranteed Pod와 유사하게 취급되어야 한다. system daemon은 경계가 설정된 control group 내에서 burst(일시적으로 자원을 더 많이 사용하는 것)할 수 있으며, 이러한 동작은 k8s 배포의 일부로 관리되어야 한다. 예를 들어, kubelet과 container runtime은 함께 `.kubeReserved`에 정의된 자원을 공유할 수 있다. 하지만 `.enforceNodeAllocatable`에 kube-reserved를 포함시켜 `.kubeReserved`가 강제되면, kubelet을 포함한 k8s system daemon들은 `.kubeReserved`에 설정된 총 자원량 이상으로 burst하여 no의 사용 가능 자원을 모두 소비할 수는 없다. 이는 예약된 자원 범위를 벗어나 다른 po나 OS system daemon의 자원을 침범하는 것을 막는다.
