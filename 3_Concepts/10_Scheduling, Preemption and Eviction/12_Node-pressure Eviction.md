@@ -5,7 +5,7 @@ node-pressure eviction은 kubelet이 no의 자원을 회수하기 위해 pod를 
 
 kubelet은 cluster no에서 memory, disk space, filesystem inodes와 같은 자원을 모니터링한다. 이러한 자원 중 하나 이상이 특정 소비 수준에 도달하면, kubelet은 해당 node에서 하나 이상의 po를 선제적으로 실패시켜 자원을 회수하고 자원 부족(starvation)을 방지할 수 있다.
 
-Node-pressure eviction이 발생하면 kubelet은 선택된 po의 `.status.phase` Failed로 설정하고 po를 종료한다.
+node-pressure eviction이 발생하면 kubelet은 선택된 po의 `.status.phase` Failed로 설정하고 po를 종료한다.
 
 node-pressure eviction는 API-initiated eviction과 다르다.
 
