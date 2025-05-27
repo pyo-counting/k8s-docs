@@ -1,7 +1,6 @@
 ## about docs
 - v1.31 버전 기준 작성
 - 3_Concepts/4_Workloads부터 정리 필요
-- eks publci/private endpoint 설정에 따라 nlb가 실제로 생성되는지?
 
 ## Kubernetes
 ### general
@@ -123,6 +122,13 @@
   - 각 no에 대해 po preemption을 고려할 떄 해당 no에서 우선 순위가 낮은 po를 preempt함으로써 우선 순위가 높은 pending po가 스케줄링 가능한지 확인한다. pending po가 no의 우선 순위가 낮은 po와 inter-pod affinity가 있는 경우 scheduler는 해당 no에서 어떠한 po도 preemption하지 않는다. 이 문제를 해결하기 위해 권장하는 방법은 inter-pod affinity를 사용할 때 우선 순위가 같거나 더 높은 po에 대해서만 고려한다.
   - no N이 po P의 스케줄링을 위해 preemption을 고려되고 있다고 가정한다. 다른 모든 조건은 만족하지만 no N에 po P가 스케줄링 되기 위해 다른 no의 po가 preemption 되어야 할 수도 있다(예를 들어 zone을 toepology key로 사용하는 pod anti-affinity일 경우). scheduler는 기본적으로 다른 no에 대한 preemption 기능은 없기 때문에 결과적으로 no N에 po P가 스케줄링 될 수없다.
   - preemption을 위한 여러 no가 있는 경우 scheduler는 우선 순위가 가장 낮은 po 집합을 가진 po를 선택하려고 시도한다. 하지만 이러한 po들이 preemption될 경우 pdb가 위반될 가능성이 있다면 scheduler는 더 높은 우선 순위의 po를 가진 다른 no를 선택할 수 있다. scheduler의 preemption 로직은 preemption 대상 선택 시 QoS를 고려하지 않는다.
+- admission controller는 object를 생성(create), 삭제(delete) 또는 수정(modify)하는 요청에 적용된다. 또한 admission controller는 kube-apiserver proxy를 통해 po에 연결하는 요청과 같은 사용자 정의 동사(custom verbs)도 차단할 수 있다. admission controller는 object를 읽는(get, watch 또는 list) 요청은 차단하지 않는다(차단할 수 없다). 왜냐하면 읽기 작업은 admission control 계층을 거치지 않기 때문이다. admission control 메커니즘은 validating(검증) 또는 mutating(변경) 또는 둘 다일 수 있다. mutating controller는 수정되는 resource의 데이터를 변경할 수 있지만, validating controller는 그럴 수 없다. mutating -> validating admission controller 순서대로 실행된다. 일부 admission controller는 두 가지 역할을 모두 수행한다는 점에 유의해야 한다. 어느 단계에서든 admission controller 중 하나라도 요청을 reject하면 전체 요청은 즉시 reject되고 최종 사용자에게 오류가 반환된다. ([Admission Control](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#what-are-they))
+- kube-apiserver에는 여러 admission controller가 포함되어 있다. 뿐만 아니라 사용자를 위한 MutatingAdmissionWebhook, ValidatingAdmissionWebhook, ValidatingAdmissionPolicy admission controller가 있다. 앞의 두 webhook admission controller는 각각 설정된 mutating, validating admission control webhook을 실행한다. ValidatingAdmissionPolicy는 외부 HTTP 호출에 의존하지 않고 API 내에 선언적 검증 코드(CEL, common Expression Language)를 포함할 수 있는 방법을 제공한다. ([Admission Control](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#admission-control-phases))
+- admission controller는 요청 object를 변경하는 것 뿐만 아니라 때때로 관련된 resource를 변경하는 side effect를 가질 수 있다. 예를 들어 quota 사용량이 대표적인 예시다. ([Admission Control](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/))
+  1. 사용자가 cpu 1, 메모리 1GiB를 사용하는 po를 생성 요청을 수행한다.
+  2. quota를 담당하는 admission controller에서 quota 사용량을 확인하고 충분한 경우 현재 사용량을 늘린다(side effect).
+  3. 이후 admission controller에서 예를 들어, 보안 규정에 어긋나 reject를 수행한다. 결과적으로 quota 사용량은 증가했지만 po는 생성되지 않은 상태가 되며 복구(reclamation) 또는 조정(reconciliation) 프로세스가 필요하다. 왜냐하면 특정 admission controller는 해당 요청이 다른 모든 admission controller를 통과할 것이라고 확신할 수 없기 때문이다.
+- kube-apiserver의 `--enable-admission-plugins`, `--disable-admission-plugins` flag를 사용해 admission controller를 활성화, 비활성화할 수 있다. `--enable-admission-plugins`보다 `--disable-admission-plugins`가 우선 순위가 높다. 권장되는 admission controller는 기본적으로 활성화되어 있으므로([목록](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/#options)), 명시적으로 지정할 필요가 없다. MutatingAdmissionWebhook, ValidatingAdmissionWebhook을 비활성화하는 경우, `--runtime-config` flag를 사용해 API도 비활성화해야 한다.  ([Admission Control](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/))
 ---
 
 - encryption at rest 고려 ([Security](https://kubernetes.io/docs/concepts/security/#control-plane-protection))
@@ -267,7 +273,6 @@
   - non-preempting po는 다른 po를 preempt할 수 없지만 우선 순위가 높은 po에 의해 자신은 preempt될 수 있다.
   - po를 생성할 때 `.spec.priorityClassName` 필드를 통해 pc를 참조함으로써 po의 우선 순위를 명시할 수 있다. priority admission controller는 이 필드를 사용해 실제 우선 순위를 나타내는 정수 값을 `.spec.priority` 필드에 할당한다. 만약 po가 유효하지 않은 pc를 참조하는 경우 po는 reject된다.
 - containerfs(container 파일시스템)에 대한 지원을 활성화하는 split image filesystem 기능은 새로운 eviction signals, thresholds, metrics을 추가한다. containerfs를 사용하려면 Kubernetes v1.32에서 `KubeletSeparateDiskGC` feature gate를 활성화해야 한다. 현재 containerfs 지원은 CRI-O(v1.29 이상)에서만 제공된다.
-- 
 ---
 
 - no의 graceful/non-graceful shutdown 설정 고려 ([Node Shutdowns](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/))
@@ -312,7 +317,7 @@
   - po가 aws service에 접근할 수 있도록 vpc endpoint가 있어야 한다.
   - self-managed node는 vpc endpoint가 존재하는 subnet에 배포돼야 한다. managed node group의 경우 vpc endpoint의 security group inbound rule에 managed node group이 배포된 subnet을 추가해야 한다.
   - efs volume을 사용하는 경우 aws-efs-csi-driver의 container image가 eks cluster와 동일한 region을 사용하도록 변경해야 한다.
-  - aws-load-balancer-controller를 배포할 때 `enable-shield`, `enable-waf`, `enable-wafv2` flag를 false로 설정해야 한다. 그리고 certificate discovery 기능도 사용할 수 없다. 왜냐하면 aws certificate manager가 vpc endpoint를 지원하지 않기 때문이다. 
+  - aws-load-balancer-controller를 배포할 때 `enable-shield`, `enable-waf`, `enable-wafv2` flag를 false로 설정해야 한다. 그리고 certificate discovery 기능도 사용할 수 없다. 왜냐하면 aws certificate manager가 vpc endpoint를 지원하지 않기 때문이다.
   - cluster autoscaler po를 배포할 때 `--aws-use-static-instance-list=true` flag를 포함해야 한다. 그리고 vpc는 sts vpc endpoint, autoscaling vpc endpoint를 포함해야 한다.
   - 일부 container software의 경우 사용량 모니터링을 위해 aws marketplace metering server 접근을 위한 API 호출을 수행한다. private cluster에서 해당 호출을 허용하지 않기 때문에 이러한 유형의 container는 private cluster에서 사용이 불가하다.
 - eks platform version은 eks control plane의 기능을 나타내며 kube-apiserver의 flag 활성화, k8s patch 버전 등을 포함한다. k8s minor version마다 1개 이상의 eks platform version을 갖는다. k8s minor version 별로 eks platform version은 독립적이다. k8s 1.32 version의 첫 eks platform version은 `eks.1`이다. eks는 주기적으로 새로운 platform version을 release해 control plane의 새로운 설정 활성화, 보안 수정을 제공한다. eks는 기존 cluster의 platform version을 자동으로 업그레이드 한다. cluster가 최신 platform version 보다 두 개 이상 차이나면 자동으로 업데이트 하지 못할 수도 있다. eks는 새로운 ami를 같이 release할 수 있지만 동일한 k8s minor version 내에서는 eks control plane과 no의 ami 간 호환성을 보장한다. 새로운 platform version은 기존 서비스에 영향을 주지 변경 사항을 도입하지 않는다. 새로운 cluster 생성 시 해당 k8s minor version 내에서 가장 최신의 eks platform 버전으로 자동 생성된다. ([Platform versions](https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html))

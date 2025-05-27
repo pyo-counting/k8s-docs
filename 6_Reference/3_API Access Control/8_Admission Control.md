@@ -1,6 +1,6 @@
 이 페이지는 admission controller에 대한 개요를 제공한다.
 
-admission controller는 resource가 영구 저장되기 전, 요청이 authenticated, authorized된 후 kube-apiserver로 들어오는 요청을 가로채는 코드 조각이다.
+admission controller는 resource가 저장되기 전, 요청이 authenticated, authorized된 후 kube-apiserver로 들어오는 요청을 가로채는 코드 조각이다.
 
 k8s의 여러 중요 기능들은 해당 기능을 올바르게 지원하기 위해 admission controller가 활성화되어야 한다. 결과적으로, 올바른 admission controller 세트로 적절하게 구성되지 않은 kube-apiserver는 기대하는 모든 기능을 지원하지 못하는 불완전한 서버다.
 
