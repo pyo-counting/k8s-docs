@@ -12,21 +12,9 @@ container 생테계는 많은 흥미로운 기술, 전문 용어, 회사들이 �
 다행스럽게도 회사들은 몇 가지 표준을 정의했다. 표준은 생테계를 더욱 상호 운용성 있게 만드는 데 도움이 된다. 즉, 서로 다른 플랫폼과 운영 체제에서 소프트웨어를 실행할 수 있으며, 단일 회사나 프로젝트에 덜 의존성을 갖게 된다.
 
 container와 관련된 큰 두개의 표준이 있다.
-- `Open Container Initiative(OCI)`: container에 대한 표준. image format, runtime, distribution과 관련 있다.
-    - OCI는 container runtime, image의 표준화를 목표로 하는 오픈 표준화 프로젝트
-    - 목표
-        - container의 호환성과 이식성을 높이기 위해 image, runtime 표준을 정의
-        - container 기술이 공급업체에 종속되지 않도록 보장
-    - 구성 요소
-        - Runtime Specification (runtime-spec)
-            - container 실행 환경(예: runc)에서 사용하는 표준을 정의(container의 생성을 위한 기본 명령 및 설정 포함)
-        - Image Specification (image-spec):
-            - container image의 형식과 배포 방법을 정의(Docker image와 호환성을 유지하며, image의 layer 구조와 메타데이터를 표준화)
-    - 예시 
-        - Docker, Podman, CRI-O 등에서 OCI 표준을 기반으로 container를 빌드 및 실행
-        - runc는 OCI runtime-spec을 구현한 대표적인 runtime
 - `Container Runtime Interface(CRI)`: k8s 환경에서 다양한 container runtime을 사용하기 위한 API 표준
     - CRI는 kubernetes의 container runtime과 kubelet 간 통신을 표준화하기 위한 API 인터페이스
+    - high-level runtime이 구현한다. high-level runtime은 low-level runtime에서 직접적으로 격리하는(컨테이너를 생성하는) 사항들을 '관리(supervision)'한다. 쉽게 말해 high-level runtime은 low-level runtime에 대한 configuration을 진행하고 실제 이에 대한 실행은 low-level runtime에서 수행한다.
     - 목표
         - kubernetes가 다양한 container runtime을 쉽게 통합할 수 있도록 표준 인터페이스(API)를 제공
         - kubernetes에서 container runtime을 교체하거나 추가할 때 코드 변경을 최소화
@@ -36,9 +24,31 @@ container와 관련된 큰 두개의 표준이 있다.
     - 예시
         - Docker를 사용하던 kubernetes가 CRI-O, containerd 등으로 전환할 수 있게 지원
         - CRI-O와 containerd는 CRI를 준수하는 runtime으로 kubernetes와 쉽게 통합 가능
+- `Open Container Initiative(OCI)`: container에 대한 표준. image format, runtime, distribution과 관련 있다.
+    - OCI는 container runtime, image의 표준화를 목표로 하는 오픈 표준화 프로젝트
+    - low-level runtime이 구현한다. low-level container runtime은 컨테이너를 직접 실행하는 역할을 담당한다. low-level container runtime에서 '저수준'이러는 이름을 붙인 이유는 오직 컨테이너를 실행시키고 실행 중인 컨테이너만을 관리하기 때문이다.
+    - 컨테이너는 linux namespace와 cgroup(control group)을 사용하여 구현되는데, namespace는 각 컨테이너에 파일 시스템이나 네트워크와 같은 시스템 resource를 격리, 가상화하며 cgroup은 각 컨테이너가 사용할 CPU, 메모리, 네트워크, I/O, 디바이스 등의 자원을 제어한다. low-Level container runtime은 이러한 namespace와 cgroup을 설정하고 namespace, cgroup 내에서 명령을 실행한다. cgroup과 namespace는 모두 kernel의 기능이며 이를 다루는 방법은 리눅스 배포판과 kernel 버전마다 다르다.
+    - 목표
+        - container의 호환성과 이식성을 높이기 위해 image, runtime 표준을 정의
+        - container 기술이 공급업체에 종속되지 않도록 보장
+    - 구성 요소
+        - Runtime Specification (runtime-spec)
+            - container 실행 환경(예: runc)에서 사용하는 표준을 정의(container의 생성을 위한 기본 명령 및 설정 포함)
+        - Image Specification (image-spec):
+            - container image의 형식과 배포 방법을 정의(Docker image와 호환성을 유지하며, image의 layer 구조와 메타데이터를 표준화)
+    - 예시
+        - Docker, Podman, CRI-O 등에서 OCI 표준을 기반으로 container를 빌드 및 실행
+        - runc는 OCI runtime-spec을 구현한 대표적인 runtime
 
 아래에서는 Docker, Kubernetes, CRI, OCI, containerd, runc가 생테계에서 어떤 역할을 수행하는지 알아본다.
 ![](../image/container-ecosystem.drawio.webp)
+
+두 표준은 별개로 존재하는 것이 아니라, CRI가 OCI를 기반으로 동작한다.
+- Kubelet → (CRI API) → [high-level Runtime] → (OCI 표준) → [low-level Runtime] → Linux Kernel
+    1. Kubelet이 CRI API를 통해 "파드(Pod)를 실행해 줘"라고 요청한다.
+    2. high-level Runtime (예: containerd, CRI-O)이 이 요청을 받는다. 이들은 CRI 구현체이다.
+    3. high-level Runtime은 이미지 다운로드, 네트워크 설정 등을 처리한 후, OCI 표준에 맞는 컨테이너 설정 파일(config.json)과 파일 시스템을 만든다.
+    4. 마지막으로 low-level Runtime (예: runc)을 호출하여 OCI 표준에 따라 실제 컨테이너 프로세스를 실행한다.
 
 ## Docker
 docker는 container와 관련된 가장 인기있는 개발 도구다. 그래서 많은 사람들이 docker와 container를 같은 것으로 생각한다.
