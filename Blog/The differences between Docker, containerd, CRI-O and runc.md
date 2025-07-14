@@ -13,7 +13,7 @@ container 생테계는 많은 흥미로운 기술, 전문 용어, 회사들이 �
 
 container와 관련된 큰 두개의 표준이 있다.
 - `Container Runtime Interface(CRI)`: k8s 환경에서 다양한 container runtime을 사용하기 위한 API 표준
-    - CRI는 kubernetes의 container runtime과 kubelet 간 통신을 표준화하기 위한 API 인터페이스
+    - kubernetes의 container runtime과 kubelet 간 통신을 표준화하기 위한 API 인터페이스
     - high-level runtime이 구현한다. high-level runtime은 low-level runtime에서 직접적으로 격리하는(컨테이너를 생성하는) 사항들을 '관리(supervision)'한다. 쉽게 말해 high-level runtime은 low-level runtime에 대한 configuration을 진행하고 실제 이에 대한 실행은 low-level runtime에서 수행한다.
     - 목표
         - kubernetes가 다양한 container runtime을 쉽게 통합할 수 있도록 표준 인터페이스(API)를 제공
@@ -29,13 +29,19 @@ container와 관련된 큰 두개의 표준이 있다.
     - low-level runtime이 구현한다. low-level container runtime은 컨테이너를 직접 실행하는 역할을 담당한다. low-level container runtime에서 '저수준'이러는 이름을 붙인 이유는 오직 컨테이너를 실행시키고 실행 중인 컨테이너만을 관리하기 때문이다.
     - 컨테이너는 linux namespace와 cgroup(control group)을 사용하여 구현되는데, namespace는 각 컨테이너에 파일 시스템이나 네트워크와 같은 시스템 resource를 격리, 가상화하며 cgroup은 각 컨테이너가 사용할 CPU, 메모리, 네트워크, I/O, 디바이스 등의 자원을 제어한다. low-Level container runtime은 이러한 namespace와 cgroup을 설정하고 namespace, cgroup 내에서 명령을 실행한다. cgroup과 namespace는 모두 kernel의 기능이며 이를 다루는 방법은 리눅스 배포판과 kernel 버전마다 다르다.
     - 목표
-        - container의 호환성과 이식성을 높이기 위해 image, runtime 표준을 정의
+        - container의 호환성과 이식성을 높이기 위해 image, runtime 표준을 정의(어떻게 컨테이너 이미지를 만들고 구성할 것인가(Image Specification)와 어떻게 그 이미지를 실행할 것인가(Runtime Specification)와 어떻게 이미지를 전송할 것인가(Distribution Specification))
         - container 기술이 공급업체에 종속되지 않도록 보장
     - 구성 요소
-        - Runtime Specification (runtime-spec)
-            - container 실행 환경(예: runc)에서 사용하는 표준을 정의(container의 생성을 위한 기본 명령 및 설정 포함)
         - Image Specification (image-spec):
             - container image의 형식과 배포 방법을 정의(Docker image와 호환성을 유지하며, image의 layer 구조와 메타데이터를 표준화)
+            - 개발자가 Dockerfile 등으로 애플리케이션을 빌드하면, 클라이언트는 OCI image-spec에 따라 image 매니페스트, 설정 파일, 레이어들을 생성
+        - Distribution Specification (distribution-spec):
+            - container registry와 클라이언트 간의 통신을 위한 표준 API를 정의한다.
+            - docker push 명령을 실행하면, 클라이언트는 OCI distribution-spec에 정의된 API를 통해 레지스트리에 레이어(blobs)와 매니페스트를 업로드
+            - k8s 클러스터 같은 환경에서 image를 사용하기 위해 containerd 같은 runtime이 OCI distribution-spec API를 사용하여 레지스트리로부터 매니페스트와 필요한 레이어들을 다운로드
+        - Runtime Specification (runtime-spec)
+            - container 실행 환경(예: runc)에서 사용하는 표준을 정의(컨테이너의 생명주기와 실행 환경을 어떻게 구성하고 관리할 것인지에 대한 표준을 정의)
+            - image를 모두 내려받으면, containerd는 image-spec에 따라 파일시스템 번들(config.json, rootfs)을 구성하고, OCI runtime-spec을 따르는 runc를 호출하여 컨테이너를 실행
     - 예시
         - Docker, Podman, CRI-O 등에서 OCI 표준을 기반으로 container를 빌드 및 실행
         - runc는 OCI runtime-spec을 구현한 대표적인 runtime
