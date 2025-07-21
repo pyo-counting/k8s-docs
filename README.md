@@ -175,6 +175,26 @@
 - no에 swap을 활성화하기 위해 kubelet의 `NodeSwap` feature gate 활성화(기본 값 true), kubelet의 `.failSwapOn`이 false(기본 값 true)어야한다. po가 swap을 사용하기 위해서는 kubelet의 `.swapBehavior`이 NoSwap (기본 값)이면 안된다. ([Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/#swap-memory))
 - cgroup v2 환경에서 k8s의 일부 기능([MemoryQoS](https://kubernetes.io/blog/2021/11/26/qos-memory-resources/))은 향상된 리소스 관리, 격리를 위해 cgroup v2를 전용으로 사용한다. ([About cgroup v2](https://kubernetes.io/docs/concepts/architecture/cgroups/))
 - container runtime interface(CRI)는 kubelet과 container runtime 사이의 프로토콜이다. kubelet은 gRPC를 사용해 container runtime에 연결할 때 client로 동작한다. runtime endpoint, image service endpoint는 container runtime에서 사용 가능해야 하며 kubelet에서는 `.containerRuntimeEndpoint`, `.imageServiceEndpoint` 설정을 사용해 각각 설정할 수 있다. `.imageServiceEndpoint`를 명시하지 않으면 기본적으로 `.containerRuntimeEndpoint`을 사용해 image service에 연결한다. `.imageServiceEndpoint`는 container runtime service와 image service가 분리된 환경에서 사용한다(docker, containerd는 기본적으로 container runtime에서 image 관리와 container 실행 서비스를 모두 제공). 예를 들어 container runtime service와 image service가 분리된 환경에서 사용한다. ([Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/#api))
+  - kubelet은 CRI를 통해 container runtime에게 container 생성을 지시하고, container runtime은 CNI를 호출해 container의 네트워크를 설정한다. ([Gemini]())
+    - kubelet: 각 worker no에서 실행되며, kube-apiserver와 통신한다. 특정 no에 po를 생성하라는 명령을 받으면, 해당 po가 정상적으로 동작하도록 모든 작업을 총괄한다.
+    - container runtime: container image 다운로드, container 생성 및 실행, 종료 등 container의 생명주기를 직접 관리한다.
+    - cri: kubelet과 container runtime 사이의 통신을 위한 표준 인터페이스다(gRPC 기반). kubelet은 cri 덕분에 containerd를 쓰든 CRI-O를 쓰든 상관없이 동일한 명령으로 container 생성을 요청할 수 있다.
+    - cni: container에 network namespace를 연결하고 IP 주소를 할당하는 등의 네트워크 설정을 전문적으로 처리하는 표준 인터페이스 및 플러그인이다. Calico, Flannel, Weave Net 등 다양한 CNI 플러그인이 있다.
+      1. 명령 수신: kubelet은 kube-apiserver로부터 자신의 no에 새로운 po를 생성하라는 명세(Pod Spec)를 전달받는다.
+      2. container 생성 요청 (kubelet → cri → container runtime)
+          - kubelet은 po를 실행하기 위해 cri를 통해 container runtime에게 "이 image로 container를 만들어줘"라고 요청한다.
+          - 이 요청에는 container image 정보, 볼륨, 환경 변수 등 필요한 모든 정보가 포함된다.
+      3. container 생성 및 network namespace 준비
+          - container runtime은 요청에 따라 container image를 다운로드하고, container를 실행할 기본적인 환경(샌드박스)과 독립된 네트워크 공간(network namespace)을 만든다.
+          - 이 시점의 container는 아직 ip 주소가 없어 외부와 통신할 수 없다.
+      4. 네트워크 설정 요청 (container runtime → cni)
+          - container runtime은 만들어진 container의 network namespace 정보를 담아 설정된 cni plugin을 호출한다. "이 container에 네트워크를 연결해줘"라고 요청하는 것과 같다.
+      5. 네트워크 설정 수행 (cni)
+          - 호출된 cni plugin(예: Calico)은 다음 작업을 수행한다.
+            - 가상 이더넷 인터페이스(veth pair) 생성
+            - 한쪽 끝은 container의 network namespace에, 다른 쪽 끝은 host의 네트워크 브릿지에 연결
+            - 파드 CIDR 대역에서 IP 주소를 할당하고 라우팅 규칙 설정
+      6. 상태 보고: po가 ip를 할당받고 정상적으로 실행되면, container runtime은 이 사실을 kubelet에게 알리고, kubelet은 po의 최종 상태를 kube-apiserver에 보고한다.
 - kubelet은 사용되지 않는 image에 대한 gc를 5분, 사용되지 않는 container에 대한 gc는 1분 마다 수행한다. 외부 gc 도구는 kubelet의 행동을 방해하고 필요한 container를 삭제할 수 있으므로 사용을 피해야 한다. `.imageGCHighThresholdPercent` 값을 초과한 디스크 사용량은 마지막으로 사용된 시간을 기준으로 오래된 image 순서대로 삭제하는 gc를 트리거한다. kubelet은 디스크 사용량이 `.imageGCHighThresholdPercent` 값에 도달할 때까지 image를 삭제한다. alpha 기능으로 디스크 사용량과 무관하게 로컬에 있는 사용되지 않는 image의 최대 시간을 설정할 수 있다. 이 기능을 사용하기 위해 kubelet의 `.ImageMaximumGCAge` feature gate를 활성화하고 kubelet 설정 파일에서 `.ImageMaximumGCAge` 필드를 사용하면 된다(kubelet이 재시작되면 계산 중이던 age는 초기화된다). container gc 기능의 경우 deprecated 됐으며([#127157](https://github.com/kubernetes/kubernetes/issues/127157#issuecomment-2333512962)) 대신 eviction(`.evictionHard`, `.evictionSoft`)을 사용한다.([Garbage Collection](https://kubernetes.io/docs/concepts/architecture/garbage-collection/#container-image-lifecycle))
 - k8s는 기본 container runtime을 사용한다. 하지만 여러 container runtime을 사용하는 경우 po의 `.spec.runtimeClassName`을 이용해 cluster에 존재하는 [RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/) object를 명시해 특정 container runtime을 사용할 수도 있다. ([Containers](https://kubernetes.io/docs/concepts/containers/))
 - container image는 registry hostname(옵션), image name, tag 또는 digest 구성된다. digest는 image 내용을 hashing 알고리즘 적용한 hash 값으로 immutable이다. tag는 명시하지 않은 경우 latest 값으로 사용한다. po가 항상 동일한 container image 버전을 사용하는 것을 보장하기 위해 `<image-name>:<tag>` 대신 `<image-name>@<digest>`를 사용할 수 있다. ([Images](https://kubernetes.io/docs/concepts/containers/images/))
