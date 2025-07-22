@@ -311,6 +311,9 @@
 
 ## EKS
 - control plane은 kube-apiserver, etcd 구성 요소들로 이뤄지며 aws가 관리하는 ec2 인스턴스에서 실행된다. control plane은 multi az에 provision되며 nlb를 통해 kube-apiserver를 노출한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
+- eks는 2개의 vpc로 구성된다. ([VPC and Subnet Considerations](https://docs.aws.amazon.com/eks/latest/best-practices/subnets.html#_overview))
+  - aws-managed vpc: control plane 구성요소가 실행된다. 사용자 aws 계정에 보이지 않음
+  - customer-managed vpc: k8s no가 실행된다.
 - etcd node의 모든 저장 데이터는 aws ebs volume를 통해 저장되며 kms로 암호화된다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks는 etcd storage 크기를 8GiB로 설정한다. 이는 일반적인 환경에서 etcd의 최대 권장 사이즈다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks cluster insight는 eks, k8s의 best practice를 따를 수 있도록 권장 사항을 제공한다. 이를 위해 eks cluster에 대해 반복적으로 검사를 수행한다. eks를 업데이트 하기 전에 cluster insight를 확인하는 것을 권장한다. ([Cluster insights](https://docs.aws.amazon.com/eks/latest/userguide/cluster-insights.html))
@@ -440,6 +443,7 @@
 - vpc 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
   - vpc는 cluster, no, k8s resource를 위한 충분한 ip주소가 있어야 한다. 만약 vpc의 cidr보다 더 많은 ip가 필요할 경우 vpc에 cidr block을 추가할 수 있다. cluster 설정을 통해 cluster 생성 시 명시한 subnet과 security group을 변경 해 더 많은 ip를 사용할 수 있도록 할 수 있다. 하지만 cluster 생성 시 사용한 az 내에서만 변경 가능하다.
   - vpc의 DNS option(hostname, resoulution)이 모두 활성화되어야 한다. 그렇지 않으면 no가 cluster에 자신을 등록하지 못한다.
+- eks 생성 시 명시하는 subnet을 cluster subnet이라고 한다. no가 cluster subnet에서 실행될 수도 있지만 권장하지 않는다. 왜냐하면 eks 업그레이드 간 추가 eks-managed eni가 생성되는데 이를 보장하기 위해서다. /28 cidr를 갖는 cluster subnet을 별도로 할당하는 것을 권장한다. ([VPC and Subnet Considerations](https://docs.aws.amazon.com/eks/latest/best-practices/subnets.html#_overview))
 - cluster 생성 시 eks는 2-4개의 elastic network interface를 랜덤한 subnet에 자동 생성한다. cluster의 k8s 버전을 업데이트하는 경우 cluster 생성 시 만든 network interface를 삭제하고 동일 subnet 또는 다른 subnet에 새로운 network interface를 만든다. network interface가 생성되는 subnet을 제한하기 위해서는 2개의 subnet만 사용하면 된다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
 - cluster을 위한 subnet 요구 사항은 다음과 같다. ([VPC and subnet requirements](https://docs.aws.amazon.com/eks/latest/userguide/network-reqs.html#network-requirements-vpc))
   - 각 subnet은 최소 6개의 ip가 필요하지만 최소 16개를 권장한다.
