@@ -14,7 +14,7 @@ k8s 네트워크 모델은 여러 부분으로 구성된다.
 
 구형 container 시스템에서는 다른 host에 있는 container에 자동 연결 기능이 없었다. 따라서 container 간에 명시적으로 링크를 생성하거나, 다른 host의 container가 접근할 수 있도록 container port를 host port에 매핑해야 하는 경우가 많았다. k8s에서는 이런 작업이 필요 없다. k8s의 모델은 port 할당, 이름 지정, service discovery, 로드 밸런싱, 애플리케이션 설정, 마이그레이션 관점에서 po를 VM(가상 머신)이나 물리적 host처럼 취급할 수 있다는 것이다.
 
-이 모델 중 일부만 k8s 자체에서 구현된다. 나머지 부분에 대해서는 k8s가 API를 정의하지만, 해당 기능은 외부 구성요소에 의해 제공되며 그중 일부는 선택 사항이다.
+이 모델 중 일부만 k8s 자체에서 구현하고 나머지는 k8s가 API만 정의한다. 그리고 나머지 기능은 외부 구성 요소가 구현 및 k8s가 정의한 API를 이용한다.
 - po network namespace 설정은 cri를 구현하는 system-level 소프트웨어서 다룬다.
 - po network 자체는 po network 구현체에 의해 관리된다. 리눅스에서 대부분의 container runtime은 cni를 사용해 [po network 구현체](https://kubernetes.io/docs/concepts/cluster-administration/addons/#networking-and-network-policy)와 상호 작용하므로, 이러한 구현체들은 CNI plugin이라고 불린다.
 - k8s는 kube-proxy라는 기본 서비스 프록시 구현체를 제공하지만 일부 po network 구현체는 나머지 구현과 더 긴밀하게 통합된 자체 서비스 프록시를 대신 사용한다.

@@ -38,7 +38,7 @@ controller는 k8s API의 client다. k8s가 client이고 원격 서비스를 호�
 
 ![](https://kubernetes.io/docs/concepts/extend-kubernetes/extension-points.png)
 
-#### Key to the figure 
+#### Key to the figure
 1. 사용자는 주로 kubectl을 사용해 k8s API와 상호작용한다. 플러그인은 client의 동작을 customization한다. 다양한 client에 적용할 수 있는 일반적인 extension과 kubectl extension이 있다.
 2. kube-apiserver는 모든 요청을 처리한다. kube-apiserver의 extension point는 요청을 인증하거나, 내용에 따라 차단하거나 내용을 편집, 삭제 처리하는 것을 허용한다.
 3. kube-apiserver는 다양한 종류의 resource를 제공한다. po와 같이 내장된 resource는 k8s 프로젝트에 의해 정의되며 변경할 수 없다. 대신 API extension을 통해 cr을 추가할 수 있다.
