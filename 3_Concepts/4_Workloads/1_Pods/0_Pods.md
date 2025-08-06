@@ -1,6 +1,6 @@
 po는 k8s에서 생성 및 관리할 수 있는 가장 작은 단위의 배포 가능한 컴퓨팅 단위다.
 
-po는 공유 storage, 네트워크 리소스 및 실행 할 container에 대한 명세를 갖는 container의 그룹이다. po의 컨텐츠는 항상 같은 공간에 있으며 shared context에서 실행된다.
+po는 공유 storage, 네트워크 리소스 및 실행 할 container에 대한 명세를 갖는 container의 그룹이다. po의 컨텐츠는 항상 같은 공간에 있으며 shared context에서 실행된다. po는 애플리케이션에 특화된 "logical host"를 모델링한다. po는 비교적 tightly coupled 특성을 갖는 하나 이상의 애플리케이션 container가 포함된다. 비-클라우드 환경에서 동일한 물리적 또는 가상 머신에서 실행되는 애플리케이션은 클라우드 환경에서 애플리케이션이 동일한 logical host에서 실행되는 것에 비유할 수 있다.
 
 po는 애플리케이션 container 뿐만 아니라 po 실행 과정에서 동작하는 init container도 포함할 수 있다. 뿐만 아니라 디버깅을 위한 ephemeral container를 포함할 수 있다.
 
@@ -8,13 +8,13 @@ po는 애플리케이션 container 뿐만 아니라 po 실행 과정에서 동�
 > **Note**:  
 > po가 cluster의 각 no에서 실행될 수 있도록 container runtime을 설치해야 한다.
 
-po의 shared context는 리눅스 namespace, cgroup, 잠재적인 격리 요소(container를 격리하는 요소와 동일)의 집합이다. po context 안에서 각 애플리에키션은 추가 격리가 적용될 수도 있다.
+po의 shared context는 리눅스 namespace, cgroup, 잠재적인 격리 요소(container를 격리하는 요소)의 집합이다. po context 안에서 각 애플리에키션은 추가 격리가 적용될 수도 있다.
 
-docker와 비교했을 때 po는 공유 namespace, 공유 filesystem volume를 갖는 container의 집합과 유사하다.
+po는 공유 namespace, 공유 filesystem volume를 갖는 container의 집합과 유사하다.
 
 k8s cluster에서 po는 두 가지 주요 목적을 위해 사용한다.
-- Pods that run a single container: "one-container-per-Pod" 모델은 k8s에서 가장 일반적으로 사용한다. 이 케이스에서는 po를 단일 containwr에 대한 wrapper라고 생각할 수 있다. k8s는 container를 직접 관리하기 보다는 po를 관리한다.
-- Pods that run multiple containers that need to work together: po는 단단히 결합되어 있고 리소스를 공유해야 하는 여러 [multiple co-located containers](https://kubernetes.io/docs/concepts/workloads/pods/#how-pods-manage-multiple-containers)로 구성된 애프리케이션을 캡슐화할 수 있다. These co-located containers form a single cohesive unit.
+- Pods that run a single container: "one-container-per-Pod" 모델은 k8s에서 가장 일반적으로 사용한다. 이 케이스에서는 po를 단일 container에 대한 wrapper라고 생각할 수 있다. k8s는 container를 직접 관리하기 보다는 po를 관리한다.
+- Pods that run multiple containers that need to work together: po는 tightly coupled하고 리소스를 공유해야 하는 여러 [multiple co-located containers](https://kubernetes.io/docs/concepts/workloads/pods/#how-pods-manage-multiple-containers)로 구성된 애프리케이션을 캡슐화할 수 있다. These co-located containers form a single cohesive unit.
 
   일반적인 패턴은 아니며 container 간 결합성이 높은 경우에만 사용해야 한다.
   
@@ -41,7 +41,7 @@ po의 이름은 [DNS subdomanin](https://kubernetes.io/docs/concepts/overview/wo
 ### Pod OS
 po가 실행될 OS를 지정하기 위해 po의 `.spec.os.name` 필드를 `windows` 또는 `linux`를 설정해야 한다. 현재는 두 값만 지원한다.
 
-k8s v1.30에서 이 값은 po의 스케줄링에 영향을 미치지는 않는다. In any cluster where there is more than one operating system for running nodes, you should set the kubernetes.io/os label correctly on each node, and define pods with a nodeSelector based on the operating system label. The kube-scheduler assigns your pod to a node based on other criteria and may or may not succeed in picking a suitable node placement where the node OS is right for the containers in that Pod. The Pod security standards also use this field to avoid enforcing policies that aren't relevant to the operating system.
+k8s v1.33에서 `.spec.os.name`은 kube-scheduler가 po를 실행할 no를 선택하는 방식에 영향을 주지 않는다(스케줄링 용도의 필드가 아님). no를 실행하는 운영체제가 둘 이상인 cluster에서는 각 no에 `kubernetes.io/os` label과 `.spec.nodeSelector`를 사용해 po를 정의해 특정 os에 스케줄링 되도록 해야 한다. kube-scheduler는 다른 기준에 따라 po를 no에 할당하므로, 해당 po의 container에 적합한 운영체제를 갖춘 no를 배치하는 데 성공할 수도 있고 실패할 수도 있다. 또한, pss는 이 필드를 사용해 운영체제와 관련 없는 정책이 적용되는 것을 방지한다.
 
 ### Pods and controllers
 여러 po 생성 및 관리를 위해 workload resource를 사용할 수 있다. resource의 controller는 po의 replication, roll out, 실패 상황에서의 치유를 처리한다. 예를 들어 no가 실패되면 controller가 해당 no의 po 동작이 멈춤을 인지하고 대체 po를 생성한다. 그리고 scheduler는 정상 no에 대체 po를 스케쥴링한다.
@@ -80,12 +80,20 @@ po template을 수정하는 것은 이미 존재하는 po에는 직접적인 영
 
 ## Pod update and replacement
 k8s는 po를 workload resource 없이 관리하는 것을 제한하지 않는다. 동작중인 po의 일부 필드를 업데이트하는 것이 가능하다. 하지만 patch, replace와 같은 명령어에는 제한이 있다:
-- 대부분의 po medata는 불변이다. 예를 들어 namespace, name, uid, creationTimestamp 필드를 변경할 수 없다; generation 필드는 고유하며 현재 값보다 증가한 값을 업데이트 가능하다.
-- metadata.deletionTimestamp가 설정되었다면 metadata.finalizers 목록에 새로운 항목을 추가할 수 없다.
-- spec.containers[*].image, spec.initContainers[*].image, spec.activeDeadlineSeconds, spec.tolerations 외 po의 업데이트는 변경이 불가하다. spec.tolerations에 대해서는 새로운 항목을 추가할 수 있다.
-- spec.activeDeadlineSeconds 필드를 업데이트할 때 두 업데이트 타입이 가능하다:
+- 대부분의 po medata는 불변이다. 예를 들어 `.metadata.namespace`, `.metadata.name`, `.metadata.uid`, `.metadata.creationTimestamp` 필드를 변경할 수 없다.
+  - `.metadata.generation` 필드 값은 고유하다. 이 값은 시스템에 의해 자동으로 설정되는데 새로운 po는 1을 가지며, po의 `.spec`에서 변경 가능한 필드가 업데이트될 때마다 값이 1씩 증가한다. 만약 PodObservedGenerationTracking alpha feature gate가 활성화되어 있다면, po의 `.status.observedGeneration` 필드는 po 상태가 보고되는 시점의 `.metadata.generation` 값을 반영하게 된다.
+- `.metadata.deletionTimestamp`가 설정되었다면 `.metadata.finalizers` 목록에 새로운 항목을 추가할 수 없다.
+- `.spec.containers[*].image`, `.spec.initContainers[*].image`, `.spec.activeDeadlineSeconds`, `.spec.tolerations` 외 po의 업데이트는 변경이 불가하다. `.spec.tolerations`에 대해서는 새로운 항목을 추가할 수 있다.
+- `.spec.activeDeadlineSeconds` 필드를 업데이트할 때 두 업데이트 타입이 가능하다.
   1. 할당되지 않은 필드에 대해 양수로 설정
   2. 필드가 양수 값일 경우 더 작은 양수로 업데이트
+
+### Pod subresources
+위 업데이트 규칙은 일반적인 po 업데이트와 관련되어 있으며 일부 필드는 subresources를 통해 업데이트 가능하다.
+- Resize: The resize subresource allows container resources (spec.containers[*].resources) to be updated. See Resize Container Resources for more details.
+- Ephemeral Containers: The ephemeralContainers subresource allows ephemeral containers to be added to a Pod. See Ephemeral Containers for more details.
+- Status: The status subresource allows the pod status to be updated. This is typically only used by the Kubelet and other system controllers.
+ -Binding: The binding subresource allows setting the pod's spec.nodeName via a Binding request. This is typically only used by the scheduler.
 
 ## Resource sharing and communication
 po내 container 간에는 데이터 공유 및 통신이 가능하다.
@@ -98,8 +106,8 @@ po에 shared storage volume을 명시할 수 있다. po의 모든 container는 s
 
 container의 hostname은 po의 이름으로 설정된다.
 
-## Pod security settings 
-po, container에 보안을 위한 제한 사항을 설정하기 위해 `.spec.securityContext`, `.spec.containers[].securityContext` 필드를 사용할 수 있다. 예를 들어
+## Pod security settings
+po, container에 보안을 위한 제한 사항을 설정하기 위해 `.spec.securityContext`, `.spec.containers[*].securityContext` 필드를 사용할 수 있다. 예를 들어
 - Drop specific Linux capabilities to avoid the impact of a CVE.
 - Force all processes in the Pod to run as a non-root user or as a specific user or group ID.
 - Set a specific seccomp profile.
@@ -133,7 +141,7 @@ Pods in a Kubernetes cluster are used in two main ways:
 
 뿐만 아니라 보조 역할을 수행하는 [sidecar container](https://v1-30.docs.kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)를 가질 수도 있다.
 
-Enabled by default, the SidecarContainers feature gate allows you to specify restartPolicy: Always for init containers. Setting the Always restart policy ensures that the containers where you set it are treated as sidecars that are kept running during the entire lifetime of the Pod. Containers that you explicitly define as sidecar containers start up before the main application Pod and remain running until the Pod is shut down.
+기본적으로 활성화되어 있는 SidecarContainers feature gate는 init container에 `restartPolicy: Always`를 지정할 수 있도록 허용한다. Always 재시작 정책을 설정하면, 해당 container는 po의 전체 수명 주기 동안 계속 실행되는 sidecar로 취급된다. 이렇게 sidecar로 명시적으로 정의된 container는 메인 애플리케이션 container보다 먼저 시작하며, po가 종료될 때까지 계속 실행 상태를 유지된다.
 
 ## Container probes
 probe는 kubelet에 의해 주기적으로 container를 대상으로 수행된다. kubelet은 다른 유형의 probe를 수행할 수 있다.

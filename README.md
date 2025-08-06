@@ -1,6 +1,6 @@
 ## about docs
 - v1.31 버전 기준 작성
-- 3_Concepts/4_Workloads부터 정리 필요
+- 3_Concepts/4_Workloads/1_Pods/2_Init Containers부터 정리 필요
 
 ## Kubernetes
 ### general
@@ -84,9 +84,9 @@
   - route controller: route controller는 k8s cluster의 다른 no에 있는 container가 서로 통신할 수 있도록 cloud 내에서 route를 구성한다. cloud provider에 따라 route controller는 po 네트워크를 위해 ip 주소 CIDR block을 할당한다.
   - service controller: svc는 cloud에서 제공하는 load balancer, ip 주소, network packet filtering, target health check와 같은 cloud 구성 요소와 통합된다. service controller는 해당 구성 요소가 필요한 svc object를 생성할 때 cloud provider API와 상호 작용해 load balancer와 같은 인프라 구성 요소를 구성한다.
 - k8s는 resource 요청을 kube-apiserver가 다른 peer kube-apiserver로 proxy 처리할 수 있는 alpha 기능이 포함된다. 이 기능은 하나의 cluster에서 서로 다른 버전의 k8s에 대한 kube-apiserver가 있을 때(예를 들어, k8s의 새로운 release가 장기간 rollout 하는 동안) 유용하다. 이를 통해 cluster 관리자는 resource 요청(업그레이드 중에 수행)을 올바른 kube-apiserver로 direct함으로써 안전하게 업그레이드할 수 있는 가용성이 높은 cluster를 구성할 수 있다. 이 proxy를 사용하면 업그레이드 프로세스에서 발생할 수 있는 예기치 않은 404 Not Found 오류를 방지할 수 있다. 이 메커니즘을 mixed version proxy라고 부른다. ([Mixed Version Proxy](https://kubernetes.io/docs/concepts/architecture/mixed-version-proxy/))
-- kube-controller-manager 내 pod garbage collector(PodGC)는 terminated po(phase가 `Succeeded`, `Failed`)의 수가 --terminated-pod-gc-threshold(기본 값 12500)을 초과할 때 정리한다. 추가적으로 PodGC 아래 조건을 만족하는 po도 정리한다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-garbage-collection))
-  - 더 이상 존재하지 않는 no에 있는 고아 po
-  - unscheduled terminating po
+- kube-controller-manager 내 pod garbage collector(PodGC)는 terminated po(phase가 `Succeeded`, `Failed`)의 수가 --terminated-pod-gc-threshold(기본 값 12500)을 초과할 때 정리한다. 뿐만 아니라 아래 조건을 만족하는 po도 정리한다. PodGC는 po를 정리하는 과정에서, 아직 종료 단계(non-terminal phase)가 아닌 po를 Failed로 표시하기도 한다.
+  - orphan po: 더 이상 존재하지 않은 no에 binding된 경우(orphan po를 정리할 때는 '파드 중단 조건(Pod disruption condition)'을 추가함)
+  - 스케줄되지 않은 종료 중인 po
   - `node.kubernetes.io/out-of-service` taint가 있는 non-ready no에 있는 종료 중인 po
 - k8s에서 scheduling은 kubelet이 po를 실행할 수 있도록 적절한 no를 찾는 것을 말한다. preemption(선점)은 cluster 내 resource가 부족한 상황에서 우선 순위가 높은 po가 no에 스케줄링 될 수 있도록 우선 순위가 낮은 po를 종료하는 것을 말한다. eviction은 no에서 po를 종료하는 것을 말한다. pod disruption은 no에서 po가 자발적 또는 비자발적으로 종료되는 프로세스를 말한다. voluntary disruption은 사용자에 의해 의도적으로 수행된다. involuntary disruption은 의도적이지 않은 것으로 no의 리소스 부족과 같은 불가피한 문제 또는 실수로 인한 삭제로 발생할 수 있다. ([Scheduling, Preemption and Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/))
 - kube-scheduler는 k8s의 기본 scheduler이며 control plane의 구성 요소로 실행된다. kube-scheduler는 scheduling framework라는 plugin 아키텍처를 갖는다. kube-scheduler는 기본적으로 여러 plugin을 제공하며 추가적으로 사용자는 plugin을 개발하고 직접 kube-scheduler를 컴파일해서 사용할 수 있다. scheduling framework는 몇 가지 extension point을 정의한다. 스케줄러 plugin은 하나 이상의 extension point에서 호출되도록 등록한다. 이러한 plugin 중 일부는 스케줄링 결정을 변경할 수 있고 일부는 정보 제공에 불과하다. 하나의 po를 스케줄링하기 위한 프로세스는 2개의 phase(scheduling cycle, binding cycle)로 구성된다. scheduling cycle은 po를 위한 no를 선택하고 binding cycle은 해당 결정을 cluster에 적용한다. 이 두 cycle을 "scheduling context"라고 부른다. scheduling cyle은 내부적으로 크게 filtering, scoring 단계로 수행된다. kube-scheduler는 새로 생성되거나 아직 스케줄링 되지 않은(unscheduled) po를 실행할 최적의 no를 선택한다. po 또는 container가 요구 사항을 가질 수 있기 때문에 scheduler는 po의 특정 스케줄링 요구 사항을 충족하지 않는 no를 걸러낸다(filtering). 물론 po를 생성할 때 no를 지정할 수도 있지만 이는 일반적이지 않으며 특수한 경우에만 사용한다. cluster에서 po의 스케줄링 요구 사항을 충족(filtering 단계)하는 no를 feasible no라고 한다. feasible no가 없는 경우 scheduler가 po를 배치할 수 있을 때까지 po는 unscheduled 상태로 유지된다. scheduler는 po에 대한 feasible no를 모두 찾은 다음, 각 feasible no에 대해 일련의 함수를 실행해 점수를 계산하고(scoring), 가장 높은 점수를 받은 feasible no를 선택해 po를 할당한다. 동일한 점수를 가진 no가 여러 개인 경우 kube-scheduler는 이들 중 하나를 무작위로 선택한다. 그리고 kube-scheduler는 binding cycle을 통해 이러한 결정을 kube-apiserver에 알린다. k8s 1.7 이전에는 k8s binding 내장 리소스를 사용했지만 1.7에서 deprecated 됐으며 대신 po의 binding subresource를 사용한다. binding subresource를 통해 po와 no다 연결(binding)되고, 이로 인해 po의 `.spec.nodeName` 필드에 해당 no의 이름이 설정된다. ([Kubernetes Scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/#kube-scheduler), [Scheduling Framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/))
@@ -212,8 +212,19 @@
   - `PreStop`: API 요청(예를 들어 `kubectl delete`)이나 liveness/startup probe 실패, preemption, resource contention 등의 management event로 인해 container가 종료되기 전에 트리거된다(container는 Terminating 상태가 된다). container가 이미 terminated 또는 completed 상태인 경우에는 PreStop hook 요청이 실패하며, hook은 container를 중지하기 위한 TERM(SIGTERM) signal이 보내지기 이전에 완료되어야 한다. po의 `terminationGracePeriodSeconds`는 PreStop hook이 실행되기 전에 시작된다. 예를 들어 terminationGracePeriodSeconds가 60이고 hook가 실행을 완료하는 데 55초가 걸리고 signal을 수신하고 정상적으로 종료하는 데 10초가 걸리면, container는 정상적으로 중지되기 전에 SIGKILL을 수신해 container가 강제 종료될 것이다(terminationGracePeriodSeconds가 총 시간 55+10보다 짧기 때문).
 - hook handler의 로그는 po event에 노출되지 않는다. handler가 어떤 이유로 실패한다면 event를 브로드캐스트한다. PostStart의 경우 `FailedPostStartHook` event, PreStop의 경우 `FailedPreStopHook` event이다. ([Container Lifecycle Hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#debugging-hook-handlers))
 - po는 k8s에서 배포할 수 있는 가장 작은 단위로, 이미 실행 중인 po 내에 container를 배포할 수 없다. 물론 po에 포함된 container가 po 내에서 재시작 될 수 있다. po 내 container를 재시작하는 것과 po를 재시작하는 것과 혼동하면 안된다 po는 프로세스가 아니며 container를 구동하기 위한 환경이다. po는 삭제되기 전까지 지속된다. ([Pods](https://kubernetes.io/docs/concepts/workloads/pods/#working-with-pods))
+- `.spec.os.name`은 kube-scheduler가 po를 스케줄링 할 no의 os를 결정하는 데 사용되는 필드가 아니며 pss를 위해 사용된다. ([Pods](https://kubernetes.io/docs/concepts/workloads/pods/#pod-os))
 - 각 po에는 고유한 ip가 할당된다. po의 모든 container는 네트워크 ip주소, port를 포함하는 네트워크 namespace를 공유한다. po에 속한 container는 서로 localhost를 이용해 통신할 수 있다. container가 po 외부와 통신할 때 공유 네트워크 리소스를 어떻게 이용할지 조정해야한다. 또한 po 내 container끼리 SystemV semaphores, POSIX shared memory와 같은 표준 IPC를 이용해 통신할 수 있다. container가 다른 po의 container와 통신하기 위해서는 ip를 이용한 통신만 가능하다(OS 수준의 IPC를 이용하기 위해서는 설정 필요). ([Pods](https://kubernetes.io/docs/concepts/workloads/pods/#pod-networking))
 - static po는 kube-apiserver의 관찰 없이 특정 no의 kubelet daemon에 의해 관리된다. deploy와 같이 대부분의 po는 control plane에 의해 관리되는 반면 static po는 kubelet이 직접 관리한다. static po는 항상 특정 node의 kubelet에 한정된다. static po의 주된 용도는 자체 호스팅 control plane을 실행하는 것이다: 즉, kubelet을 사용해 개별 control plane 구성 요소를 감독한다. kubelet은 각 static po에 대해 kube-apiserver에 mirror po(kubelet에 의해 관리되는 static po를 추적하는 object)를 자동으로 생성한다. 이는 no에 실행되는 po가 kube-apiserver에서 볼 수 있음을 의미하지만 kube-apiserver를 통해 제어는 하지 못한다. static po의 `.spec`에서는 다른 API object를 참조할 수 없다(예를 들어 sa, cm, secret 등). ([Pods](https://kubernetes.io/docs/concepts/workloads/pods/#static-pods))
+- 기본적으로 활성화되어 있는 SidecarContainers feature gate는 init container에 `restartPolicy: Always`를 지정할 수 있도록 허용한다. Always 재시작 정책을 설정하면, 해당 container는 po의 전체 수명 주기 동안 계속 실행되는 sidecar로 취급된다. 이렇게 sidecar로 명시적으로 정의된 container는 메인 애플리케이션 container보다 먼저 시작하며, po가 종료될 때까지 계속 실행 상태를 유지된다. ([Pods](https://kubernetes.io/docs/concepts/workloads/pods/#how-pods-manage-multiple-containers))
+- po의 상태는 `.status.phase`(Pending, Running, Succeeded, Failed, Unknown)를 통해 확인할 수 있다. 그리고 po의 상태를 더 세분화해서 각 항목 별로 성공/실패 여부를 알려주는 `.status.conditions[*]`()를 제공한다. 뿐만 아니라 사용자 정의 condition(readiness gate)를 `.spec.readinessGates[*]`필드를 사용해 추가할 수 있다.container의 상태는 `.state.containerStatuses[*].state`(Waiting, Running, Terminated)를 통해 확인할 수 있다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase))
+  - po의 모든 container는 Ready 상태가 되었지만(readinessProbe 통과), readinessGates에 지정된 커스텀 조건 중 하나라도 False이거나 아직 설정되지 않았다면 kubelet은 po의 전체 상태는 "Not Ready"로 두지만, Pod의 conditions 필드에 ContainersReady라는 특별한 상태를 True로 설정한다. 이는 "po 내부의 애플리케이션들은 준비되었지만, 외부 의존성과 관련된 준비 조건이 아직 충족되지 않았다"는 것을 명확히 알려주는 유용한 신호다.
+- k8s는 po `.spec.restartPolicy`을 사용하여 po 내 container의 장애를 관리한다. 이 정책은 오류나 다른 이유로 container가 종료될 때 k8s가 어떻게 반응할지를 결정하며, 다음과 같은 순서로 진행한다. ([Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-restarts))
+  1. Initial crash: container에 문제가 발생하면, k8s는 po의 `.spec.restartPolicy`에 따라 즉시 재시작을 시도한다.
+  2. Repeated crashes: Initial crash 이후에도 container가 계속해서 실패하면, k8s는 후속 재시작에 대해 exponential back-off 지연을 적용한다. 이는 시스템에 과부하를 주는 무분별하고 반복적인 재시작 시도를 방지한다.
+  3. CrashLoopBackOff state: 이 상태는 현재 exponential back-off 메커니즘이 특정 container에 적용되고 있음을 나타낸다. 해당 container는 반복적으로 실패하고 재시작하는 '크래시 루프(crash loop)'에 빠져 있다.
+  4. Backoff reset: 만약 container가 특정 시간(10분) 동안 성공적으로 실행되면, k8s는 exponential back-off 지연 시간을 초기화하고, 이후에 발생하는 새로운 크래시는 첫 번째 크래시로 간주한다.
+- `.spec.restartPolicy`는 po 내 애플리케이션 container, init container에 적용된다. sidecar container는 po 레벨의 restartPolicy 필드를 무시한다. sidecar container는 init container 중 `.spec.initContainers[*].restartPolicy`(해당 필드 init container에만 사용 가능하며 값은 Always만 사용 가능) 가 Always인 container다. init container가 성공 종료하지 못한다면 po의 `.spec.restartPolicy`가 OnFailure, Always일 경우에만 재실행한다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy))
+- container를 종료시키는 데 사용되는 stop signal은 container image 내 STOPSIGNAL 명령어를 통해 정의할 수 있다. 만약 image에 stop signal이 정의되어 있지 않다면 container를 종료시키기 위해 container runtime의 기본 신호(containerd와 CRI-O 모두 SIGTERM)가 사용된다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-stop-signals))
 - po의 termination flow는 다음과 같다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination))
   1. kubectl을 사용해 po를 삭제한다(grace period(`.spec.terminationGracePeriodSeconds`)의 기본 값은 30s).
   2. kube-apiserver 내에서 po는 grace period와 함께 "dead"로 간주되는 시간으로 업데이트된다(grace period의 countdown이 시작된다). kubectl describe로 확인 시 po는 "Terminating"으로 표시된다. po가 실행되는 no의 kubelet은 해당 po가 terminating으로 표시된 것을 확인하고 po의 종료 프로세스를 시작한다.
@@ -226,6 +237,7 @@
       3. kubelet은 grace period를 0로 변경함으로써 po를 force deletion한다.
       4. kube-apiserver는 po object를 삭제한다.
 - force deletion(예를 들어 `kubectl delete --force --grace-period=0`)이 수행되면, kube-apiserver는 no에서 po가 종료되었다는 kubelet의 확인을 기다리지 않는다. kube-apiserver에서 즉시 po를 제거하므로 동일한 이름으로 새로운 po를 생성할 수 있다. 즉시 종료되도록 설정된 po는 no에서 강제 종료되기 전에 짧은 grace period가 제공된다. 이러한 삭제는 실행 중인 po를 즉시 종료 및 삭제하지만 실제로 종료가 됐는지 여부는 확인하지 않는다. 그렇기 때문에 해당 po가 no에 계속 남아있을 수도 있게 된다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-forced))
+- po에 하나 이상의 sidecar container(Always 재시작 정책을 가진 init container)가 포함된 경우, kubelet은 마지막 메인 container가 완전히 종료될 때까지 sidecar container에 TERM 신호를 보내는 것을 지연한다. sidecar container는 po spec에 정의된 역순으로 종료된다. ([Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#termination-with-sidecars))
 - po는 누군가에 의해 삭제되지 않는한 사라지지 않는다. 물론 불가피한 하드웨어 또는 시스템 소프트웨어 오류가 있을 수 있으며 이러한 상황을 involuntary disruption(비자발적 중단)이라고 부른다(예를 들어 node pressure eviction). 이와 반대로 사용자의 동작으로 인한 상황을 voluntary disruption(자발적 중단)이라고 부른다. k8s는 자발적 중단이 자주 발생하는 경우에도 고가용성 애플리케이션을 실행하는 데 도움이 되는 pdb를 제공한다. 모든 자발적 중단이 pdb에 연관되는 것은 아니다. 예를 들어 deploy, po에 대한 삭제는 pdb를 무시한다. pdb는 자발적 중단으로 일시에 중지되는 replica의 갯수를 제한하는 정책을 갖는다. 비자발적 중단은 pdb로는 막을 수 없지만 budget은 차감된다. 이러한 불가피한 상황을 애플리케이션의 비자발적 중단(involuntary disruption)이라고 부른다. deploy, sts의 rolling upgrade는 pdb의 제한을 받지 않는다. ([Disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/))
 - pdb의 `.spec.maxUnavailable`, `.spec.minAvailable`은 갯수 또는 퍼센트 값을 가질 수 있다. 퍼센트 값일 경우 소수점 값을 올림처리해서 계산한다. pdb에는 두 필드 중 1개만 사용해야 한다. ([Disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-conditions))
 - kubelet은 svc, po에 대한 cluster 내부 DNS record르 생성한다. kubelet은 pod의 `/etc/resolv.conf`을 설정해 pod가 cluster 내부 DNS record를 조회할 수 있도록 설정한다. 아래는 예시다.
@@ -360,13 +372,13 @@
       3. single node consolidation: 1개의 node를 가격이 더 낮은 1개의 node로 교체
     - consolidation은 node를 통합하는 작업이다. karpenter는 1개의 node를 총합의 가격이 낮은 여러개의 node로 분리하는 작업은 수행하지 않는다. ([GitHub Issuse](https://github.com/aws/karpenter-provider-aws/issues/5304))
 - hybrid node를 제외하고 node는 cluster 생성 시 명시한 subnet과 동일한 vpc에 존재해야 한다(동일한 subnet에 존재할 필요는 없다). ([Manage compute](https://docs.aws.amazon.com/eks/latest/userguide/eks-compute.html))
-- eks는 eks optimized ami를 제공한다. 이 ami은 eks 관련 `containerd`, `kubelet`, `aws iam authenticator` 구성요소를 포함하며, eks control plane을 찾아 연결을 시도하는 특별한 `bootstrap.sh`(`max-pods-calculator.sh`도 포함) script를 포함한다. ami 사용자는 script의 argument를 이용해 kubelet의 flag를 설정할 수 있다. ([Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html))
+- eks는 eks optimized ami를 제공한다. 이 ami은 eks 관련 `containerd`, `kubelet`, `aws iam authenticator` 구성요소를 포함하며 eks control plane을 찾아 연결을 시도하는 특별한 `bootstrap.sh`, `max-pods-calculator.sh` script(al2 기준)를 포함한다. script의 argument를 이용해 kubelet의 flag를 설정할 수 있다. ([Self-managed nodes](https://docs.aws.amazon.com/eks/latest/userguide/worker.html))
 - managed node group의 특성은 다음과 같다. ([Managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html))
   - 사용자 대신 no의 provision과 lifecycle 관리를 수행한다. 뿐만 아니라 ec2의 업데이트와 종료 시 사용자 대신 자동으로 no를 drain한다.
   - auto scaling group을 이용해 no를 사용자가 정의한 az에 고루 분포되도록 실행한다(az rebalance 기능).
   - no의 health 모니터링 및 auto repair와 같은 기능을 제공한다.
   - eks는 managed node group의 no가 cluster autoscaler에 의해 auto-discovery 대상이 될 수 있도록 자동으로 tag를 추가한다.
-  - managed node 생성 시 사용자의 launch template을 사용할 수 있다. 사용하지 않을 경우 launch template이 자동 생성된다. 자동 생성된 launch template을 수정하는 것, 나중에 node group 생성시 사용하는 것을 권장하지 않으며 오류가 발생할 수 있다.
+  - managed node 생성 시 custom launch template을 사용할 수 있다. 사용하지 않을 경우 eks가 기본 launch template을 생성 및 사용한다. 자동 생성된 launch template을 수정하는 것, 나중에 node group 생성시 사용하는 것을 권장하지 않으며 오류가 발생할 수 있다.
   - eks optimized ami를 사용하는 경우 새로운 릴리즈가 있을 경우 자동으로 업데이트를 수행하지는 않으며 사용자가 변경된 ami를 사용하도록 managed node group 업데이트를 수행해야 한다.
   - aws outpost, wavelength에 배포할 수 없으며(self-managed node는 가능) local zone에는 가능하다.
   - ec2 instsance status check에 실패하는 경우 eks는 에러 코드를 반환한다.
@@ -384,7 +396,31 @@
     - spot capacity pool(동일 az와 인스턴스 타입을 갖는 사용되지 않는 ec2 인스턴스 집합)에서 최적의 spot node를 provision하기 위해 k8s 1.28 이후 버전부터는 allocation strategy을 pco(`price-capacity-optimized`)로 설정한다.
     - 모든 no에 `eks.amazonaws.com/capacityType: SPOT` label을 추가한다.
   - spot 인스턴스를 사용하는 경우 가용성을 최대로 보장하기 위해 여러 인스턴스 타입 사용을 권장한다.
-  - launch template에 ami를 지정하지 않고 managed node group을 만드는 경우(즉 managed node group 생성 시 eks optimized ami를 설정) 인스턴스 타입에 따른 `.maxPods` 값을 계산하고 vCPU 개수에 따라 최대 값을 제한한다(30개 이하인 경우 110, 30개보다 많은 경우 250으로 제한). managed node gorup이 생성한 launch template의 eks user data를 통해 확인할 수 있다. managed node group의 ami 타입 설정을 사용하지 않고 launch template에 ami id를 명시하는 경우 사용자는 `bootstrap.sh`(eks optimized ami의 경우) 또는 kubelet 명령어를 사용해 cluster에 join할 수 있도록 해야 한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
+  - custom launch template을 사용해 사용자는 node group에 대한 상세 커스터마이징을 수행할 수 있다.
+  - custom launch template에 ami를 지정하지 않고 managed node group을 만드는 경우(즉 managed node group 생성 시 설정한 eks optimized ami를 사용) eks optimized ami에 내장된 `bootstrap.sh`(al2 기준)은 인스턴스 타입에 따른 `.maxPods`(kubelet flag) 값을 계산하고 vCPU 개수에 따라 최대 값을 제한한다(30개 이하인 경우 110, 30개보다 많은 경우 250으로 제한). managed node group의 ami 타입 설정을 사용하지 않고 launch template에 ami id를 명시하는 경우 사용자는 `bootstrap.sh`(al2) 또는 kubelet 명령어를 사용해 cluster에 join할 수 있도록 해야 한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
+  - custom launch tempalte을 사용하는 경우 아래 조건을 만족하는 경우 imds를 비활성화하는 것을 권장한다(확인 시, eks api가 생성하는 launch template에는 imds가 비활성화 되어 있다).
+    - sa에 iam role을 할당하고 po가 최소한의 권한만 갖도록 설정이 필요한 경우
+    - po가 ec2 imds 접근이 필요하지 않는 경우(예를 들어 region 확인)
+  - custom launch template에 ami를 명시하지 않는 경우, managed node group은 인스턴스 타입에 따른 최대 po 개수를 계산한다(kubelet의 `.maxPods` 값 계산 및 사용). al2의 경우 launch template 내 `bootstrap.sh`에서 수행하지만 al2023의 경우 launch template에 계산된 값이 설정된다(만약 여러 인스턴스 타입을 사용하는 경우 가장 작은 값이 모든 node에 적용). ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
+    - al2023의 경우 eks가 생성하는 launch template 내 user data는 다음과 같다. 즉 managed node group에 사용될 여러 인스턴스 타입의 maxPods 값 중 가장 작은 값을 user data에 사용한다.
+      ``` yaml
+      apiVersion: node.eks.aws/v1alpha1
+      kind: NodeConfig
+      spec:
+        cluster:
+          name: my-cluster
+          apiServerEndpoint: https://example.com
+          certificateAuthority: Y2VydGlmaWNhdGVBdXRob3JpdHk=
+          cidr: 10.100.0.0/16
+        kubelet:
+          config:
+            maxPods: 35
+            clusterDNS:
+              - 10.100.0.10
+          flags:
+            - "--node-labels=eks.amazonaws.com/sourceLaunchTemplateVersion=1,eks.amazonaws.com/nodegroup-image=ami-00aa0ede823b748b9,eks.amazonaws.com/capacityType=ON_DEMAND,eks.amazonaws.com/nodegroup=my-cluster-ng,eks.amazonaws.com/sourceLaunchTemplateId=lt-0df8d400bb6b40a81"
+      ```
+  - custom launch template에 ami를 명시하는 경우, 최대 po 개수를 명시해야 한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
   - 다음 상황에서 managed node group 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node group을 새로운 launch template 버전을 사용하도록 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
   - managed node group의 업그레이드는 4개의 phase를 수행한다. managed node group의 모든 변경이 아래 단계를 수행하는 것은 아니다. 예를 들어 label 수정과 같은 작업은 launch template 버전을 새롭게 생성하지만 새로운 node를 띄우는 작업부터는 수행하지 않으며 기존 node에 수정된 label 정보를 반영한다. ([Update behavior details](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-update-behavior.html))
     - setup phase
@@ -423,20 +459,22 @@
     - scale down phase
       - 업데이트 전의 상태로 되돌리기 위해 auto scaling group의 maximum size, desired size를 원래 값으로 변경한다. If the Upgrade workflow determines that the Cluster Autoscaler is scaling up the node group during the scale down phase of the workflow, it exits immediately without bringing the node group back to its original size.
   - managed node group을 삭제하면 eks는 가장 먼저 auto scaling group의 minimum, maximum, desired size를 0으로 설정한다. 각 인스턴스가 terminate 되기 전에 eks는 drain을 수행한다. po가 몇 분이 지나도 drain되지 않으면 eks는 auto scaling group을 통해 인스턴스를 종료한다. 모든 인스턴스가 terminate되고 auto scaling group이 삭제된다. ([Delete](https://docs.aws.amazon.com/eks/latest/userguide/delete-managed-node-group.html))
-  - custom launch template을 사용해 managed node group을 배포할 수 있다. 이를 통해 사용자는 kubelet의 flag(eks optimized ami) 설정, no가 속한 subnet과 다른 cidr를 통한 po ip 할당, 사용자 정의 ami 설정, 사용자 정의 cni 배포를 수행할 수 있다. 뿐만 아니라 다른 버전의 launch template로 변경해 managed node group을 업데이트할 수 있다. custom launch template을 명시하지 않을 경우 eks는 기본 값을 갖는 launch template을 사용하며 사용자가 직접 수정하지 않는 것을 권장한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html))
+  - custom launch template을 사용해 managed node group을 배포할 수 있다. 이를 통해 사용자는 kubelet의 flag(eks optimized ami) 설정, no가 속한 subnet과 다른 cidr를 통한 po ip 할당, 사용자 정의 ami 설정, 사용자 정의 cni 배포를 수행할 수 있다. 뿐만 아니라 다른 버전의 launch template로 변경해 managed node group을 업데이트할 수 있다. custom launch template을 명시하지 않을 경우 eks는 기본 값을 갖는 launch template을 사용하며 사용자가 직접 수정하지 않는 것을 권장한다. custom launch template을 사용하는 managed node group은 직접 업데이트할 수 없다. 대신 custom launch template을 사용하는 신규 managed node group을 만들어야 한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html))
   - custom launch template을 사용하는 경우 일부 설정이 managed node group 설정과 대응되는 부분이 있다. 그렇기 때문에 사용자는 launch template 또는 managed node group에 설정해야 하는 정보를 알아야 하며 두 곳에 모두 설정 가능한 경우 한 곳에만 설정해야 한다. 이를 어길 경우 managed node group의 생성, 업데이트가 실패하게 된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
   - custom launch template에 인스턴스 타입을 0-1개만 지정할 수 있다. managed node group 설정에서는 0-20개의 인스턴스 타입을 지정할 수 있다. 만약 두 곳에서 모두 지정하지 않으면 기본적으로 t3.medium을 사용하게 된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
-  - 기본적으로 pod가 imds(ec2 instance metadata service)에 대한 접근을 방지하는 것을 권장한다(hop limit을 1로 설정). no에서 실행되는 container가 imds에 접근이 필요한 경우 hop limit을 2로 설정한다. custom launch template을 사용하지 않는 경우 생성되는 launch template에는 해당 설정이 자동적으로 적용된다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#_install_kubernetes_add_ons), [Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
   - launch template은 인스턴스 레벨의 security group 또는 eni 레벨의 security group을 지정할 수 있다. 만약 launch template에 security group을 설정할 경우 eks는 managed node group의 node에 cluster security group을 추가하지 않기 때문에 eks control plane과의 정상적인 통신을 위해 security group에 관련 규칙도 추가해야 한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-security-groups))
-  - managed node group에 사용할 launch template에 ami id를 지정하지 않는 경우 user data는 ami(amazon linux ami의 경우 MIME multi-part archive, bottlerocket ami의 경우 toml)에 맞는 형식으로 작성해야 한다. 왜냐하면 eks가 no가 cluster에 join하는 데 필요한 eks user data와 병합하기 때문이다. 추가적으로 kubelet을 시작하거나 수정하는 명령어를 사용하면 안된다. no가 cluster에 join하기 위한 kubelet 관련 작업은 eks user data에서 자동으로 수행하기 때문이다. launch template에 ami를 설정하는 경우에는 eks user data를 병합하지 않기 때문에 no가 cluster에 join할 수 있도록 user data에 kubelet 실행 관련 명령어를 실행해야 한다(이 경우 ami에 맞는 형식을 따를 필요가 없음). 이 경우 사용자는 kubelet 명령어에 여러 flag를 설정할 수 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-user-data))
+  - launch template 내 user data는 `cloud-init`을 사용한다. managed node group에 사용되는 launch template의 user data는 amazon linux ami의 경우 MIME multi-part archive, Bottlerocket ami의 경우 TOML 포맷이어야 한다. 왜냐하면 eks가 no가 cluster에 join하는 데 필요한 eks user data와 병합하기 때문이다. 추가적으로 kubelet을 시작하거나 수정하는 명령어를 사용하면 안된다. no가 cluster에 join하기 위한 kubelet 관련 작업은 eks user data에서 자동으로 수행하기 때문이다. launch template에 ami를 설정하는 경우에는 eks user data를 병합하지 않기 때문에 no가 cluster에 join할 수 있도록 user data에 kubelet 실행 관련 명령어를 실행해야 한다(이 경우 ami에 맞는 형식을 따를 필요가 없음). 이 경우 사용자는 kubelet 명령어에 여러 flag를 설정할 수 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-user-data))
+  - eks가 생성한(필요할 경우 병합) user data는 콘솔에서 확인이 가능하다.
   - launch template에 ami를 지정하는 경우 아래와 같은 제한이 있다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#mng-ami-id-conditions))
-    - launch template 내 ami를 지정과 지정하지 않는 것에 대한 변경은 불가하며 새로운 node group을 만들어야 한다.
+    - launch template 내 ami를 지정과 지정하지 않는 것에 대한 변경은 불가하며 이를 위해 신규 node group을 만들어야 한다.
     - aws console에서 새로운 ami 버전에 대한 알림을 받을 수 없다.
     - managed node group의 taint 설정이 비동기적으로 설정될 수 있다. no가 cluster에 join하기 전에 taint를 적용하기 위해서는 kubelet 명령어에 `--register-with-taints` flag를 사용해야 한다.
+    - imds가 2로 설정된다.(활성화/비활성화는 확인 필요)
 - 여러 ec2 인스턴스 타입에 대한 지원을 위해 eks optimized ami의 여러 release를 제공한다. eks에서 지원하는 인스턴스 타입을 선택하기 위해 아래 내용을 고려한다. ([Amazon EC2 instance types](https://docs.aws.amazon.com/eks/latest/userguide/choosing-instance-type.html))
   - Number of instances in a node group: 일반적으로 ds가 많은 경우 큰 인스턴스를 적게 운영하는 것이 좋다.
+  - Operating system: Linux, Windows, Bottlerock에 따라 지원하는 인스턴스 타입을 확인 및 리뷰한다.
   - Hardware architecture: eks optimized ami에서 지원하는지 확인한다.
-  - Maximum number of Pods: vpc cni를 사용하는 경우 각 po는 ip를 할당받는다. 인스턴스 타입마다 제공하는 ip의 개수가 인스턴스어세 실행할 수 있는 최대 po의 개수를 결정하는 요소다. `max-pods-calculator.sh`를 사용헤 이를 직접 계산할 수 있다. aws nitro system은 일반적으로 non-nitro system 인스턴스 타입보다 더 많은 ip를 할당할 수 있다. vpc cni의 ip prefix 기능을 사용해 더 많은 ip를 사용할 수도 있다.
+  - Maximum number of Pods: vpc cni를 사용하는 경우 각 po는 ip를 할당받는다. 인스턴스 타입마다 제공하는 ip의 개수가 인스턴스에서 실행할 수 있는 최대 po의 개수를 결정하는 요소다. `max-pods-calculator.sh`를 사용헤 이를 직접 계산할 수 있다. aws nitro system은 일반적으로 non-nitro system 인스턴스 타입보다 더 많은 ip를 할당할 수 있다. vpc cni의 ip prefix 기능을 사용해 더 많은 ip를 사용할 수도 있다.
   - Version of the Amazon VPC CNI add-on that you’re running: vpc cni 버전마다 지원하는 인스턴스 타입이 다르다.
   - Whether you’re using security groups for Pods: security groups for pods를 모든 인스턴스 타입이 지원하는 것은 아니다.
 - node health 정리
@@ -479,8 +517,6 @@
 - eks cluster 생성 시 `AmazonEKSClusterPolicy` policy를 permission으로 갖는 eks cluster iam role이 있어야 한다. ([Cluster IAM role](https://docs.aws.amazon.com/eks/latest/userguide/cluster-iam-role.html))
 - eks ec2 instance를 node로 사용하는 경우 kubelet은 instance profile을 사용해 aws api를 호출해 얻은 정볼르 사용해 cluster에 join한다. node 생성 시 `AmazonEKSWorkerNodePolicy`, `AmazonEC2ContainerRegistryPullOnly` policy를 permission으로 갖는 eks node iam role이 있어야 한다. ([Node IAM role](https://docs.aws.amazon.com/eks/latest/userguide/create-node-role.html))
 
-## EKS best practice
-
 ## 요약
 - k8s의 autoscaling 옵션: pod hpa, vpa, cluster autoscaler, addon resizer
 - linux container는 격리를 위해 namespace, cgroup(control group) 기술을 사용한다.
@@ -500,7 +536,7 @@
 - po의 manifest 중 spec.containers[\*].ports[\*].containerport는 container가 노출하는 포트 정보를 명시하기만 할 뿐 다른 기능은 없다. 이를 생략한다고 해서 포트를 통해 po에 연결할 수 있는 여부에 영향을 미치지 않는다.
 - po 내 container는 app container, init container, sidecar container가 있다. app container는 `.spec.containers`, init container, sidecar container는 `.spec.initContainers` 필드를 사용해 정의한다. sidecar container는 `.spec.initContainers[].restartPolicy`가 Always인 init container다. `.spec.restartPolicy`는 app container, init container에만 영향을 미친다. `.spec.restartPolicy`가 OnFailure, Always일 경우 init container에게 모두 OnFailure로 적용된다.
 - container 로그는 하루 단위, 10MB 크기 기준으로 롤링(rolling)된다.
-- svc의 .spec.selctor는 .spec.type이 ClusterIP, NodePort, LoadBalancer일 떄만 적용됨. ExternalName일 때는 무시된다고 documentation에 명시되어 있지만, ep는 생성됨을 확인(물론 프록시는 되지 않음). 
+- svc의 .spec.selctor는 .spec.type이 ClusterIP, NodePort, LoadBalancer일 떄만 적용됨. ExternalName일 때는 무시된다고 documentation에 명시되어 있지만, ep는 생성됨을 확인(물론 프록시는 되지 않음).
 - svc의 .spec.selector가 없는 svc는 일반적인 svc와 동일하게 동작한다. 하지만 ep를 자동으로 생성하지 않으며 사용자가 직접 생성/관리해야 하는 책임이 있다.
 - svc의 .spec.type을 ExternalName으로 바꾸거나 반대로 바꾸지 않는 이상 svc가 수정되더라도 clusterIP는 고정 값이다.
 - svc의 .spec.clusterIP는 .spec.type이 NodePort, ClusterIP, LoadBalancer일 때 자동 할당되거나 사용자가 설정할 수 있다.
