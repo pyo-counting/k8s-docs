@@ -31,7 +31,7 @@ kube-apiserver가 kubelet과 안전하게 통신, 인증을 위해 client certif
 > **Note**:  
 > front-proxy certificate는 [an Extension API server](https://kubernetes.io/docs/tasks/extend-kubernetes/setup-extension-api-server/)를 사용할 경우에만 필요하다.
 
-etcd도 mutual TLS를 구현 및 사용한다.
+etcd는 clinet, peer의 인증 목적을 위해 mutual TLS를 구현한다.
 
 ## Where certificates are stored
 kubeadm을 사용해 k8s를 설치할 경우 대부분의 certificate는 `/etc/kubernetes/pki`에 저장된다. 해당 문서에서의 경로는 모두 해당 디렉토리의 상대경로다. 예외적으로 사용자를 위한 certificate는 `/etc/kubernetes`에 위치한다.
