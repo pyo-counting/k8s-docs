@@ -35,6 +35,8 @@ pv가 생성되면 k8s는 zone과 관련된 모든 pv에 label을 자동 추가�
 
 zone label을 추가하는 방법은 cloud provider, storage provisioner에 따라 달라질 수 있다. 정확한 설정을 위해서는 관련 문서를 참고해야한다.
 
+kube-scheduler의 NoVolumeZoneConflict 로직은 pv의 label, `.spec.nodeAffinity` 정보를 참조해 po가 위치할 az에 존재하는 no에 po를 할당한다. pv의 az 정보를 나타내기위해 label, `.spec.nodeAffinity`을 이용할 수 있으며 해당 정보를 추가하는 것은 cloud provider, storage provisioner에 따라 다르다. aws-ebs-csi-driver의 경우 label 대신 `.spec.nodeAffinity` 필드를 사용해 az 정보를 나타낸다.
+
 You can specify a StorageClass for PersistentVolumeClaims that specifies the failure domains (zones) that the storage in that class may use. To learn about configuring a StorageClass that is aware of failure domains or zones, see [Allowed topologies](https://kubernetes.io/docs/concepts/storage/storage-classes/#allowed-topologies).
 
 ## Networking
