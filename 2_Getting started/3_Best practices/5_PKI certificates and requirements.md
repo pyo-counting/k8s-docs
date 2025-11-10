@@ -40,7 +40,7 @@ kubeadm을 사용해 k8s를 설치할 경우 대부분의 certificate는 `/etc/k
 kubeadm이 모든 certificate를 만드는 대신 단일 root CA를 이용해 직접 생성하거나 필요한 모든 certificate를 직접 제공할 수 있다. CA 생성 방법은 [Certificates](https://kubernetes.io/docs/tasks/administer-cluster/certificates/)를 참고한다.
 
 ### Single root CA
-관리자가 직접 관리할 수 있는 단일 root CA를 생성할 수 있다. 이 root CA를 이용해 intermediate CA를 생성한 후, 이후의 작업은 k8s에 위임할 수 있다.
+관리자가 직접 관리할 수 있는 단일 root CA를 생성할 수 있다. 이 root CA를 이용해 intermediate CA를 생성한 후, 이후의 필요한 인증서 생성 작업은 k8s에 위임할 수 있다.
 
 필요 CA 목록:
 | path                   | Default CN                | description                    |
@@ -110,7 +110,7 @@ CA private key를 cluster에 복사하기 싫다면 직접 모든 certificate를
 ```
 
 ## Configure certificates for user accounts
-아래 관리자 계정, sa를 반드시 설정해야 한다.
+아래 관리자 계정은 반드시 직접 설정해야 한다.
 | filename                | credential name            | Default CN                         | O (in Subject) |
 |-------------------------|----------------------------|------------------------------------|----------------|
 | admin.conf              | default-admin              | kubernetes-admin                   | \<admin-group> |
@@ -118,3 +118,43 @@ CA private key를 cluster에 복사하기 싫다면 직접 모든 certificate를
 | kubelet.conf            | default-auth               | system:node:\<nodeName> (see note) | system:nodes   |
 | controller-manager.conf | default-controller-manager | system:kube-controller-manager     |                |
 | scheduler.conf          | default-scheduler          | system:kube-scheduler              |                |
+
+> **Note**:  
+> kubelet.conf 파일의 \<nodeName> 값은 kubelet이 kube-apiserver에 no를 등록할 때 제공하는 no 이름 값과 정확히 일치해야 한다. 상세 내용은 [Node Authorization](https://kubernetes.io/docs/reference/access-authn-authz/node/)을 참고한다.
+
+> **Note**:  
+> 위 예시에서 <admin-group>은 구현 방식에 따라 다릅니다. 일부 도구는 기본 admin.conf의 인증서를 system:masters 그룹에 속하도록 서명합니다. system:masters는 Kubernetes의 권한 부여 계층(RBAC 등)을 우회할 수 있는 일종의 긴급(super user) 그룹입니다. 또한 일부 도구는 이 슈퍼 유저 그룹에 바인딩된 인증서를 가진 별도의 super-admin.conf를 생성하지 않습니다.
+>
+> kubeadm은 두 관리자를 위한 인증서를 모두 생성한다. 첫 번째는 admin.conf kubeconfig 파일에서 사용되며 `Subject: O = kubeadm:cluster-admins, CN = kubernetes-admin` 값을 갖는다. ₩kubeadm:cluster-admins₩는 cluster-admin ClusterRole에 바인딩된 custom 그룹이다. 이 파일은 kubeadm으로 관리되는 모든 control plane 머신에서 생성된다.
+>
+> 두 번째는 super-admin.conf에서 사용되며 `Subject: O = system:masters, CN = kubernetes-super-admin` 값을 갖는다. 이 파일은 kubeadm init을 호출한 no에서만 생성된다.
+
+1. 각 CN, O에 대해 x509 인증서/key 쌍을 생성 및 인증한다(`kubernetes-ca` 인증서로 인증).
+2. 각 설정에 대해 아래 kubectl 명령어를 통해 kubeconfig 파일을 설정한다.
+``` sh
+KUBECONFIG=<filename> kubectl config set-cluster default-cluster --server=https://<host ip>:6443 --certificate-authority <path-to-kubernetes-ca> --embed-certs
+KUBECONFIG=<filename> kubectl config set-credentials <credential-name> --client-key <path-to-key>.pem --client-certificate <path-to-cert>.pem --embed-certs
+KUBECONFIG=<filename> kubectl config set-context default-system --cluster default-cluster --user <credential-name>
+KUBECONFIG=<filename> kubectl config use-context default-system
+
+```
+
+파일들은 아래 용도로 사용된다.
+| Filename                | Command                 | Comment                                                             |
+|-------------------------|-------------------------|---------------------------------------------------------------------|
+| admin.conf              | kubectl                 | Configures administrator user for the cluster                       |
+| super-admin.conf        | kubectl                 | Configures super administrator user for the cluster                 |
+| kubelet.conf            | kubelet                 | One required for each node in the cluster.                          |
+| controller-manager.conf | kube-controller-manager | Must be added to manifest in manifests/kube-controller-manager.yaml |
+| scheduler.conf          | kube-scheduler          | Must be added to manifest in manifests/kube-scheduler.yaml          |
+
+아래는 실제 파일의 경로다.
+``` sh
+/etc/kubernetes/admin.conf
+/etc/kubernetes/super-admin.conf
+/etc/kubernetes/kubelet.conf
+/etc/kubernetes/controller-manager.conf
+/etc/kubernetes/scheduler.conf
+```
+
+1. any other IP or DNS name you contact your cluster on (as used by kubeadm the load balancer stable IP and/or DNS name, kubernetes, kubernetes.default, kubernetes.default.svc, kubernetes.default.svc.cluster, kubernetes.default.svc.cluster.local
