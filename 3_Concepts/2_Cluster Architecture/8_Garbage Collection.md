@@ -58,7 +58,7 @@ k8s는 kubelet의 일부인 image manager가 cadvisor와 협동하여 모든 ima
 `.imageGCHighThresholdPercent` 값을 초과한 디스크 사용량은 마지막으로 사용된 시간을 기준으로 오래된 image 순서대로 삭제하는 gc를 트리거한다. kubelet은 디스크 사용량이 `.imageGCHighThresholdPercent` 값에 도달할 때까지 image를 삭제한다.
 
 ## Garbage collection for unused container images
-alpha 기능으로 디스크 사용량과 무관하게 로컬에 있는 사용되지 않는 image의 최대 시간을 설정할 수 있다. 이는 각 no의 kubelet에 대한 설정이다.
+beta 기능으로 디스크 사용량과 무관하게 로컬에 있는 사용되지 않는 image의 최대 시간을 설정할 수 있다. 이는 각 no의 kubelet에 대한 설정이다.
 
 이 기능을 사용하기 위해 kubelet의 `.ImageMaximumGCAge` feature gate를 활성화하고 kubelet 설정 파일에서 `.ImageMaximumGCAge` 필드를 사용하면 된다.
 

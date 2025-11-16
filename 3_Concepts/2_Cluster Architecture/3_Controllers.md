@@ -9,7 +9,7 @@ k8s에서 controller는 cluster의 상태를 관찰 한 다음 경우에 따라 
 ## Controller pattern
 controller는 적어도 1개의 k8s의 resource 타입을 추적한다. 이러한 object는 `.spec` 필드를 통해 desired state를 표현한다. 해당 resoure에 대한 controller는 object의 current state를 `.sepc`에 정의된 desired state에 가깝게 유지하기 위한 책임을 갖는다.
 
-이를 위해 controller는 일반적으로 kube-apiserver를 통해 제어하지만 controlelr 자체에서 직접 제어할 수도 있다. 관련된 내용은 아래에서 살펴본다.
+이를 위해 controller는 일반적으로 kube-apiserver를 통해 제어하지만 controller 자체에서 직접 제어할 수도 있다. 관련된 내용은 아래에서 살펴본다.
 
 ### Control via API server
 job controller는 k8s에 내장된 controller다. 내장된 controller는 kube-apiserver와 상호 작용함으로써 상태를 관리한다.

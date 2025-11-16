@@ -45,8 +45,8 @@ kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설�
 - `.registerWithTaints`: no의 taints 목록(`<key>=<value>:<effect>`를 ,로 구분). `.registerNode`가 false일 경우 동작하지 않는다.
 - `--node-ip`: (Optional) no의 ip 주소. no의 여러 ip주소를 사용할 수 있으며 dual-stack cluster의 경우 [configure IPv4/IPv6 dual stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#configure-ipv4-ipv6-dual-stack)를 참고한다. 이 flag를 명시하지 않으면 no의 기본 ipv4 주소를 사용하고 ipv4 주소가 없으면 ipv6 주소를 사용한다.
 - `--node-labels`: no의 label ([NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)에 의해 강제되는 label 규칙도 있다)
-- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인(변화가 있는지)하는 주기. 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
-- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트하는 주기. kubelet은 no의 변화가 감지되면 해당 설정 값을 무시하고 바로 no object의 `.status` 필드를 업데이트를 수행한다. lease 기능이 활성화 됐을 때만 유효한 설정이다. 기본 값은 5m이지만 이전 버전과의 호환성을 위해 `.nodeStatusUpdateFrequency` 가 명시적으로 설정된 경우 해당 값과 동일한 값으로 설정된다(이는 lease 개념이 없어 `.nodeStatusReportFrequency` 설정만 있던 이전 버전에서 사용자가 `.nodeStatusReportFrequency`를 설정하는 경우의 호환성을 위해 지원한다).
+- `.nodeStatusUpdateFrequency`: (기본값 10s) kubelet이 no의 상태를 확인(변화가 있는지)하는 주기(kubelet은 no의 변화가 감지되면 no object의 `.status` 필드를 업데이트를 수행). 만약 lease 기능이 활성화되지 않았을 때는 실제 no object의 `.status` 필드 업데이트까지 수행한다. 이 경우 kube-controller-manager의 `--node-monitor-grace-period` flag 값을 고려해야 한다.
+- `.nodeStatusReportFrequency`: (기본값 5m) no의 상태 변화가 없을 경우 kubelet이 no object의 `.status` 필드를 업데이트(강제 full sync)하는 주기. lease 기능이 활성화 됐을 때만 유효한 설정이다(비활성화 시에는 이미 `.nodeStatusUpdateFrequency` 설정에 따라 `.status` 필드를 업데이트하기 때문). 기본 값은 5m이지만 이전 버전과의 호환성을 위해 `.nodeStatusUpdateFrequency` 가 명시적으로 설정된 경우 해당 값과 동일한 값으로 설정된다(이는 lease 개념이 없어 `.nodeStatusReportFrequency` 설정만 있던 이전 버전에서 사용자가 `.nodeStatusReportFrequency`를 설정하는 경우 실제 `.status`가 해당 설정 값 주기로 업데이트되는 것에 대한 호환성을 유지하기 위함).
 - `.nodeLeaseDurationSeconds`: (기본값 40) kubelet이 no의 lease object `.spec.renewTime`을 통해 no의 상태를 업데이트하는 주기. 해당 설정 값은 실제 시간을 나타내지 않으며 기본 값 40은 10s를 나타낸다. lease 업데이트가 실패하면 kubelet은 200ms를 시작으로 최대 7s까지의 지수 함수 backoff를 사용해 재시도를 수행한다.
 
 [Node authorization mode](https://kubernetes.io/docs/reference/access-authn-authz/node/), [NodeRestriction admission plugin](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction)가 활성화된 경우, kubelet은 자체 no의 resource만 생성/수정할 수 있는 권한이 있다.
@@ -129,6 +129,15 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 
 위 그림에서는 `--pod-eviction-timeout`가 있지만 이는 k8s v1.29 기준 없어진 flag다. 해당 flag는 unhealthy no에서 po를 eviction하기까지 대기하는 시간이다. 대신 [Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions)을 사용한다.([#39681](https://github.com/kubernetes/website/issues/39681))
 
+아래는 `상황: 'Node-A'가 갑자기 다운(Down)되었습니다.`에 대한 예시다.
+- T+0초: 'Node-A'의 Kubelet이 Lease 갱신을 중단한다. (마지막 Lease 타임스탬프는 0초)
+- T+5초: node controller가 검사합니다 (`--node-monitor-period`). "Node-A의 Lease가 5초 지났네. 하지만 유예 시간(40초) 안이니 괜찮아."
+- T+10초: Kubelet이 Lease를 갱신해야 할 시간(기본 10초)이지만, 다운되어서 갱신하지 못한다.
+- T+10초 ~ T+35초: node controller는 5초마다 계속 검사하지만, Lease가 갱신되지 않은 시간이 항상 40초 미만이므로 대기한다.
+- T+40초: Lease가 갱신되지 않은 시간이 40초(`--node-monitor-grace-period`)에 도달한다.
+- T+45초 (또는 T+40초 직후): node controller가 다음 검사 주기(5초)에 'Node-A'를 확인한다. "Node-A의 Lease가 40초를 초과(45초)했네. 유예 시간이 끝났다."
+- 결과: node controller가 'Node-A'의 상태를 **NotReady**로 변경한다. 이 시점부터 해당 노드로는 새로운 Pod이 스케줄링되지 않으며, (설정에 따라) 기존 Pod의 재배치(Eviction)가 준비된다.
+
 ### Rate limits on eviction
 대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.
 
@@ -153,8 +162,3 @@ kube-scheduler는 no에 실행 중인 po에 대한 충분한 리소스가 있음
 
 ## Node topology
 kubelet에 TopologyManager [feature gate](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/)를 활성화한 경우 kubelet은 리소스 할당 결정을 할 때 topology 힌트를 이용할 수 있다. 관련해 [Control Topology Management Policies on a Node](https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/) 페이지를 참고한다.
-
-## Swap memory management
-no에 swap을 활성화하기 위해 kubelet의 `NodeSwap` feature gate 활성화(기본 값 true), kubelet의 `.failSwapOn`이 false(기본 값 true)어야한다. po가 swap을 사용하기 위해서는 kubelet의 `.swapBehavior`이 NoSwap (기본 값)이면 안된다.
-
-swap은 cgroup v2에서만 지원한다.
