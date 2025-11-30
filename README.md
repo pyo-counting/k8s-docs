@@ -89,6 +89,11 @@
   - route controller: route controller는 k8s cluster의 다른 no에 있는 container가 서로 통신할 수 있도록 cloud 내에서 route를 구성한다. cloud provider에 따라 route controller는 po 네트워크를 위해 ip 주소 CIDR block을 할당한다.
   - service controller: svc는 cloud에서 제공하는 load balancer, ip 주소, network packet filtering, target health check와 같은 cloud 구성 요소와 통합된다. service controller는 해당 구성 요소가 필요한 svc object를 생성할 때 cloud provider API와 상호 작용해 load balancer와 같은 인프라 구성 요소를 구성한다.
 - k8s는 resource 요청을 kube-apiserver가 다른 peer kube-apiserver로 proxy 처리할 수 있는 alpha 기능이 포함된다. 이 기능은 하나의 cluster에서 서로 다른 버전의 k8s에 대한 kube-apiserver가 있을 때(예를 들어, k8s의 새로운 release가 장기간 rollout 하는 동안) 유용하다. 이를 통해 cluster 관리자는 resource 요청(업그레이드 중에 수행)을 올바른 kube-apiserver로 direct함으로써 안전하게 업그레이드할 수 있는 가용성이 높은 cluster를 구성할 수 있다. 이 proxy를 사용하면 업그레이드 프로세스에서 발생할 수 있는 예기치 않은 404 Not Found 오류를 방지할 수 있다. 이 메커니즘을 mixed version proxy라고 부른다. ([Mixed Version Proxy](https://kubernetes.io/docs/concepts/architecture/mixed-version-proxy/))
+- pss, psa는 psp를 대체하는 개념이다. pss는 k8s 내장 정책으로 level 별, k8s 버전 별 별도의 정책 목록을 정의한다. psa는 pss를 ns 단위에서 적용하기 위한 개념으로 내장 admission controller를 통해 구현된다. psa는 ns 단위로 정책을 위반할 때 어떤 동작을 수행할지에 대한 mode를 지원한다. ([Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/))
+  - pss 정책 level은 Privileged -> Baseline -> Restricted 순서로 엄격하며 이전 정책 목록을 포함한다.
+  - pss, psa는 cluster 레벨에서의 보안 정책 적용 관점으로, workload 또는 po `.spec`에서 적용되는 보안 사항을 감시한다.
+  - psa의 audit, warning mode는 workload 생성 시에 정책 검사가 지원되지만 enforce mode는 po 생성 시에만 검사가 지원된다.
+  - admission controller 설정을 통해 정책 검사에 대한 예외를 설정할 수 있다.
 - kube-controller-manager 내 pod garbage collector(PodGC)는 terminated po(phase가 `Succeeded`, `Failed`)의 수가 --terminated-pod-gc-threshold(기본 값 12500)을 초과할 때 정리한다. 뿐만 아니라 아래 조건을 만족하는 po도 정리한다. PodGC는 po를 정리하는 과정에서, 아직 종료 단계(non-terminal phase)가 아닌 po를 Failed로 표시하기도 한다.
   - orphan po: 더 이상 존재하지 않은 no에 binding된 경우(orphan po를 정리할 때는 '파드 중단 조건(Pod disruption condition)'을 추가함)
   - 스케줄되지 않은 종료 중인 po
