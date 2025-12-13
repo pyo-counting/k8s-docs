@@ -36,7 +36,7 @@ no object의 이름은 DNS subdomain name 규칙을 따라야한다.
 두 개의 no가 동시에 동일한 이름을 가질 수 없다. k8s는 동일한 이름의 resource에 대해 동일한 object로 생각한다. 동일한 이름을 갖는 no의 경우 동일한 state(네트워크, root disk 내용), label 등의 정보를 갖는다고 생각한다. 이로 인해 이름을 변경하지 않고 인스턴스가 수정되면 불일치가 발생할 수 있다. no를 교체하거나 업데이트해야 하는 경우 기존 no object를 먼저 kube-apiserver에서 제거하고 업데이투 후 다시 추가해야 한다.
 
 ### Self-registration of Nodes
-kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)으로 설정하면 kubelet은 kube-apiserver에 스스로 등록한다. 대부분의 경우 선호하는 방식이다.
+kubelet 설정 파일 내 `.registerNode` 필드를 true(기본 값)로 설정하면 kubelet은 kube-apiserver에 스스로 등록한다. 대부분의 경우 선호하는 방식이다.
 
 스스로 등록할 경우 kubelet에 flag 또는 설정 파일 내 필드를 사용한다.
 - `--kubeconfig`: kube-apiserver에 인증하기 위해 사용되는 credentials의 경로
