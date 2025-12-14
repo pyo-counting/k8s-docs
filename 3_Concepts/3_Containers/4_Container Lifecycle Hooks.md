@@ -12,10 +12,10 @@ container에 노출되는 2개의 hook이 있다.
 container는 hook에 대한 handler를 구현(등록)함으로써 hook에 접근할 수 있다. container에서는 3가지 유형의 hook handler를 구현할 수 있다.
 - Exec: container의 cgroup, namespace에서 pre-stop.sh와 같은 특정 명령어를 실행한다. 명령어를 통해 소모되는 컴퓨터 자원은 container내 자원에 포함된다.
 - HTTP: container의 특정 endpoint를 대상으로 HTTP를 요청한다.
-- Sleep: 지정된 시간 동안 container를 pause한다. 이는 베타 기능으로 `PodLifecycleSleepAction` feature gate를 통해 기본적으로 활성화된다.
+- Sleep: 지정된 시간 동안 container를 pause한다.
 
 ### Hook handler execution
-container lifecycle management hook이 호출되면, k8s 관리 시스템은 hook 액션에 따라 handler를 실행한다. httpGet, tcpSocket, sleep은 kubelet 프로세스에 의해 실행되며 exec는 container 내부에서 실행된다.
+container lifecycle management hook이 호출되면, k8s 관리 시스템은 hook 액션에 따라 handler를 실행한다. httpGet, tcpSocket(deprecated), sleep은 kubelet 프로세스에 의해 실행되며 exec는 container 내부에서 실행된다.
 
 `PostStart` hook handler 호출은 container가 생성될 때 초기화되며 container의 ENTRYPOINT와 `PostStart` hook은 동시에 트리거된다. 하지만 hook 실행이 너무 오래 걸리거나 hang에 걸린다면 container는 running 상태에 도달할 수 없다.
 
@@ -31,7 +31,7 @@ hook에 대한 전달은 최소 1번이어야 한다. 즉, PostStart, PreStop과
 일반적으로 한 번의 전달이 이루어진다. 예를 들어 HTTP hook handler receiver가 다운되어 트래픽을 수신할 수 없는 경우 재전송 시도는 없다. 하지만 때때로 이중 전달이 발생할 수도 있다. 예를 들어 hook을 보내는 도중 kubelet이 재시작되면 해당 kubelet이 hook을 재전송할 수도 있다.
 
 ### Debugging Hook handlers
-hook handler의 로그는 po event에 노출되지 않는다. handler가 어떤 이유로 실패한다면 event를 브로드캐스트한다. PostStart의 경우 `FailedPostStartHook` event, PreStop의 경우 `FailedPreStopHook` event이다. 실패한 FailedPostStartHook event를 직접 생성하기 위해 아래 po에 대한 manifest 중 postStart.exec.command를 "badcommand"로 변경해 적용한다:
+hook handler의 로그는 po event로 노출되지 않는다. PostStart의 경우 `FailedPostStartHook` event, PreStop의 경우 `FailedPreStopHook` event로 노출된다. handler가 어떤 이유로 실패한다면 event를 브로드캐스트한다. 실패한 FailedPostStartHook event를 직접 생성하기 위해 아래 po에 대한 manifest 중 postStart.exec.command를 "badcommand"로 변경해 적용한다:
 ``` yaml
 apiVersion: v1
 kind: Pod

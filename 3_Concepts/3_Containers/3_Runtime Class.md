@@ -53,7 +53,7 @@ kubelet은 명시된 RuntimeClass를 사용해 po를 실행한다. 만약 명시
 ### CRI Configuration
 #### containerd
 containerd의 설정 파일인 /etc/containerd/config.toml을 통해 runtime handler가 설정된다. runtime selection 내에 유효한 handler를 설정한다.
-```
+``` toml
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.${HANDLER_NAME}]
 ```
 

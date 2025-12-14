@@ -63,7 +63,9 @@ ImagePullBackOff 상태는 k8s가 container image를 pull할 수 없어 실행�
 k8s는 시간 간격을 늘리면서 재시도를 수행하며 k8s에 코딩된 최대 시간 5분까지 시도한다.
 
 ### Image pull per runtime class
+k8s는 po의 RuntimeClass에 따른 image pull 동작을 지원한다.
 
+RuntimeClassInImageCriApi feature gate가 활성화 된 경우 kubelet은 image name, digest만 참조하는 것이 아니라 추가적으로 runtime handler(RuntimeClass의 `.handler` 필드)도 참조한다. 이는 Windows Hyper-V container와 같은 VM-based container 환경에서 유용하다.
 
 ## Serial and parallel image pulls
 기본적으로 kubelet은 image pulling 작업을 병렬이 아닌 연속적으로 수행한다. 즉, image service에게 한 번에 하나의 image pull request만 요청하고 한 작업이 완료돼야 다른 작업을 수행한다.
@@ -84,9 +86,9 @@ kubelet은 1개의 po에 대해 여러 image를 병렬로 pull하지 않는다. 
 `.maxParallelImagePulls` 필드는 1 이상의 값이어야하며, 2 이상의 값을 사용하는 경우에는 `.serializeImagePulls` 필드가 false여야 한다. 그렇지 않으면 kubelet 실행에 실패한다.
 
 ## Multi-architecture images with image indexes
-container registry는 바이너리 image 뿐만 아니라 container image index를 제공한다. image index는 container의 architecture 별 버전에 대한 여러 image manifest를 가리킬 수 있다. 그래서 컴퓨터 architecture에 적합한 binary image를 fetch할 수 있다.
+container registry는 바이너리 image 뿐만 아니라 [container image index](https://github.com/opencontainers/image-spec/blob/master/image-index.md)를 제공한다. image index는 container의 architecture 별 버전에 대한 여러 [image manifest](https://github.com/opencontainers/image-spec/blob/master/manifest.md)를 가리킬 수 있다. 이를 통해 사용자는 architecture에 적합한 binary image를 fetch할 수 있다.
 
-k8s는 일반적으로 -${ARCH} 접미사를 붙여 container image 이름을 지정한다. 이전 버전과의 호환성을 위해 접미사가 있는 오래된 image를 생성해야 한다. The idea is to generate say pause image which has the manifest for all the arch(es) and say pause-amd64 which is backwards compatible for older configurations or YAML files which may have hard coded the images with suffixes.
+k8s 포로젝트는 일반적으로 출시하는 container image 이름을 만들 때 접미사 -${ARCH}를 붙인다. 하위 호환성을 위해, 이전 버전의 image들은 접미사를 포함하여 생성된다. 예를 들어, pause 라는 이름의 image는 지원되는 모든 아키텍처에 대한 manifest를 포함하는 멀티 아키텍처 image일 것이다. 반면에 pause-amd64와 같은 image는 이전 구성이나, 접미사가 포함된 image 이름이 하드코딩된 YAML 파일을 위한 하위 호환성 버전이 된다.
 
 ## Using a private registry
 
