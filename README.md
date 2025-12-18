@@ -437,41 +437,41 @@
   - custom launch template에 ami를 명시하는 경우, 최대 po 개수를 명시해야 한다. ([Create](https://docs.aws.amazon.com/eks/latest/userguide/create-managed-node-group.html#eksctl_create_managed_nodegroup))
   - 다음 상황에서 managed node group 업데이트를 수행할 수 있다: cluster 버전 업데이트에 따른 no 버전 업데이트 / 새로운 ami 버전 적용 / managed node group의 minimum, maximum, desired count 조정, managed node group의 no에 k8s label 수정 / managed node group의 aws tag 수정 / launch template 변경 적용. launch template 없이 생성한 managed node group을 새로운 launch template 버전을 사용하도록 직접 업그레이드를 할 수 없으며 대신 새로운 launch template을 사용하는 managed node group을 새로 생성해야 한다. ([Update](https://docs.aws.amazon.com/eks/latest/userguide/update-managed-node-group.html))
   - managed node group의 업그레이드는 4개의 phase를 수행한다. managed node group의 모든 변경이 아래 단계를 수행하는 것은 아니다. 예를 들어 label 수정과 같은 작업은 launch template 버전을 새롭게 생성하지만 새로운 node를 띄우는 작업부터는 수행하지 않으며 기존 node에 수정된 label 정보를 반영한다. ([Update behavior details](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-update-behavior.html))
-    - setup phase
-      - auto scaling group의 launch template 버전을 새로 생성한다.
-      - auto scaling group이 새로운 launch template 버전을 사용하도록 수정한다.
-      - managed node group의 updage 설정을 고려해 병렬로 업그레이드 수행할 최대 no의 개수를 결정한다.
-    - scale up phase: 새롭게 생성되는 no를 기존 no와 동일한 az에 배치하기 위해 auto scaling g~r~oup의 az reblanace 기능을 사용한다. managed node group의 update strategy가 default일 경우 scale up phase을 수행하지만 minimal일 경우에는 scale up phase는 수행되지 않는다.
-      - auto scaling group의 maximum size, desired size에 max(auto scaling group의 az 수 * 2, maxUnavailable) 값을 더한 값으로 변경한다. 계산식 중 az 수 * 2의 의미는 az rebalance를 보장하기 위해 각 az에 최소 2개의 추가 no 생성한다.
-      - maximum size, desired size 값을 변경한 후 새로운 no가 존재하는지 확인한다. 이 단계는 아래 조건들을 만족하는 경우 성공한다.
-        - 각 az에 적어도 1개의 새로운 no가 실행됐다.
-        - 새로운 no가 모두 `Ready` 상태이다.
-        - 새로운 no가 아래 label을 갖는다.
-          - 일반적인 node group의 경우 eks는 아래 label을 추가한다.
-            - `eks.amazonaws.com/nodegroup-image=$amiName`
-            - `eks.amazonaws.com/nodegroup=$nodeGroupName`
-          - custom launch template이나 custom ami를 사용하는 node group의 경우 eks는 아래 label을 추가한다.
-            - `eks.amazonaws.com/nodegroup-image=$amiName`
-            - `eks.amazonaws.com/nodegroup=$nodeGroupName`
-            - `eks.amazonaws.com/sourceLaunchTemplateId=$launchTemplateId`
-            - `eks.amazonaws.com/sourceLaunchTemplateVersion=$launchTemplateVersion`
-      - 기존 no에 po가 스케줄링되지 않도록 taint를 추가하고 no를 종료하기 전에 load balancer에서 제거하기 위해 `node.kubernetes.io/exclude-from-external-load-balancers=true` label을 추가한다.
-    - upgrade phase: managed node group의 update strategy에 따라 다르게 동작한다. default strategy는 기존 no를 종료하기 전에 새로운 no를 먼저 생성(scale up phase)해 가용성을 보장한다는 장점이 있다. minimal strategy의 경우에는 no를 먼저 생성하지 않으며 새로운 no를 생성하기 전에 기존 no를 종료한다.
-      - default update strategy
-	      1. auto scaling group의 desired count를 증가하여 새 no를 생성한다(scale up phase).
-	      2. 업그레이드가 필요한(죵료) no를 랜덤하게 선택한다. (최대 maxUnavailable 값까지)
-	      3. 해당 no를 drain해 po를 종료한다. po가 15분 내에 모두 종료되지 않으면(예를 들어 pdb로 인해) `PodEvictionFailure` 오류 발생한다. 이를 방지하기 위해 managed node upgrade 요청 시 강제(force) 옵션을 사용할 수 있다.
-	      4. 모든 po가 종료된 후 no를 cordon(예약 불가 상태)으로 설정하고 60초 대기한다. This is done so that the service controller doesn’t send any new requests to this node and removes this node from its list of active nodes.
-	      5. auto scaling group에 no 종료 요청을 전송한다.
-	      6. 위 단계를 반복해 이전 버전의 no가 모두 교체될 때까지 진행된다.
-      - minimal update strategy
-	      1. 업그레이드할 no를 랜덤하게 선택한다. (최대 maxUnavailable 값까지)
-	      2. 해당 no를 drain해 po를 종료한다. po가 15분 내에 모두 종료되지 않으면(예를 들어 pdb로 인해) `PodEvictionFailure` 오류 발생한다. 이를 방지하기 위해 managed node upgrade 요청 시 강제(force) 옵션을 사용할 수 있다.
-	      3. 모든 po가 종료된 후 no를 cordon(예약 불가 상태)으로 설정하고 60초 대기한다. This is done so that the service controller doesn’t send any new requests to this node and removes this node from its list of active nodes.
-	      4. auto scaling group에 no 종료 요청을 전송한다. 그리고 auto scaling group은 새로운 no를 생성한다.
-	      5. 위 단계를 반복해 이전 버전의 no가 모두 교체될 때까지 진행된다.
-    - scale down phase
-      - 업데이트 전의 상태로 되돌리기 위해 auto scaling group의 maximum size, desired size를 원래 값으로 변경한다. If the Upgrade workflow determines that the Cluster Autoscaler is scaling up the node group during the scale down phase of the workflow, it exits immediately without bringing the node group back to its original size.
+    1. setup phase
+        - auto scaling group의 launch template 버전을 새로 생성한다.
+        - auto scaling group이 새로운 launch template 버전을 사용하도록 수정한다.
+        - managed node group의 updage 설정을 고려해 병렬로 업그레이드 수행할 최대 no의 개수를 결정한다.
+    2. scale up phase: 새롭게 생성되는 no를 기존 no와 동일한 az에 배치하기 위해 auto scaling group의 az reblanace 기능을 사용한다. managed node group의 update strategy가 default일 경우 scale up phase을 수행하지만 minimal일 경우에는 scale up phase는 수행되지 않는다.
+        - auto scaling group의 maximum size, desired size에 max(auto scaling group의 az 수 * 2, maxUnavailable) 값을 더한 값으로 변경한다. 계산식 중 az 수 * 2의 의미는 az rebalance를 보장하기 위해 각 az에 최소 2개의 추가 no 생성한다.
+        - maximum size, desired size 값을 변경한 후 새로운 no가 존재하는지 확인한다. 이 단계는 아래 조건들을 만족하는 경우 성공한다.
+          - 각 az에 적어도 1개의 새로운 no가 실행됐다.
+          - 새로운 no가 모두 `Ready` 상태이다.
+          - 새로운 no가 아래 label을 갖는다.
+            - 일반적인 node group의 경우 eks는 아래 label을 추가한다.
+              - `eks.amazonaws.com/nodegroup-image=$amiName`
+              - `eks.amazonaws.com/nodegroup=$nodeGroupName`
+            - custom launch template이나 custom ami를 사용하는 node group의 경우 eks는 아래 label을 추가한다.
+              - `eks.amazonaws.com/nodegroup-image=$amiName`
+              - `eks.amazonaws.com/nodegroup=$nodeGroupName`
+              - `eks.amazonaws.com/sourceLaunchTemplateId=$launchTemplateId`
+              - `eks.amazonaws.com/sourceLaunchTemplateVersion=$launchTemplateVersion`
+        - 기존 no에 po가 스케줄링되지 않도록 taint를 추가하고 no를 종료하기 전에 load balancer에서 제거하기 위해 `node.kubernetes.io/exclude-from-external-load-balancers=true` label을 추가한다.
+    3. upgrade phase: managed node group의 update strategy에 따라 다르게 동작한다. default strategy는 기존 no를 종료하기 전에 새로운 no를 먼저 생성(scale up phase)해 가용성을 보장한다는 장점이 있다. minimal strategy의 경우에는 no를 먼저 생성하지 않으며 새로운 no를 생성하기 전에 기존 no를 종료한다.
+        - default update strategy
+	        1. auto scaling group의 desired count를 증가하여 새 no를 생성한다(scale up phase).
+	        2. 업그레이드가 필요한(죵료) no를 랜덤하게 선택한다. (최대 maxUnavailable 값까지)
+	        3. 해당 no를 drain해 po를 종료한다. po가 15분 내에 모두 종료되지 않으면(예를 들어 pdb로 인해) `PodEvictionFailure` 오류 발생한다. 이를 방지하기 위해 managed node upgrade 요청 시 강제(force) 옵션을 사용할 수 있다.
+	        4. 모든 po가 종료된 후 no를 cordon(예약 불가 상태)으로 설정하고 60초 대기한다. This is done so that the service controller doesn’t send any new requests to this node and removes this node from its list of active nodes.
+	        5. auto scaling group에 no 종료 요청을 전송한다.
+	        6. 위 단계를 반복해 이전 버전의 no가 모두 교체될 때까지 진행된다.
+        - minimal update strategy
+	        1. 업그레이드할 no를 랜덤하게 선택한다. (최대 maxUnavailable 값까지)
+	        2. 해당 no를 drain해 po를 종료한다. po가 15분 내에 모두 종료되지 않으면(예를 들어 pdb로 인해) `PodEvictionFailure` 오류 발생한다. 이를 방지하기 위해 managed node upgrade 요청 시 강제(force) 옵션을 사용할 수 있다.
+	        3. 모든 po가 종료된 후 no를 cordon(예약 불가 상태)으로 설정하고 60초 대기한다. This is done so that the service controller doesn’t send any new requests to this node and removes this node from its list of active nodes.
+	        4. auto scaling group에 no 종료 요청을 전송한다. 그리고 auto scaling group은 새로운 no를 생성한다.
+	        5. 위 단계를 반복해 이전 버전의 no가 모두 교체될 때까지 진행된다.
+    4. scale down phase
+        - 업데이트 전의 상태로 되돌리기 위해 auto scaling group의 maximum size, desired size를 원래 값으로 변경한다. If the Upgrade workflow determines that the Cluster Autoscaler is scaling up the node group during the scale down phase of the workflow, it exits immediately without bringing the node group back to its original size.
   - managed node group을 삭제하면 eks는 가장 먼저 auto scaling group의 minimum, maximum, desired size를 0으로 설정한다. 각 인스턴스가 terminate 되기 전에 eks는 drain을 수행한다. po가 몇 분이 지나도 drain되지 않으면 eks는 auto scaling group을 통해 인스턴스를 종료한다. 모든 인스턴스가 terminate되고 auto scaling group이 삭제된다. ([Delete](https://docs.aws.amazon.com/eks/latest/userguide/delete-managed-node-group.html))
   - custom launch template을 사용해 managed node group을 배포할 수 있다. 이를 통해 사용자는 kubelet의 flag(eks optimized ami) 설정, no가 속한 subnet과 다른 cidr를 통한 po ip 할당, 사용자 정의 ami 설정, 사용자 정의 cni 배포를 수행할 수 있다. 뿐만 아니라 다른 버전의 launch template로 변경해 managed node group을 업데이트할 수 있다. custom launch template을 명시하지 않을 경우 eks는 기본 값을 갖는 launch template을 사용하며 사용자가 직접 수정하지 않는 것을 권장한다. custom launch template을 사용하는 managed node group은 직접 업데이트할 수 없다. 대신 custom launch template을 사용하는 신규 managed node group을 만들어야 한다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html))
   - custom launch template을 사용하는 경우 일부 설정이 managed node group 설정과 대응되는 부분이 있다. 그렇기 때문에 사용자는 launch template 또는 managed node group에 설정해야 하는 정보를 알아야 하며 두 곳에 모두 설정 가능한 경우 한 곳에만 설정해야 한다. 이를 어길 경우 managed node group의 생성, 업데이트가 실패하게 된다. ([Launch templates](https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-basics))
@@ -515,7 +515,7 @@
     | Outbound  | All      | All   |        | 0.0.0.0/0(IPv4) or ::/0 (IPv6) |
   - 3개의 기본 tag를 추가한다. 삭제할 경우 cluster 업데이트 시 자동으로 다시 생성한다.
   - eks는 cluster security group을 eks-managed eni, managed node group으로 관리되는 ec2 인스턴스 eni에 할당한다.
-  - eks control plane과 managed node gorup의 no 사이 트래픽을 위한 inbound, outound rule이다. eks 생성 시 사용자 security group도 설정할 수 있는데 이 security group은 eks-managed eni에 할당되지만 node group의 ec2 인스턴스 eni에는 할당하지 않는다.
+  - eks control plane과 managed node group의 no 사이 트래픽을 위한 inbound, outound rule이다. eks 생성 시 사용자 security group도 설정할 수 있는데 이 security group은 eks-managed eni에 할당되지만 node group의 ec2 인스턴스 eni에는 할당하지 않는다.
 - cluster security group의 outbound rule을 더 제한적으로 설정하기 위해 기본 생성 규칙을 삭제하고 아래 필요한 최소 규칙만 추가할 수 있다.
   | Rule type      | Protocol    | Port  | Destination            |
   |----------------|-------------|-------|------------------------|
