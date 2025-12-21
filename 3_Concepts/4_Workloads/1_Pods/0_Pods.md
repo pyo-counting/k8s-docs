@@ -6,7 +6,7 @@ po는 애플리케이션 container 뿐만 아니라 po 실행 과정에서 동�
 
 ## What is a Pod?
 > **Note**:  
-> po가 cluster의 각 no에서 실행될 수 있도록 container runtime을 설치해야 한다.
+> po가 cluster의 각 no에서 실행될 수 있도록 [container runtime](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)을 설치해야 한다.
 
 po의 shared context는 리눅스 namespace, cgroup, 잠재적인 격리 요소(container를 격리하는 요소)의 집합이다. po context 안에서 각 애플리에키션은 추가 격리가 적용될 수도 있다.
 
@@ -17,11 +17,23 @@ k8s cluster에서 po는 두 가지 주요 목적을 위해 사용한다.
 - Pods that run multiple containers that need to work together: po는 tightly coupled하고 리소스를 공유해야 하는 여러 [multiple co-located containers](https://kubernetes.io/docs/concepts/workloads/pods/#how-pods-manage-multiple-containers)로 구성된 애프리케이션을 캡슐화할 수 있다. These co-located containers form a single cohesive unit.
 
   일반적인 패턴은 아니며 container 간 결합성이 높은 경우에만 사용해야 한다.
-  
+
   You don't need to run multiple containers to provide replication (for resilience or capacity); if you need multiple replicas, see [Workload management](https://kubernetes.io/docs/concepts/workloads/controllers/).
 
 ## Using Pods
-보통 po는 직접 생성하지 않고 workload resource를 사용한다.
+아래는 `nginx:1.14.2` image를 실행하는 container로 구성된 po 예시다.
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+```
 
 ### Workload resources for managing pods
 보통 po는 싱글톤이더라도 직접 생성 및 관리하지 않는다. 대신 deploy, job 또는 po가 상태를 추적해야할 경우 sts를 사용해 생성 및 관리한다.
@@ -36,12 +48,12 @@ k8s 환경에서는 싱글톤 po라도 직접 생성할 일은 거의 없다. �
 > **Note**:  
 > po 내 container를 재시작하는 것과 po를 재시작하는 것과 혼동하면 안된다 po는 프로세스가 아니며 container를 구동하기 위한 환경이다. po는 삭제되기 전까지 지속된다.
 
-po의 이름은 [DNS subdomanin](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) 규칙을 따라야 하지만 po hostname에 대해 예상치 않은 결과를 초래할 수 있으므로 더제 한적인 [DNS label](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names) 규칙을 따라야 한다.
+po의 이름은 [DNS subdomanin](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) 규칙을 따라야 하지만 po hostname에 대해 예상치 않은 결과를 초래할 수 있으므로 더 제한적인 [DNS label](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names) 규칙을 따라야 한다.
 
 ### Pod OS
 po가 실행될 OS를 지정하기 위해 po의 `.spec.os.name` 필드를 `windows` 또는 `linux`를 설정해야 한다. 현재는 두 값만 지원한다.
 
-k8s v1.33에서 `.spec.os.name`은 kube-scheduler가 po를 실행할 no를 선택하는 방식에 영향을 주지 않는다(스케줄링 용도의 필드가 아님). no를 실행하는 운영체제가 둘 이상인 cluster에서는 각 no에 `kubernetes.io/os` label과 `.spec.nodeSelector`를 사용해 po를 정의해 특정 os에 스케줄링 되도록 해야 한다. kube-scheduler는 다른 기준에 따라 po를 no에 할당하므로, 해당 po의 container에 적합한 운영체제를 갖춘 no를 배치하는 데 성공할 수도 있고 실패할 수도 있다. 또한, pss는 이 필드를 사용해 운영체제와 관련 없는 정책이 적용되는 것을 방지한다.
+k8s v1.35에서 `.spec.os.name`은 kube-scheduler가 po를 실행할 no를 선택하는 방식에 영향을 주지 않는다(스케줄링 용도의 필드가 아님). no를 실행하는 운영체제가 둘 이상인 cluster에서는 각 no에 `kubernetes.io/os` well-known label과 `.spec.nodeSelector`를 사용해 po를 정의해 특정 os에 스케줄링 되도록 해야 한다. kube-scheduler는 다른 기준에 따라 po를 no에 할당하므로, 해당 po의 container에 적합한 운영체제를 갖춘 no를 배치하는 데 성공할 수도 있고 실패할 수도 있다. 또한, pss는 이 필드를 사용해 운영체제와 관련 없는 정책이 적용되는 것을 방지한다.
 
 ### Pods and controllers
 여러 po 생성 및 관리를 위해 workload resource를 사용할 수 있다. resource의 controller는 po의 replication, roll out, 실패 상황에서의 치유를 처리한다. 예를 들어 no가 실패되면 controller가 해당 no의 po 동작이 멈춤을 인지하고 대체 po를 생성한다. 그리고 scheduler는 정상 no에 대체 po를 스케쥴링한다.
@@ -50,6 +62,11 @@ k8s v1.33에서 `.spec.os.name`은 kube-scheduler가 po를 실행할 no를 선�
 - deploy
 - sts
 - ds
+
+### Specifying a Workload reference
+기본적으로 k8s는 pod를 개별적으로 scheduling한다. 하지만 일부 애플리케이션의 경우 올바르게 동작하기 위해 여러 pod들이 동시에 스케줄링되어야 할 수도 있다.
+
+이 때 [workload reference](https://kubernetes.io/docs/concepts/workloads/pods/workload-reference/)를 사용해 po를 특정 workload에 링크할 수 있다. 이를 통해 `kube-scheduler`는 pod의 그룹 단위로 스케줄링 결정을 내릴 수 있도록 도와준다.
 
 ### Pod templates
 workload resource들의 controller는 po template으로부터 po을 생성하고 관리한다.
@@ -79,7 +96,7 @@ po template을 수정하는 것은 이미 존재하는 po에는 직접적인 영
 각 no의 kublete은 po template의 세부 사항이나 업데이트를 직접 관리 및 관찰하지 않는다.
 
 ## Pod update and replacement
-k8s는 po를 workload resource 없이 관리하는 것을 제한하지 않는다. 동작중인 po의 일부 필드를 업데이트하는 것이 가능하다. 하지만 patch, replace와 같은 명령어에는 제한이 있다:
+k8s는 po를 workload resource 없이 관리하는 것을 제한하지 않는다. 동작중인 po의 일부 필드를 업데이트하는 것이 가능하다. 하지만 patch, replace와 같은 명령어에는 제한이 있다.
 - 대부분의 po medata는 불변이다. 예를 들어 `.metadata.namespace`, `.metadata.name`, `.metadata.uid`, `.metadata.creationTimestamp` 필드를 변경할 수 없다.
   - `.metadata.generation` 필드 값은 고유하다. 이 값은 시스템에 의해 자동으로 설정되는데 새로운 po는 1을 가지며, po의 `.spec`에서 변경 가능한 필드가 업데이트될 때마다 값이 1씩 증가한다. 만약 PodObservedGenerationTracking alpha feature gate가 활성화되어 있다면, po의 `.status.observedGeneration` 필드는 po 상태가 보고되는 시점의 `.metadata.generation` 값을 반영하게 된다.
 - `.metadata.deletionTimestamp`가 설정되었다면 `.metadata.finalizers` 목록에 새로운 항목을 추가할 수 없다.
@@ -90,10 +107,13 @@ k8s는 po를 workload resource 없이 관리하는 것을 제한하지 않는다
 
 ### Pod subresources
 위 업데이트 규칙은 일반적인 po 업데이트와 관련되어 있으며 일부 필드는 subresources를 통해 업데이트 가능하다.
-- Resize: The resize subresource allows container resources (spec.containers[*].resources) to be updated. See Resize Container Resources for more details.
-- Ephemeral Containers: The ephemeralContainers subresource allows ephemeral containers to be added to a Pod. See Ephemeral Containers for more details.
-- Status: The status subresource allows the pod status to be updated. This is typically only used by the Kubelet and other system controllers.
- -Binding: The binding subresource allows setting the pod's spec.nodeName via a Binding request. This is typically only used by the scheduler.
+- Resize: The `resize` subresource allows container resources (`spec.containers[*].resources`) to be updated. See [Resize Container Resources](https://kubernetes.io/docs/tasks/configure-pod-container/resize-container-resources/) for more details.
+- Ephemeral Containers: The `ephemeralContainers` subresource allows ephemeral containers to be added to a Pod. See [Ephemeral Containers](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/) for more details.
+- Status: The `status` subresource allows the pod status to be updated. This is typically only used by the Kubelet and other system controllers.
+ -Binding: The `binding` subresource allows setting the pod's `.spec.nodeName` via a Binding request. This is typically only used by the scheduler.
+
+### Pod generation
+
 
 ## Resource sharing and communication
 po내 container 간에는 데이터 공유 및 통신이 가능하다.

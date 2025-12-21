@@ -1,5 +1,5 @@
 ## about docs
-- v1.31 버전 기준 작성
+- v1.35 버전 기준 작성
 - 3_Concepts/4_Workloads/1_Pods/2_Init Containers부터 정리 필요
 - 실제 k8s의 인증서 생성과 목록에 대해 확인해보기
 
