@@ -1,4 +1,4 @@
-ns ojbect에 label을 추가해 pod security standard를 설정할 수 있다. privileged, baseline, restricted 3 가지 정책은 보안 스펙트럼을 광범위하게 다루며 po seuciry admission controller에 의해 구현된다.
+ns ojbect에 label을 추가해 pod security standard를 설정할 수 있다. privileged, baseline, restricted 3 가지 정책은 보안 스펙트럼을 광범위하게 다루며 pod seuciry admission controller에 의해 구현된다.
 
 ## Before you begin
 
