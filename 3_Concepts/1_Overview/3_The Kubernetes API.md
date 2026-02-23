@@ -19,7 +19,7 @@ k8s는 Discovery API를 통해서 지원하는 모든 group version, resource �
 API는 aggregated 형태, unaggregated 형태 모두 제공한다. aggregated discovery는 두 개의 endpoint(`/api`, `/apis`)를 제공하는 반면, unaggregated discovery는 각 group version에 대해 별도의 각각의 endpoint를 제공한다.
 
 aggregated discovery와 unaggregated discovery의 가장 근본적인 차이는 네트워크 효율성과 클라이언트(예: kubectl)가 cluster에서 지원하는 모든 resource를 파악하기 위해 몇 번의 HTTP 요청을 보내야 하는가에 있다.
-| 구분                | 집계되지 않은 디스커버리 (Unaggregated)   | 집계된 디스커버리 (Aggregated)                  |
+| 구분                | unaggregated discovery                    | aggregated discovery                            |
 |---------------------|-------------------------------------------|-------------------------------------------------|
 | HTTP 요청 횟수      | 여러 번 (1 + N번, N = API 그룹/버전의 수) | 단 2번 (/api 및 /apis)                          |
 | 데이터 탐색 방식    | 트리 구조를 계층별로 하나씩 탐색          | 전체 API 목록을 한 번의 응답으로 수신           |
@@ -153,34 +153,33 @@ OpenAPI V3를 가져오기 위한 Golang 구현체는 k8s.io/client-go/openapi3 
 k8s 1.35는 OpenAPI v2.0 및 v3.0을 게시한다. 가까운 장래에 3.1을 지원할 계획은 없다.
 
 ### Protobuf serialization
-k8s는 주로 cluster터 내부 통신을 위한 대안적인 protobuf 기반 직렬화 형식을 구현한다. 이 형식에 대한 자세한 내용은 [Kubernetes Protobuf serialization](https://git.k8s.io/design-proposals-archive/api-machinery/protobuf.md) 설계 제안서와 API 오브젝트를 정의하는 Go 패키지에 있는 각 스키마의 IDL(Interface Definition Language) 파일을 참조한다.
+k8s는 주로 cluster 내부 통신을 위한 대안적인 protobuf 기반 직렬화 형식을 구현한다. 이 형식에 대한 자세한 내용은 [Kubernetes Protobuf serialization](https://git.k8s.io/design-proposals-archive/api-machinery/protobuf.md) 설계 제안서와 API 오브젝트를 정의하는 Go 패키지에 있는 각 스키마의 IDL(Interface Definition Language) 파일을 참조한다.
 
 ## Persistence
 k8s는 object의 직렬화된 state를 etcd에 저장한다.
 
 ## API groups and versioning
-필드를 제거하거나 리소스 표현 구조를 더 쉽게 재구성할 수 있도록, 쿠버네티스는 /api/v1 또는 /apis/rbac.authorization.k8s.io/v1alpha1과 같이 각각 다른 API 경로에서 여러 API 버전을 지원합니다.
+k8s는 필드를 제거, resource의 표현 구조를 더 쉽게 재구성할 수 있도록 `api/v1`, `/apis/rbac.authorization.k8s.io/v1alpha1`과 같이 각각 다른 API path를 사용해 여러 API version을 제공한다.
 
-API가 시스템 리소스 및 동작에 대해 명확하고 일관된 뷰를 제공하도록 보장하고, 수명이 다했거나(end-of-life) 실험적인 API에 대한 액세스 제어를 가능하게 하기 위해 버전 관리는 리소스나 필드 수준이 아닌 API 수준에서 수행됩니다.
+versioning은 API가 시스템 리소스 및 동작에 대해 명확하고 일관된 뷰를 제공하도록 보장하고, 수명이 다했거나(end-of-life) 실험적인 API에 대한 접근 제어를 가능하게 하기 위해 resoucre 또는 필드 레벨이 아닌 API 레벨에서 지원한다.
 
-API를 더 쉽게 발전시키고 확장하기 위해, 쿠버네티스는 활성화하거나 비활성화할 수 있는 API 그룹을 구현합니다.
+API를 더 쉽게 발전시키고 확장하기 위해, k8s는 [enabled or disabled](https://kubernetes.io/docs/reference/using-api/#enabling-or-disabling)가 가능한 [API groups](https://kubernetes.io/docs/reference/using-api/#api-groups)를 구현한다.
 
-API 리소스는 API 그룹, 리소스 종류(type), 네임스페이스(네임스페이스 범위 리소스의 경우) 및 이름으로 구분됩니다. API 서버는 API 버전 간의 변환을 투명하게 처리합니다. 즉, 모든 다양한 버전은 실제로 동일하게 영구 저장된 데이터(persisted data)의 표현일 뿐입니다. API 서버는 동일한 기본 데이터를 여러 API 버전을 통해 제공할 수 있습니다.
+API는 API group, resource 종류, ns(namespaced resource의 경우), 이름으로 구분된다. kube-apiserver는 API version 간의 변환을 투명하게 처리한다. 즉, 모든 다양한 version은 실제로 동일하게 저장된 데이터의 표현일 뿐이다. kube-apiserver는 동일한 데이터를 여러 API version을 통해 제공할 수 있다.
 
-예를 들어, 동일한 리소스에 대해 v1과 v1beta1이라는 두 가지 API 버전이 있다고 가정해 보겠습니다. 처음에 해당 API의 v1beta1 버전을 사용하여 오브젝트를 생성한 경우, v1beta1 버전이 더 이상 사용되지 않고(deprecated) 제거될 때까지 v1beta1 또는 v1 API 버전을 사용하여 해당 오브젝트를 읽고, 업데이트하고, 삭제할 수 있습니다. 해당 시점이 지나면 v1 API를 사용하여 오브젝트에 계속 액세스하고 수정할 수 있습니다.
+예를 들어, 동일한 resource에 대해 v1과 v1beta1이라는 두 가지 API version이 있다고 가정한다. 처음에 해당 API의 v1beta1 version을 사용하여 object를 생성한 경우, v1beta1 버전이 더 이상 사용되지 않고(deprecated) 제거될 때까지 v1beta1 또는 v1 API version을 사용하여 해당 object를 읽고, 업데이트하고, 삭제할 수 있다. 해당 시점이 지나면 v1 API를 사용하여 object에 계속 접근하고 수정할 수 있다.
 
 ### API changes
-Any system that is successful needs to grow and change as new use cases emerge or existing ones change. Therefore, Kubernetes has designed the Kubernetes API to continuously change and grow. The Kubernetes project aims to not break compatibility with existing clients, and to maintain that compatibility for a length of time so that other projects have an opportunity to adapt.
+성공적인 시스템은 새로운 사용 사례가 등장하거나 기존 사용 사례가 변경됨에 따라 성장하고 변화해야 한다. 따라서 k8s는 k8s API가 지속적으로 변경되고 성장하도록 설계했다. k8s 프로젝트는 기존 클라이언트와의 호환성을 손상시키지 않고, 다른 프로젝트가 적응할 수 있는 기회를 가질 수 있도록 일정 기간 동안 해당 호환성을 유지하는 것을 목표로 한다.
 
-In general, new API resources and new resource fields can be added often and frequently. Elimination of resources or fields requires following the API deprecation policy.
+일반적으로 새로운 API와 새로운 resource 필드는 자주 빈번하게 추가될 수 있다. resource나 필드를 제거하려면 [API deprecation policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/)을 따라야 한다.
 
-Kubernetes makes a strong commitment to maintain compatibility for official Kubernetes APIs once they reach general availability (GA), typically at API version v1. Additionally, Kubernetes maintains compatibility with data persisted via beta API versions of official Kubernetes APIs, and ensures that data can be converted and accessed via GA API versions when the feature goes stable.
+k8s는 공식 k8s API가 general availability(GA, 일반적으로 API version v1)에 도달하면 호환성을 유지하기 위해 강력하게 약속(commitment)한다. 또한 k8s는 공식 k8s API의 beta API version을 통해 영구 저장된 데이터와의 호환성을 유지하며, 기능이 안정화(stable)될 때 GA API version을 통해 데이터를 변환하고 접근할 수 있도록 보장한다.
 
-If you adopt a beta API version, you will need to transition to a subsequent beta or stable API version once the API graduates. The best time to do this is while the beta API is in its deprecation period, since objects are simultaneously accessible via both API versions. Once the beta API completes its deprecation period and is no longer served, the replacement API version must be used.
+beta API version을 채택한 경우, API가 정식 버전으로 승격(graduate)되면 후속 beta 또는 안정화(stable) API version으로 전환해야 한다다. 두 API version을 통해 object에 동시에 접근할 수 있으므로, beta API가 지원 중단(deprecation) 기간에 있을 때 전환하는 것이 가장 좋다. beta API의 지원 중단 기간이 끝나고 더 이상 제공되지 않으면 대체된 API version을 사용해야 한다.
 
-Note:
-Although Kubernetes also aims to maintain compatibility for alpha APIs versions, in some circumstances this is not possible. If you use any alpha API versions, check the release notes for Kubernetes when upgrading your cluster, in case the API did change in incompatible ways that require deleting all existing alpha objects prior to upgrade.
-Refer to API versions reference for more details on the API version level definitions.
+> **Note**:
+> k8는 alpha API 버전에 대한 호환성 유지도 목표로 하지만, 상황에 따라 불가능할 수도 있다. alpha API version을 사용하는 경우, 호환되지 않는 방식으로 API가 변경되어 업그레이드 전에 기존의 모든 alpha object를 삭제해야 할 수도 있으므로 cluster를 업그레이드할 때 k8s release note 확인을 권장한다.
 
 
 ## API Extension
