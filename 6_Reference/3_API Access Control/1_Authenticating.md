@@ -1,8 +1,8 @@
 ## Users in Kubernetes
 모든 k8s cluster에는 2가지 범주의 사용자가 있다: k8s가 관리하는 sa와, 일반 사용자
 
-일반적으로는 다음과 같은 방법으로 사용자를 관리할 수 있다.
-- private key를 배포하는 관리자
+사용자를 관리하는 일반적인 방식은 다음과 같다.
+- 관리자가 private key를 배포
 - Keystone, Google 계정과 같은 user store
 - username, password를 포함하는 파일
 
