@@ -107,13 +107,20 @@ k8s는 po를 workload resource 없이 관리하는 것을 제한하지 않는다
 
 ### Pod subresources
 위 업데이트 규칙은 일반적인 po 업데이트와 관련되어 있으며 일부 필드는 subresources를 통해 업데이트 가능하다.
-- Resize: The `resize` subresource allows container resources (`spec.containers[*].resources`) to be updated. See [Resize Container Resources](https://kubernetes.io/docs/tasks/configure-pod-container/resize-container-resources/) for more details.
-- Ephemeral Containers: The `ephemeralContainers` subresource allows ephemeral containers to be added to a Pod. See [Ephemeral Containers](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/) for more details.
-- Status: The `status` subresource allows the pod status to be updated. This is typically only used by the Kubelet and other system controllers.
- -Binding: The `binding` subresource allows setting the pod's `.spec.nodeName` via a Binding request. This is typically only used by the scheduler.
+- Resize: resize subresource를 사용하면 container 리소스(`spec.containers[*].resources`) 업데이틀 수행할 수 있다. 자셓나 내용은 [Resize Container Resources](https://kubernetes.io/docs/tasks/configure-pod-container/resize-container-resources/)을 참고한다.
+- Ephemeral Containers: ephemeralContainers subresource를 사용하면 pod에 ephemeral container를 추가할 수 있다. 자세한 내용은 [Ephemeral Containers](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/)을 참고한다.
+- Status: status subresource를 사용하면 pod의 status(`.status`) 업데이트를 수행할 수 있다. 이는 보통 kubelet이나 다른 system controller가 수행한다.
+- Binding: binding subresource는 Binding 요청을 통해 po의 `.spec.nodeName`을 설정할 수 있도록 한다. 이는 보통 scheduler에서만 사용한다.
 
 ### Pod generation
+- `metadata.generation` 필드는 유니크하다. 이는 시스템에 의해 자동으로 설정되며 새로운 po는 1을 가지며, po의 `.spec`에서 변경 가능한 필드가 업데이트될 때마다 값이 1씩 증가한다.
+- `status.observedGeneration` 필드는 kubelet이 현재의 po 상태에 맞춰 po의 상태를 추적하기 위해 설정한다. 이 필드는 po의 상태가 보고되는 시점의 `.metadata.generation` 값을 반영한다. 즉, 실제 kubelet에 의해 실행되고 있는 po가 최신 상태임을 확인할 수 있다.
 
+Different status fields may either be associated with the metadata.generation of the current sync loop, or with the metadata.generation of the previous sync loop. The key distinction is whether a change in the spec is reflected directly in the status or is an indirect result of a running process.
+
+#### Direct Status Updates
+
+#### Indirect Status Updates
 
 ## Resource sharing and communication
 po내 container 간에는 데이터 공유 및 통신이 가능하다.
@@ -122,9 +129,9 @@ po내 container 간에는 데이터 공유 및 통신이 가능하다.
 po에 shared storage volume을 명시할 수 있다. po의 모든 container는 shared volume에 접근 할 수 있으며 데이터를 공유할 수 있다. 또한 container 재시작 시에도 데이터가 유지될 수 있도록 volume을 사용할 수 있다.
 
 ### Pod networking
-각 po에는 고유한 ip가 할당된다. po의 모든 container는 네트워크 ip주소, port를 포함하는 네트워크 namespace를 공유한다. po에 속한 container는 서로 localhost를 이용해 통신할 수 있다. container가 po 외부와 통신할 때 공유 네트워크 리소스를 어떻게 이용할지 조정해야한다. 또한 po 내 container끼리 SystemV semaphores, POSIX shared memory와 같은 표준 IPC를 이용해 통신할 수 있다. container가 다른 po의 container와 통신하기 위해서는 ip를 이용한 통신만 가능하다(OS 수준의 IPC를 이용하기 위해서는 설정 필요).
+각 po에는 고유한 ip가 할당된다. po의 모든 container는 네트워크 ip주소, port를 포함하는 네트워크 namespace를 공유한다. po에 속한 container는 서로 localhost를 이용해 통신할 수 있다. container가 po 외부와 통신할 때는 공유 네트워크 리소스를 어떻게 이용할지 조정해야한다. 또한 po 내 container끼리 SystemV semaphores, POSIX shared memory와 같은 표준 IPC를 이용해 통신할 수 있다. 다른 po의 container와 통신하기 위해서는 ip를 이용한 통신이 가능하며 OS 수준의 IPC를 이용하기 위해서는 특별한 설정이 필요하다.
 
-container의 hostname은 po의 이름으로 설정된다.
+po 내 container 들의 hostname은 po의 이름으로 설정된다.
 
 ## Pod security settings
 po, container에 보안을 위한 제한 사항을 설정하기 위해 `.spec.securityContext`, `.spec.containers[*].securityContext` 필드를 사용할 수 있다. 예를 들어
@@ -139,7 +146,7 @@ po, container에 보안을 위한 제한 사항을 설정하기 위해 `.spec.se
 ## Static Pods
 static po는 kube-apiserver의 관찰 없이 특정 no의 kubelet daemon에 의해 관리된다. deploy와 같이 대부분의 po는 control plane에 의해 관리되는 반면 static po는 kubelet이 직접 관리한다.
 
-static po는 항상 특정 node의 kubelet에 한정된다. static po의 주된 용도는 자체 호스팅 control plane을 실행하는 것이다: 즉, kubelet을 사용해 개별 control plane 구성 요소를 감독한다.
+static po는 항상 특정 node의 kubelet과 관련있다. static po의 주된 용도는 자체 호스팅 control plane을 실행하는 것이다: 즉, kubelet을 사용해 개별 control plane 구성 요소를 감독한다.
 
 kubelet은 각 static po에 대해 kube-apiserver에 mirror po(kubelet에 의해 관리되는 static po를 추적하는 object)를 자동으로 생성한다. 이는 no에 실행되는 po가 kube-apiserver에서 볼 수 있음을 의미하지만 kube-apiserver를 통해 제어는 하지 못한다. 자세한 내용은 [Create static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)를 참고한다.
 
@@ -161,7 +168,7 @@ Pods in a Kubernetes cluster are used in two main ways:
 
 뿐만 아니라 보조 역할을 수행하는 [sidecar container](https://v1-30.docs.kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)를 가질 수도 있다.
 
-기본적으로 활성화되어 있는 SidecarContainers feature gate는 init container에 `restartPolicy: Always`를 지정할 수 있도록 허용한다. Always 재시작 정책을 설정하면, 해당 container는 po의 전체 수명 주기 동안 계속 실행되는 sidecar로 취급된다. 이렇게 sidecar로 명시적으로 정의된 container는 메인 애플리케이션 container보다 먼저 시작하며, po가 종료될 때까지 계속 실행 상태를 유지된다.
+기본적으로 활성화되어 있는 SidecarContainers feature gate는 init container에 `.spec.restartPolicy` 필드에 Always 값을 지정할 수 있도록 허용한다. Always restart policy를 설정하면, 해당 container는 po의 전체 lifecycle 동안 계속 실행되는 sidecar로 취급된다. 이렇게 sidecar로 명시적으로 정의된 container는 메인 애플리케이션 container보다 먼저 시작하며, po가 종료될 때까지 계속 실행 상태를 유지된다.
 
 ## Container probes
 probe는 kubelet에 의해 주기적으로 container를 대상으로 수행된다. kubelet은 다른 유형의 probe를 수행할 수 있다.
