@@ -154,14 +154,14 @@ no를 여러 availability zone에 분산하는 주요 이유 중 하나는 한 z
 
 #### 요약
 1. 평상시의 eviction 속도 조절
-  - 기본적으로 k8s는 매우 신중하게 po를 eviction 한다. 10초에 최대 1개의 no에서만 po를 내보내서, 일시적인 네트워크 문제 등으로 인해 여러 no가 동시에 사라지는 것처럼 보일 때 모든 po가 한꺼번에 사라지는 대규모 장애를 막는다. (`--node-eviction-rate`)
+    - 기본적으로 k8s는 매우 신중하게 po를 eviction 한다. 10초에 최대 1개의 no에서만 po를 내보내서, 일시적인 네트워크 문제 등으로 인해 여러 no가 동시에 사라지는 것처럼 보일 때 모든 po가 한꺼번에 사라지는 대규모 장애를 막는다. (`--node-eviction-rate`)
 2. 가용성 영역(Availability Zone) 단위의 장애 대응
-  - 클라우드 환경에서는 보통 데이터 센터(가용성 영역, AZ) 단위로 장애가 발생할 수 있다. k8s는 이를 인지하고, 특정 AZ에서 문제가 생겼을 때의 eviction 정책을 다르게 적용한다.
-  - 완충 장치: 한 AZ 내에서 비정상 no가 55%(`--unhealthy-zone-threshold`)를 넘으면, k8s는 "이 AZ에 큰 문제가 생겼구나"라고 판단하고 eviction 속도를 대폭 낮춘다. (`--secondary-node-eviction-rate`, 100초당 1개 no)
-  - 소규모 cluster 보호: cluster 전체 no가 50개(`--large-cluster-size-threshold`) 이하인데 위 조건에 해당하면, 아예 eviction을 중지한다. 작은 cluster에서는 섣부른 eviction이 더 위험하기 때문이.
-3. 전체 장애 상황에서의 동작
-  - 한 AZ 전체가 다운될 경우: 해당 AZ의 모든 no가 비정상이라면, k8s는 그 AZ는 이미 사용 불가능하다고 판단하고, 해당 no들의 po를 다른 정상적인 AZ로 옮기기 위해 평소의 속도(`--node-eviction-rate`)로 축출을 진행한다.
-- cluster 전체가 다운될 경우: 만약 모든 AZ의 모든 no가 비정상이라면, 이는 개별 no의 문제라기보다는 control plane과의 네트워크 전체에 문제가 생겼을 가능성이 높다. 이럴 때 po를 eviction하는 것은 의미가 없으므로, k8s는 아무런 축출도 하지 않고 상황을 지켜본다.
+    - 클라우드 환경에서는 보통 데이터 센터(가용성 영역, AZ) 단위로 장애가 발생할 수 있다. k8s는 이를 인지하고, 특정 AZ에서 문제가 생겼을 때의 eviction 정책을 다르게 적용한다.
+    - 완충 장치: 한 AZ 내에서 비정상 no가 `--unhealthy-zone-threshold`을 넘으면, k8s는 "이 AZ에 큰 문제가 생겼구나"라고 판단하고 eviction 속도를 대폭 낮춘다. (`--secondary-node-eviction-rate`, 100초당 1개 no)
+    - 소규모 cluster 보호: cluster 전체 no가 50개(`--large-cluster-size-threshold`) 이하인데 위 조건에 해당하면, 아예 eviction을 중지한다. 작은 cluster에서는 섣부른 eviction이 더 위험하기 때문이.
+3. 전체 장애 상황에서의 동작 (`--large-cluster-size-threshold` 고려하지 않음)
+    - 한 AZ 전체가 다운될 경우: 해당 AZ의 모든 no가 비정상이라면, k8s는 그 AZ는 이미 사용 불가능하다고 판단하고, 해당 no들의 po를 다른 정상적인 AZ로 옮기기 위해 평소의 속도(`--node-eviction-rate`)로 축출을 진행한다.
+    - cluster 전체가 다운될 경우: 만약 모든 AZ의 모든 no가 비정상이라면, 이는 개별 no의 문제라기보다는 control plane과의 네트워크 전체에 문제가 생겼을 가능성이 높다. 이럴 때 po를 eviction하는 것은 의미가 없으므로, k8s는 아무런 축출도 하지 않고 상황을 지켜본다.
 
 ## Resource capacity tracking
 no object는 no의 리소스 capacity에 대한 정보를 추적한다: 예를 들어 이용 가능한 메모리와 CPU 정보. kubelet을 이용한 no의 self register는 등록 시 capacity에 대한 정보를 제공한다. 반대로 직접 no를 추가할 경우 용량 정보를 설정해야 한다.
