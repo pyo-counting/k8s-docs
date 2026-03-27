@@ -125,6 +125,42 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 - `--node-eviction-rate`: (기본값: 0.1) zone이 healthy 상태일 때 po를 eviction하는 node의 rate.
 - `--secondary-node-eviction-rate`: (기본값: 0.01) zone이 unhealthy 상태일 때 po를 eviction하는 node의 rate. large cluster가 아닐경우 이 값은 0으로 간주된다.
 
+``` mermaid
+sequenceDiagram
+    participant Kubelet as Kubelet
+    participant Lease as Lease Object<br/>(kube-node-lease ns)
+    participant NodeObj as Node Object<br/>(.status 필드)
+    participant NC as Node Controller
+
+    Kubelet->>Lease: T+0s: Lease 갱신 (.nodeLeaseDurationSeconds=40, 실제 주기≈10s)
+    NC->>Lease: T+5s: Lease 확인 (--node-monitor-period=5s) → 정상
+
+    Kubelet->>Kubelet: T+10s: 상태 확인 (.nodeStatusUpdateFrequency=10s) → 변화 없음
+    Kubelet->>Lease: T+10s: Lease 갱신 (.nodeLeaseDurationSeconds)
+    NC->>Lease: T+10s: Lease 확인 → 정상
+
+    NC->>Lease: T+15s: Lease 확인 → 정상
+
+    Kubelet->>Kubelet: T+20s: 상태 확인 (.nodeStatusUpdateFrequency) → 변화 없음
+    Kubelet->>Lease: T+20s: Lease 갱신 (.nodeLeaseDurationSeconds)
+    NC->>Lease: T+20s: Lease 확인 → 정상
+
+    Note right of Kubelet: 변화 없으면 .status 업데이트 안 함<br/>Lease만 갱신 → kube-apiserver 부하 감소
+
+    NC->>Lease: T+25s: Lease 확인 → 정상
+
+    Kubelet->>Kubelet: T+30s: 상태 확인 (.nodeStatusUpdateFrequency) → 변화 감지!<br/>(예: 디스크 압력, 메모리 등)
+    Kubelet->>NodeObj: .status 필드 즉시 업데이트
+    Kubelet->>Lease: T+30s: Lease 갱신 (.nodeLeaseDurationSeconds)
+    NC->>Lease: T+30s: Lease 확인 → 정상
+
+    Note over Kubelet: ... 이후 변화 없이 5분 경과 ...<br/>(Lease는 10s마다 계속 갱신, Node Controller는 5s마다 계속 확인)
+
+    Kubelet->>NodeObj: T+5m: .status 강제 full sync (.nodeStatusReportFrequency=5m)<br/>변화 없어도 전체 상태 동기화
+    Kubelet->>Lease: T+5m: Lease 갱신 (.nodeLeaseDurationSeconds)
+    NC->>Lease: T+5m: Lease 확인 → 정상
+```
+
 ![](https://miro.medium.com/v2/resize:fit:720/format:webp/1*pvHnrsuXuGrOGrjq_OrKAA.jpeg)
 
 위 그림에서는 `--pod-eviction-timeout`가 있지만 이는 k8s v1.29 기준 없어진 flag다. 해당 flag는 unhealthy no에서 po를 eviction하기까지 대기하는 시간이다. 대신 [Taints based Evictions](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions)을 사용한다.([#39681](https://github.com/kubernetes/website/issues/39681))
@@ -142,9 +178,9 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 대부분의 경우 node controller는 초당 eviction 비율을 `--node-eviction-rate`(기본값 0.1)로 제한한다. 즉, 10초당 1개의 no에서만 po를 제거한다.
 
 availability zone의 no가 unhealthy 상태가 되면 no eviction 동작은 바뀐다. node controller는 동시에 availability zone에서 unhealthy 상태인 no의 비율(Ready condition이 Unknown 또는 False)을 확인한다.
-- unhealthy no의 비율이 적어도 `--unhealthy-zone-threshold`(기본값 0.55)면 eviction rate가 감소한다.
+- unhealthy no의 비율이 `--unhealthy-zone-threshold`(기본값 0.55) 이상이면 eviction rate가 감소한다.
 - cluster의 규모가 작은 경우(즉, `--large-cluster-size-threshold`(기본값 50) 이하의 no개수), eviction이 중지된다.
-- 위 모든 경우에 해당하지 않으면 eviction 비율이 `--secondary-node-eviction-rate`(기본값 0.01)로 줄어든다.
+- 그렇지 않으면 eviction 비율이 `--secondary-node-eviction-rate`(기본값 0.01)로 줄어든다.
 
 이러한 정책이 availability zone 마다 적용되는 이유는 한 availability zone이 control plane에서 분리되는 경우 다른 availability zone은 연결된 상태로 유지될 수 있기 때문이다. cluster가 여러 cloud provider의 availability zone에 걸쳐 있지 않으면 eviction 메커니즘은 availability zone당 불가용성은 고려하지 않는다.
 
@@ -152,16 +188,79 @@ no를 여러 availability zone에 분산하는 주요 이유 중 하나는 한 z
 
 그리고 node controller는 NoExecute taint가 있는 no에서 실행되는 po를 eviction하는 책임이 있다. 단, 해당 po가 해당 taint에 대한 toleration이 없을 경우에만 해당한다. node controller는 no가 unreachable, ready가 아닌 no에 대해 해당 taint를 추가한다. 이를 통해 kube-scheduler가 해당 no에 po를 배치하지 않도록한다.
 
-#### 요약
-1. 평상시의 eviction 속도 조절
-    - 기본적으로 k8s는 매우 신중하게 po를 eviction 한다. 10초에 최대 1개의 no에서만 po를 내보내서, 일시적인 네트워크 문제 등으로 인해 여러 no가 동시에 사라지는 것처럼 보일 때 모든 po가 한꺼번에 사라지는 대규모 장애를 막는다. (`--node-eviction-rate`)
-2. 가용성 영역(Availability Zone) 단위의 장애 대응
-    - 클라우드 환경에서는 보통 데이터 센터(가용성 영역, AZ) 단위로 장애가 발생할 수 있다. k8s는 이를 인지하고, 특정 AZ에서 문제가 생겼을 때의 eviction 정책을 다르게 적용한다.
-    - 완충 장치: 한 AZ 내에서 비정상 no가 `--unhealthy-zone-threshold`을 넘으면, k8s는 "이 AZ에 큰 문제가 생겼구나"라고 판단하고 eviction 속도를 대폭 낮춘다. (`--secondary-node-eviction-rate`, 100초당 1개 no)
-    - 소규모 cluster 보호: cluster 전체 no가 50개(`--large-cluster-size-threshold`) 이하인데 위 조건에 해당하면, 아예 eviction을 중지한다. 작은 cluster에서는 섣부른 eviction이 더 위험하기 때문이.
-3. 전체 장애 상황에서의 동작 (`--large-cluster-size-threshold` 고려하지 않음)
-    - 한 AZ 전체가 다운될 경우: 해당 AZ의 모든 no가 비정상이라면, k8s는 그 AZ는 이미 사용 불가능하다고 판단하고, 해당 no들의 po를 다른 정상적인 AZ로 옮기기 위해 평소의 속도(`--node-eviction-rate`)로 축출을 진행한다.
-    - cluster 전체가 다운될 경우: 만약 모든 AZ의 모든 no가 비정상이라면, 이는 개별 no의 문제라기보다는 control plane과의 네트워크 전체에 문제가 생겼을 가능성이 높다. 이럴 때 po를 eviction하는 것은 의미가 없으므로, k8s는 아무런 축출도 하지 않고 상황을 지켜본다.
+``` mermaid
+flowchart TD
+    A["노드 장애 발생\n(kubelet Lease 갱신 중단)"] --> B["node controller 감지\n(--node-monitor-grace-period: 40s 경과)"]
+    B --> C["노드 상태를 Unknown으로 변경\n+ unreachable taint 추가\n+ tolerationSeconds=300 대기"]
+    C --> D{"모든 zone의\n모든 노드가 unhealthy?"}
+
+    D -->|Yes| E["⛔ Eviction 중지\ncontrol plane ↔ node 네트워크 문제 판단"]
+
+    D -->|No| F{"특정 zone의\n모든 노드가 unhealthy?\n(다른 zone은 정상)"}
+
+    F -->|Yes| G["🟢 정상 Eviction\n--node-eviction-rate (0.1/s)\nhealthy zone으로 workload 이동"]
+
+    F -->|No| H{"zone 내 unhealthy 노드 비율\n≥ --unhealthy-zone-threshold\n(기본 55%)?"}
+
+    H -->|"No (소수 장애)"| I["🟢 정상 Eviction\n--node-eviction-rate (0.1/s)"]
+
+    H -->|"Yes (다수 장애)"| J{"노드 수\n≤ --large-cluster-size-threshold\n(기본 50)?"}
+
+    J -->|"Yes (소규모)"| K["⛔ Eviction 중지\n소규모 클러스터 보호"]
+
+    J -->|"No (대규모, >50)"| L["🟡 감속 Eviction\n--secondary-node-eviction-rate\n(0.01/s = 100초당 1 노드)"]
+
+    style E fill:#ff6b6b,color:#fff
+    style G fill:#6bcb77,color:#fff
+    style I fill:#6bcb77,color:#fff
+    style K fill:#ff6b6b,color:#fff
+    style L fill:#ffd93d,color:#000
+
+```
+
+``` mermaid
+sequenceDiagram
+    participant Kubelet as Kubelet<br/>(Node-A)
+    participant Lease as Lease Object
+    participant NodeObj as Node Object
+    participant NC as Node Controller
+    participant Sched as kube-scheduler
+
+    Note over Kubelet: T+0s: Node-A 다운!
+    Kubelet--xLease: Lease 갱신 중단
+    Kubelet--xNodeObj: .status 업데이트 중단
+
+    NC->>Lease: T+5s: Lease 확인 → "5초 경과, 유예시간(40s) 내"
+    NC->>Lease: T+10s: "10초 경과, 유예시간 내"
+    NC->>Lease: T+20~35s: 계속 확인 → "40s 미만"
+    NC->>Lease: T+40~45s: "40초 초과!"
+
+    Note over NC: --node-monitor-grace-period=40s 초과
+
+    NC->>NodeObj: Ready → Unknown 변경
+    NC->>NodeObj: unreachable taint 추가 (NoSchedule + NoExecute)
+
+    Note over NC: tolerationSeconds=300 (5분) 대기
+
+    Note over NC,Sched: T+340s (약 5분 40초): Eviction Rate 판단
+
+    alt 전체 클러스터 장애 (모든 노드 unhealthy)
+        NC->>NC: ⛔ Eviction 중지 (네트워크 문제 판단)
+    else 전체 zone 장애 (다른 zone 정상)
+        NC->>Sched: 🟢 정상 Eviction<br/>(--node-eviction-rate=0.1, 10초당 1 노드)
+        Sched->>Sched: healthy zone에 새 Pod 스케줄링
+    else unhealthy 비율 < --unhealthy-zone-threshold (55%)
+        NC->>Sched: 🟢 정상 Eviction<br/>(--node-eviction-rate=0.1, 10초당 1 노드)
+        Sched->>Sched: 건강한 노드에 새 Pod 스케줄링
+    else unhealthy 비율 >= --unhealthy-zone-threshold (55%)
+        alt 노드 수 <= --large-cluster-size-threshold (50)
+            NC->>NC: ⛔ Eviction 중지 (소규모 클러스터 보호)
+        else 노드 수 > --large-cluster-size-threshold (50)
+            NC->>Sched: 🟡 감속 Eviction<br/>(--secondary-node-eviction-rate=0.01, 100초당 1 노드)
+            Sched->>Sched: 건강한 노드에 새 Pod 스케줄링
+        end
+    end
+```
 
 ## Resource capacity tracking
 no object는 no의 리소스 capacity에 대한 정보를 추적한다: 예를 들어 이용 가능한 메모리와 CPU 정보. kubelet을 이용한 no의 self register는 등록 시 capacity에 대한 정보를 제공한다. 반대로 직접 no를 추가할 경우 용량 정보를 설정해야 한다.
