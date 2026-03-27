@@ -121,7 +121,7 @@ node controller는 no의 생명 주기 동안 여러 역할을 맡는다.
 - `--node-monitor-grace-period`: (기본값 40s) no를 unhealthy로 마킹하기 전에 대기하는 시간. 이 값은 kubelet의 `.nodeStatusUpdateFrequency`보다 충분히 큰 값이어야 한다.
 - `--node-startup-grace-period`: (기본값: 1m0s) starting no가 unhealthy로 마킹되는 것을 방지하기 위해 기다리는 시간
 - `--large-cluster-size-threshold`: (기본값: 50) large cluster에 대한 기준 값. 이는 eviction 로직에 영향을 준다. 만약 multiple zone이 구성된 경우 이 값은 각 zone 별로 적용된다.
-- `--unhealthy-zone-threshold`: (기본값: 0.55) unhealthy zone으로 판단하기 위한 unhealthy no(최소 3개)의 최소 비율.
+- `--unhealthy-zone-threshold`: (기본값: 0.55) unhealthy zone으로 판단하기 위한 unhealthy no의 최소 비율(+ 최소 3개 이상).
 - `--node-eviction-rate`: (기본값: 0.1) zone이 healthy 상태일 때 po를 eviction하는 node의 rate.
 - `--secondary-node-eviction-rate`: (기본값: 0.01) zone이 unhealthy 상태일 때 po를 eviction하는 node의 rate. large cluster가 아닐경우 이 값은 0으로 간주된다.
 
@@ -200,11 +200,11 @@ flowchart TD
 
     F -->|Yes| G["🟢 정상 Eviction\n--node-eviction-rate (0.1/s)\nhealthy zone으로 workload 이동"]
 
-    F -->|No| H{"zone 내 unhealthy 노드 비율\n≥ --unhealthy-zone-threshold\n(기본 55%)?"}
+    F -->|No| H{"unhealthy 노드 ≥ 3개\nAND\nzone 내 unhealthy 비율\n≥ --unhealthy-zone-threshold (55%)?"}
 
-    H -->|"No (소수 장애)"| I["🟢 정상 Eviction\n--node-eviction-rate (0.1/s)"]
+    H -->|"No\n(unhealthy < 3개\n또는 비율 < 55%)"| I["🟢 정상 Eviction\n--node-eviction-rate (0.1/s)"]
 
-    H -->|"Yes (다수 장애)"| J{"노드 수\n≤ --large-cluster-size-threshold\n(기본 50)?"}
+    H -->|"Yes\n(unhealthy ≥ 3개\nAND 비율 ≥ 55%)"| J{"노드 수\n≤ --large-cluster-size-threshold\n(50)?"}
 
     J -->|"Yes (소규모)"| K["⛔ Eviction 중지\n소규모 클러스터 보호"]
 
@@ -215,7 +215,6 @@ flowchart TD
     style I fill:#6bcb77,color:#fff
     style K fill:#ff6b6b,color:#fff
     style L fill:#ffd93d,color:#000
-
 ```
 
 ``` mermaid
@@ -249,10 +248,10 @@ sequenceDiagram
     else 전체 zone 장애 (다른 zone 정상)
         NC->>Sched: 🟢 정상 Eviction<br/>(--node-eviction-rate=0.1, 10초당 1 노드)
         Sched->>Sched: healthy zone에 새 Pod 스케줄링
-    else unhealthy 비율 < --unhealthy-zone-threshold (55%)
+    else unhealthy < 3개 또는 비율 < --unhealthy-zone-threshold (55%)
         NC->>Sched: 🟢 정상 Eviction<br/>(--node-eviction-rate=0.1, 10초당 1 노드)
         Sched->>Sched: 건강한 노드에 새 Pod 스케줄링
-    else unhealthy 비율 >= --unhealthy-zone-threshold (55%)
+    else unhealthy ≥ 3개 AND 비율 >= --unhealthy-zone-threshold (55%)
         alt 노드 수 <= --large-cluster-size-threshold (50)
             NC->>NC: ⛔ Eviction 중지 (소규모 클러스터 보호)
         else 노드 수 > --large-cluster-size-threshold (50)
