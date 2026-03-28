@@ -2,9 +2,9 @@ API-initiated eviction는 eviction API를 사용해 graceful pod termination을 
 
 eviction API를 직접 호출하거나 kubectl drain 명령어를 사용해 eviction을 요청할 수 있다. 그러면 eviction object가 생성되고 kube-apiserver는 po를 종료시킨다.
 
-API-initiated eviction는 po의 `PodDisruptionBudgets`, `terminationGracePeriodSeconds`을 존중한다.
+API-initiated eviction는 po의 pdb, `.spec.terminationGracePeriodSeconds`을 존중한다.
 
-API를 사용해 po에 대한 eviction object를 생성하는 것은 po에 대한 delete 작업을 수행하는 것과 동일하다.
+API를 사용해 po에 대한 eviction object를 생성하는 것은 po에 대한 정책 기반의 delete 작업을 수행하는 것다(기본적으로 pod 삭제는 pdb를 존중하지 않음).
 
 ## Calling the Eviction API
 k8s POST API를 사용해 eviction object를 생성할 수 있다. 아래는 예시다.

@@ -109,7 +109,7 @@ tolerations:
   tolerationSeconds: 3600
 ```
 
-이는 po가 실행 중이고 일치하는 taint가 no에 추가되면 po는 3600초 동안 no에 binding된 후 eviction된다는 것을 의미한다. 그 전에 taint를 제거하면 po가 eviction되지 않는다.
+이는 po가 실행 중이고 일치하는 taint가 no에 추가되면 po는 3600초 동안 no에 binding된 후 eviction된다는 것을 의미한다. 그 전에 taint를 제거하면 po가 eviction되지 않는다. API-initiated eviction과 다르게 po를 삭제하는 것이기 때문에 pdb를 존중하지 않는다.
 
 ## Example Use Cases
 taint, toleration은 po를 no에서 멀어지게 하거나 실행되지 않아야 하는 po를 축출할 수 있는 유연한 방법이다. 사용 케이스는 다음과 같다.
