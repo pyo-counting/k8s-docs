@@ -330,27 +330,25 @@
 - k8s object의 status를 노출하는 kube-state-metrics 설치 고려 ([Metrics for Kubernetes Object States](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/))
 
 ## EKS
-- control plane은 kube-apiserver, etcd 구성 요소들로 이뤄지며 aws가 관리하는 ec2 인스턴스에서 실행된다. control plane은 multi az에 provision되며 nlb를 통해 kube-apiserver를 노출한다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
-  - 확인 시 eks 생성 시 설정하는 subnet 개수가 3, 4개여도 항상 두 개의 az를 사용하는 nlb를 생성하기 때문에 2개의 ip를 통해 kube-apiserver에 접근할 수 있다.
+- control plane은 kube-apiserver, etcd 구성 요소들로 이뤄지며 aws가 관리하는 ec2 인스턴스에서 실행된다. control plane은 multi az에 provision되며 network mode에 따라 public endpoint(internet-facing nlb), private endpoint(x-eni or eks-managed eni)를 통해 접근 가능하다. ([Control Plane](https://docs.aws.amazon.com/eks/latest/best-practices/control-plane.html))
 - eks는 2개의 vpc로 구성된다. ([VPC and Subnet Considerations](https://docs.aws.amazon.com/eks/latest/best-practices/subnets.html#_overview))
   - aws-managed vpc: control plane 구성요소가 실행된다. 사용자 aws 계정에 보이지 않음
   - customer-managed vpc: k8s no가 실행된다.
 - etcd node의 모든 저장 데이터는 aws ebs volume를 통해 저장되며 kms로 암호화된다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks는 etcd storage 크기를 8GiB로 설정한다. 이는 일반적인 환경에서 etcd의 최대 권장 사이즈다. ([Clusters](https://docs.aws.amazon.com/eks/latest/userguide/clusters.html))
 - eks cluster insight는 eks, k8s의 best practice를 따를 수 있도록 권장 사항을 제공한다. 이를 위해 eks cluster에 대해 반복적으로 검사를 수행한다. eks를 업데이트 하기 전에 cluster insight를 확인하는 것을 권장한다. ([Cluster insights](https://docs.aws.amazon.com/eks/latest/userguide/cluster-insights.html))
-- cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc와 인터넷에서 kube-apiserver에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. kube-apiserver가 no에 대한 접근(예를 들어 사용자의 `kubectl exec`, `kubectl logs`, `kubectl proxy` 명령어)을 위해서 기본적으로 cluster 생성시 명시한 subnet에 eks-managed eni을 생성하며 이는 public/private endpoint access 옵션과 관련 없다. ([AWS Blogs](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
-- eks의 control plane 구성 요소는 aws가 관리하는 vpc에서 생성되며 kube-apiserver의 엔드포인트 역할을 수행하는 eks-managed eni는 eks 생성 시 설정한 subnet에 랜덤하게 생성된다. ([AWS blog](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
+- cluster의 public/private endpoint access 조합에 따라 cluster가 생성된 vpc와 인터넷에서 kube-apiserver에 접근하는 방법이 다르다. 두 옵션을 모두 비활성화 할 수는 없다. kube-apiserver가 no에 대한 접근(예를 들어 사용자의 `kubectl exec`, `kubectl logs`, `kubectl proxy` 명령어)을 위해 엔드포인트 역할을 수행하는 기본적으로 cluster 생성시 명시한 subnet에 분산해서 2 - 4개 eks-managed eni을 생성한다. 생성 유무는 public/private endpoint access 옵션과 관련 없으며 어떻게 사용되는지만 관련이 있다. ([AWS Blogs](https://aws.amazon.com/ko/blogs/containers/de-mystifying-cluster-networking-for-amazon-eks-worker-nodes/))
 - eks private endpoint는 aws privatelink endpoint가 아니기 때문에 privatelink endpoint 목록에서 조회 불가능하다. private access endpoint를 활성화하면 aws eks는 route 53 private hosted zone을 사용자 대신 생성하고 cluster가 생성된 vpc와 연결한다. 이 private hosted zone은 사용자가 조회할 수 없으며 eks가 대신 관리한다. vpc에서 private hosted zone을 통해 kube-apiserver에 접근하기 위해 사용자 vpc는 `enableDnsHostnames`, `enableDnsSupport`을 true로 설정하고 DHCP optionset은 dns server 목록에 `AmazonProvidedDNS`을 포함해야 한다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#cluster-endpoint-private))
-- public/private endpoint 활성화/비활성화 여부에 따른 특징은 다음과 같다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#modify-endpoint-access))
+- public/private endpoint 활성화/비활성화 여부에 따른 data plane -> control plane(kube-apiserver) 접근 방식은 다음과 같다. ([Configure endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html#modify-endpoint-access))
   - enabled/disabled
-    - eks의 기본 설정 값이다. vpc 내에서 kube-apiserver에 대한 요청은 vpc를 벗어나지만 aws 네트워크를 벗어나지는 않는다.
+    - eks의 기본 설정 값이다. vpc 내에서 kube-apiserver에 대한 요청은 vpc를 벗어나는 public 요청(public ip 할당을 위한 internet gateway or NAT gateway가 필요)이지만 aws 네트워크를 벗어나지는 않는다.
     - 인터넷에서 public endpoint를 통해 kube-apiserver에 접근할 수 있다. public endpoint에 대해 CIDR block을 이용한 접근 제어가 가능하다.
   - enabled/enabled
-    - vpc 내에서 kube-apiserver에 대한 요청은 vpc 내 eks가 생성한 eks-managed eni를 향한다.
-    - 인터넷에서 public endpoint를 통해 kube-apiserver에 접근할 수 있다. public endpoint에 대해 CIDR block을 이용한 접근 제어가 가능하다.
+    - vpc 내에서 kube-apiserver에 대한 요청(dns 쿼리에 대해 eks-managed eni ip 반환)은 vpc 내 eks가 생성한 eks-managed eni를 향한다.
+    - 인터넷에서 public endpoint를 통해((dns 쿼리에 대해 public nlb ip 반환)) kube-apiserver에 접근할 수 있다. public endpoint에 대해 CIDR block을 이용한 접근 제어가 가능하다.
   - disabled/enabled
     - kube-apiserver에 대한 모든 요청은 vpc 내부 또는 connected network 내부에서만 가능하다.
-    - 인터넷에서 kube-apiserver에 접근할 수 없다.
+    - 인터넷에서 kube-apiserver에 접근할 수 없다(public nlb가 생성되는지 안되는지는 모름).
     - cluster의 kube-apiserver endpoint는 public DNS에 의해 vpc 내 private ip 주소로 resolving된다.
 - outbound internet access가 필요없는 eks(private cluster)를 배포하기 위해 아래 조건을 만족해야 한다. ([Private clusters](https://docs.aws.amazon.com/eks/latest/userguide/private-clusters.html))
   - cluster는 container image를 vpc 내 registry에서 pull할 수 있어야 한다.
